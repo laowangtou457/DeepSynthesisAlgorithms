@@ -280,11 +280,11 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
             rep.add(BLOCK, "meta.duplicate",
                     f'文件中出现 {raw.count(chr(34) + "AIGC" + chr(34))} 次 "AIGC" 块；GB 45438 要求仅保留一份')
 
-    # ⑤ 提供者编码占位检查（规范 §13 T-02）
+    # ⑤ 提供者编码占位检查（规范 §13 NT-02）
     provider_code = (meta.get("generator", {}) or {}).get("provider_code", "")
     if "{{" in str(provider_code) or not provider_code:
         rep.add(WARN, "provider.code",
-                "provider_code 仍为占位（{{PROVIDER_CODE}}）→ 不得用于正式交付，须回填（T-02）")
+                "provider_code 仍为占位（{{PROVIDER_CODE}}）→ 不得用于正式交付，须回填（NT-02）")
 
     # ⑥ 任务类型声明（规范 §3.2 / D-21）
     if not meta.get("task_type"):

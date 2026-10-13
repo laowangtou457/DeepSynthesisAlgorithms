@@ -8,7 +8,7 @@
     "font_file": "C:/Windows/Fonts/msyhbd.ttc",
     "font_name": "微软雅黑 Bold（系统字体，仅预览用）",
     "font_is_licensed": false,
-    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §6.5、T-04）"
+    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、**NT-04**）"
   },
   "compliance": {
     "standard": "GB 45438—2025 §5.4",

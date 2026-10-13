@@ -22,7 +22,7 @@
     # 生成样式对照预览图（供选型）
     python gen_overlays.py --preview
 
-★ 正式交付前注意（规范 §6.5）：
+★ 正式交付前注意（规范 §7.5）：
   默认字体 C:/Windows/Fonts/msyhbd.ttc（微软雅黑）为系统字体，仅用于视觉预览。
   正式素材必须替换为已获商用授权的字体（推荐：思源黑体 / 阿里巴巴普惠体）。
   生成后本工具会在 overlay_spec.json 中记录实际使用的字体，便于核查。
@@ -362,7 +362,7 @@ def main() -> int:
             "font_file": args.font,
             "font_name": args.font_name,
             "font_is_licensed": False,
-            "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §6.5、T-04）",
+            "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、NT-04）",
         },
         "compliance": {
             "standard": "GB 45438—2025 §5.4",

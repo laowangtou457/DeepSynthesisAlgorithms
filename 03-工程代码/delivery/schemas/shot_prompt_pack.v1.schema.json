@@ -78,7 +78,7 @@
             "provider_code": {
               "type": "string",
               "minLength": 1,
-              "description": "提供者编码；未分配时使用占位 {{PROVIDER_CODE}}，正式交付前须回填（待明确事项 T-02）"
+              "description": "提供者编码；未分配时使用占位 {{PROVIDER_CODE}}，正式交付前须回填（规范 §13 待明确事项 NT-02）"
             }
           }
         },

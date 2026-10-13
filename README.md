@@ -16,6 +16,7 @@
 | `{{PROVIDER_NAME}}` | 服务提供者（备案主体）企业全称 |
 | `{{ALGO_OWNER}}` | 算法负责人姓名 |
 | `{{ALGO_AUTHOR}}` | 算法作者姓名 |
+| `{{REPO_OWNER}}` | 本工程远程仓库的账号名（GitHub 所有者账号） |
 | `{{PROVIDER_CODE}}` | 生成服务提供者编码（原文档即为此占位） |
 
 **已从本仓库排除的内容**（见 `.gitignore`）：

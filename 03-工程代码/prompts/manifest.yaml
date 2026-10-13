@@ -66,6 +66,31 @@ templates:
       - 本层只做剧本化编排，**不做镜头切分**（切镜属 SW-006 分镜脚本职责）
     notes: 链路第 2 段模板，输入 synopsis_v1（SW-004）的已确认梗概 JSON，输出 JSON 供 SW-006 分镜脚本消费；用例见 examples/script-case01.md
 
+  - id: storyboard_v1
+    name: 分镜脚本生成
+    task_type: generate
+    stage: storyboard
+    file: templates/storyboard_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [script_json, duration_bounds, gap_answers, shot_density]
+    scenes:
+      - AI 漫剧链路第 3 段：已确认剧本 → 分镜脚本（逐场切镜 + 逐镜镜头语言标注）
+      - 短剧项目的镜头切分与镜头语言设计
+    constraints:
+      - 剧本每一句台词必须分配到某一镜的 dialogue，一句不得丢失；不得新增剧本之外的情节、角色或对白
+      - character_id 沿用剧本、不得改号；scene_no 沿用剧本 scenes 的 no、切镜只在场内部进行；style_ref 引用剧本 style_bible.style_id
+      - 本层**不定义外观与风格、不重述外观**（首定义责任在剧本层 SW-005）；**不写 prompt_zh／prompt_en 正文、不做模型适配、不写 AIGC 元数据块**（属 SW-007）
+      - 八维镜头语言（规范 §4.1）两层口径：景别／运镜**每镜必有**（覆盖 100%）；角度／光学／构图／轴线／光线／画面结果六维按 §4.2 覆盖率阈值在单元与整片层面达标（≥40%／≥30%／≥50%／≥30%／≥40%／≥60%），**不要求每镜全开**；「画面结果」最易漏，防「空气挥拳」
+      - 生成单元含 2–3 镜（禁 1 镜与 ≥4 镜），同一单元内运镜类型不得重复；一个镜头只属于一个单元
+      - 质量门 11 项（规范 §4.2）作为**生成约束**写入：运镜/景别覆盖 100%、静止镜 ≤40%、运镜类型数 ≥min(5,max(2,⌈镜数/4⌉))、单一运镜 ≤35%、角度 ≥40%、光学 ≥30%、构图 ≥50%、轴线 ≥30%、光线 ≥40%、画面结果 ≥60%
+      - 单镜 duration_ms 必须整秒且落在 duration_bounds 秒区间内（默认 4-15＝MiniMax H3 口径）；台词语速 ≤9 字/秒，超出只延长时长、不改画面
+      - 转场单侧表达（相邻衔接由后一镜 transition_in，transition_out 仅单元末镜）；music 无则填 N/A 且禁抽象情绪词
+      - 单人镜必须遵守单人替身法则（具名锚点、禁省略主语）；单人戏禁「无光的镜头」与「无结果的静止」
+      - 禁止项承接：剧本 forbidden_items 须逐条原样转入本层 forbidden_items
+      - 缺口续接：剧本 unspecified 中 fill_stage=storyboard 且已答复者视为闭合、不再输出；本层新产生缺口须登记
+    notes: 链路第 3 段模板（**导演决策层**），字段名与《分镜提示词交付规范 v1.2》§3.5／§3.6 逐字对齐，使下游 SW-007 的适配从「重新设计」降级为「格式投影」；输入 script_v1（SW-005）的剧本 JSON，输出 JSON 供 SW-007 消费；用例见 examples/storyboard-case01.md
+
   - id: gen_article_v1
     name: 长文内容生成
     task_type: generate
@@ -213,11 +238,11 @@ templates:
 
 # ========== 统计 ==========
 summary:
-  total: 11
-  active: 11
+  total: 12
+  active: 12
   deprecated: 0
   by_task_type:
-    generate: 4
+    generate: 5
     summarize: 2
     rewrite: 2
     extract: 1
@@ -225,7 +250,7 @@ summary:
   by_stage:
     synopsis: 1
     script: 1
-    storyboard: 0
+    storyboard: 1
     shot_prompt: 0
     revise: 0
-  business_chain_note: "AI 漫剧业务链路 5 个模板建设中（与 SCHEMA.md 的 stage 枚举 5 值一一对应）：已建 2（synopsis_v1 / script_v1），待建 3（storyboard / shot_prompt / revise）"
+  business_chain_note: "AI 漫剧业务链路 5 个模板建设中（与 SCHEMA.md 的 stage 枚举 5 值一一对应）：已建 3（synopsis_v1 / script_v1 / storyboard_v1），待建 2（shot_prompt / revise）"

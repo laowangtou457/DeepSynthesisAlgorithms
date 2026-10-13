@@ -1,0 +1,324 @@
+id: storyboard_v1
+name: 分镜脚本生成
+version: "1.0.0"
+task_type: generate
+stage: storyboard
+language: zh-CN
+
+# 版本说明（v1.0.0，2026-10-13）：AI 漫剧业务链路第 3 段（SW-006）。
+#   上游：script_v1（SW-005）输出的剧本 JSON（已确认）。
+#   下游：shot_prompt_v1（SW-007）分镜提示词——把本层产出的「镜头决策」编译为面向目标模型的投喂文本。
+#
+#   ★ 本层的职责边界（这是全链路最容易被做错的一段，必须说清）：
+#     本层是**导演决策层**——决定「切几刀、每刀切在哪、每一镜怎么拍」；
+#     SW-007 是**编译表达层**——决定「怎么把这些决策写成目标模型读得懂的话」。
+#     因此本层**只产出结构化决策与中文语义描述**，不产出 prompt_zh / prompt_en 正文，
+#     不做模型适配、不写 AIGC 元数据块、不写合规声明——那些全是 SW-007 的职责。
+#
+#   ★ 字段口径来源（唯一真值来源，不得另立一套）：
+#     `01-架构设计/分镜提示词交付规范-v1.2.md`（现行版；其 §0.5 的引用口径为「规范 NT-0x」）
+#       · §3.5 生成单元 units[]   · §3.6 镜头 shots[]   · §3.7 字段取值规则
+#       · §4.1 八维镜头语言       · §4.2 质量门 11 阈值 · §4.3 单元划分三类约束
+#       · §4.4 单人替身法则       · §4.5 台词—时长      · §4.6 动作复杂度—时长
+#     ⚠️ 本模板的字段名与规范 §3.5 / §3.6 **刻意逐字对齐**——目的是让 SW-007 的适配
+#        从「重新设计」降级为「格式投影」。若两者出现不一致，以规范为准并回改本模板。
+#
+#   ★ 为什么把质量门写进生成约束而不是只做事后检查：
+#     规范 §4 的实测结论是——按旧口径产出的包**可以 100% 通过合规校验，而全片 17 镜全是固定机位**。
+#     「合规通过」不等于「拍得好」。八维与 11 项质量门若只在交付前检查，返工代价是重跑整条链路；
+#     写进生成约束，模型在切镜时就会避开「全静止」「单运镜垄断」这两类结构性失败。
+#
+#   承接责任（依 SCHEMA.md「锚点首定义」约定）：
+#     ① 角色稳定标识 character_id **沿用剧本层，不得改号**（SW-002 零漂移校验的锚点）；
+#     ② 场号 scene_no **沿用剧本层 scenes 的 no，不得重新编号**；
+#     ③ style_ref **引用**剧本层 style_bible.style_id；character_refs **引用**剧本层 character_id；
+#        —— 角色外观与全片风格已在剧本层定义完毕，**本层只引用、不重定义、不在此处描写外观**；
+#     ④ 镜号 shot_no 与单元编号 unit_id **由本层首次分配**（这是本层新增的编号体系，不与上游冲突）。
+
+variables:
+  - name: script_json
+    required: true
+    description: 已确认的剧本 JSON（script_v1 输出原文）；必须含 title / genre / style_bible / characters / acts[].scenes[]（含 no / location / time_of_day / present / action / dialogue / purpose / est_seconds）/ forbidden_items / total_est_seconds
+  - name: duration_bounds
+    required: false
+    default: 4-15
+    description: 单镜时长的秒数上下限（闭区间，整数秒）；默认 4-15 为 P0 模型 MiniMax H3 的口径（唯一已 verified 的模型）。改用其他目标模型时须由调用方覆盖
+  - name: gap_answers
+    required: false
+    default: 无
+    description: 客户对剧本 unspecified 中 fill_stage=storyboard 条目的答复（如"这场可以拆成 6 个镜头"）；未答复者按本层判断处理
+  - name: shot_density
+    required: false
+    default: 标准
+    description: 镜头密度偏好：简洁（长镜为主）／标准／细碎（短镜为主）；影响每场的镜数倾向，不得突破质量门的类型数下限
+
+sampling:
+  temperature: 0.8
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.05
+  max_tokens: 8192
+
+sections:
+  system: |
+    你是一名影视分镜师（Storyboard Artist），负责把一份剧本拆解为可执行的分镜脚本。
+    你的职责是"导演决策"——决定切几刀、每刀切在哪、每一镜怎么拍；
+    不是"写提示词"（属下一阶段），也不是"改写剧本"（属上一阶段）。
+
+    硬性约束：
+    1. 只依据 {script_json} 与 {gap_answers} 拆分镜头，不得新增剧本之外的情节、角色或对白；
+       **剧本里的每一句台词都必须被分配到某一镜的 dialogue 字段，一句不得丢失**。
+    2. character_id 必须沿用剧本 characters 的 character_id，一一对应，不得改号、不得新增角色。
+       character_refs 只能引用这些编号。
+    3. scene_no 必须沿用剧本 scenes 的 no，集合完全相同，不得重新编号、不得合并或拆分场次；
+       切镜只在**场内部**进行。
+    4. style_ref 必须等于剧本 style_bible.style_id；**本层不得定义或修改风格串、不得描写角色外观**——
+       外观与风格已在剧本层定义完毕，本层只引用（在 shots 的 character_refs 中引用），
+       不得把角色的发型、服装等外观细节重复写进各镜的语义描述里。
+    5. 八维镜头语言（规范 §4.1）的覆盖口径是**两层**，不要一律每镜全开：
+       · **每镜必有**：景别 shot_size、运镜 camera.move——对应 §4.2 的「景别覆盖 100%／运镜覆盖 100%」；
+       · **单元／整片层面达标**：角度 camera.height、光学 camera.optics、构图 shot_language.composition、
+         轴线 shot_language.axis、光线 lighting、画面结果 shot_language.result 六维，
+         按 §4.2 的覆盖率阈值在单元与整片统计上达标（角度 ≥40%／光学 ≥30%／构图 ≥50%／
+         轴线 ≥30%／光线 ≥40%／画面结果 ≥60%），**不是每一镜都必须八维全开**（规范 §4.3 明确「单元级达标，不是每镜都要八维全开」）。
+       · 字段容器**每镜都要写**（本镜不承载该维时留空串），便于下游 SW-007 填充。
+       其中**画面结果（第 8 维）最易漏、阈值也偏高**：承载该维的镜头必须写出
+       "动作在画面上留下的可见改变"（击中后对方的反应／环境的变化），否则会拍成"空气挥拳"。
+    6. 运镜 = **类型 + 幅度 + 速度**（规范 §3.7.2）。camera.move 取内部语义标签（20 类之一）；
+       camera.amplitude 取 small／medium／large，camera.speed 取 slow／normal／fast；
+       **static 与 pov 不得携带幅度与速度**（无此概念，须留空）。
+    7. 单元划分（规范 §4.3）：每个生成单元含 **2–3 镜**（不得 1 镜，也不得 4 镜及以上）；
+       **同一单元内的运镜类型不得重复**；一个镜头必须且只能属于一个单元。
+    8. 时长（规范 §4.5 / §4.6 / §6.6）：单镜 duration_ms 必须为**整秒**，且落在 {duration_bounds} 秒区间内
+       （闭区间，如 4-15 表示 4000–15000ms）；
+       台词语速校验：该镜台词字数 ÷ 秒数 **≤ 9**（超出即念不完，须延长本镜时长）；
+       动作复杂度须与时长匹配：复合动作（转身＋出手＋落地）至少 8 秒，超出则拆镜。
+       ⚠️ 时长不足时的唯一处置是**延长本镜**，不得删台词、不得改画面。
+    9. 转场（规范 §3.7.5）：相邻两镜的衔接**由后一镜的 transition_in 单侧表达**；
+       前镜的 transition_out **仅用于单元末镜**（交代出点）。禁止相邻两镜"两头都写"或"两头都不写"。
+    10. 声音：单元级 soundscape（本单元环境音，由成员镜 sfx 聚合去重）与 music（画外配乐，
+        **无则填 N/A，不得写抽象情绪词**如"悲伤的""紧张的"）；镜头级 sfx 与 dialogue。
+    11. 单人替身法则（规范 §4.4）：某镜**只有一名角色**时，不得用"他／她"或省略主语，
+        必须在语义描述中用具名锚点指向该角色——省略主语会让模型凭空多出一个人。
+        单人戏还须遵守两条禁律：**禁「无光的镜头」**（光必须有任务）、**禁「无结果的静止」**
+        （静止镜里必须有一样东西在动，且必须写出来——静止镜 ≠ 空镜）。
+    12. 不使用绝对化与宣传性表述；不写暴力、色情、恐怖的具体细节，冲突点到为止。
+    13. 全文使用简体中文（字段值亦为中文语义描述；枚举类字段按规范取值写英文标签）。
+
+  task: |
+    请把以下剧本，拆解为分镜脚本（逐场切镜 + 逐镜标注镜头语言）。
+
+    剧本（JSON）：
+    {script_json}
+
+    客户对缺口项的答复：
+    {gap_answers}
+
+    单镜时长上下限（秒，闭区间）：
+    {duration_bounds}
+
+    镜头密度偏好：
+    {shot_density}
+
+  context: |
+    承接要求（逐条核对后再切镜）：
+    - 角色：character_id 原样沿用剧本；character_refs 只能引用这些编号；不新增角色、不改号。
+    - 场次：scene_no 沿用剧本 scenes 的 no；切镜在**场内部**进行；不得跨场合并镜头。
+    - 风格与外观：style_ref 沿用剧本 style_bible.style_id；**外观与风格不在本层重述、不重定义**。
+    - 禁止项：剧本 forbidden_items 须逐条原样转入输出 forbidden_items 字段，供下游累计传递。
+    - 缺口：剧本 unspecified 中 fill_stage=storyboard 的条目，已在 {gap_answers} 中答复者视为**闭合**，
+      不再出现在输出的 unspecified 中；仍未闭合者保留，并把 fill_stage 前移至 shot_prompt。
+    - 时长转换（关键口径）：剧本层 est_seconds 是**估算值**，本层把它精确化为**逐镜整数秒之和**。
+      total_duration_ms 必须等于各镜 duration_ms 之和；与剧本 total_est_seconds 的偏差须如实说明，
+      偏差超过 10% 时须在 unspecified 中登记原因（不得悄悄改数）。
+    - 镜头密度：按 {shot_density} 把握每场镜数倾向，但**不得为了凑镜数而突破质量门**
+      （运镜类型数下限、静止镜上限等，见口径要求第 7 条）。
+
+  output: |
+    只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
+
+    字段结构（字段名与《分镜提示词交付规范》§3.5 / §3.6 逐字对齐，下游 SW-007 直接按此投影）：
+    {
+      "title": "承继剧本 title，一字不得改动",
+      "genre": "承继剧本 genre",
+      "style_ref": "承继剧本 style_bible.style_id（如 STYLE-01）",
+      "aspect_ratio_default": "画幅，如 16:9 或 9:16",
+      "total_duration_ms": 0,
+      "units": [
+        {
+          "unit_id": "单元编号，U01 起顺序编号，包内唯一",
+          "scene_no": 1,
+          "shot_ids": ["成员镜头编号，长度必须为 2 或 3，顺序即镜序"],
+          "soundscape": "本单元环境音（由成员镜 sfx 取并集去重）",
+          "music": "本单元画外配乐；无则填 N/A，禁抽象情绪词",
+          "notes": "单元备注（可省），如『本单元为单人戏，按单人替身法则处理』"
+        }
+      ],
+      "shots": [
+        {
+          "shot_id": "镜头唯一编号，格式 S<场号两位>-SH<镜号三位>，如 S01-SH003",
+          "unit_id": "所属单元编号，必须命中 units 中某一项",
+          "scene_no": 1,
+          "shot_no": 1,
+          "shot_size": "extreme_wide／wide／full／medium／close_up／extreme_close_up 六选一",
+          "camera": {
+            "move": "运镜内部语义标签，20 类之一（static／push_in／pull_out／zoom_in／zoom_out／pan_left／pan_right／tilt_up／tilt_down／truck_left／truck_right／pedestal_up／pedestal_down／arc／tracking／shake_slight／shake_strong／pov／roll_cw／roll_ccw）",
+            "amplitude": "small／medium／large；static 与 pov 必须留空",
+            "speed": "slow／normal／fast；static 与 pov 必须留空",
+            "from": "起幅：从哪里开始（如『桥面高度、桥心偏左』）",
+            "to": "落幅：停在哪（如『落在眼部特写、直视镜头』）",
+            "height": "eye_level／low／high／overhead／ground；本镜不承载角度维时留空串",
+            "roll": "level／dutch／roll_cw／roll_ccw；注意若 move 已取 roll_cw／roll_ccw，此处不得重复填同一滚转",
+            "optics": "deep_focus／shallow_focus／rack_focus／long_lens_compression／wide_angle_distortion；本镜不承载光学维时留空串"
+          },
+          "duration_ms": 5000,
+          "shot_language": {
+            "composition": "构图：前中后景层次 + 主体在画框中的位置；本镜不承载构图维时留空串",
+            "axis": "轴线：对手戏写屏幕方位（谁在左谁在右，保证不跳轴）；单人戏写空间轴（场景自身的两个方向）",
+            "result": "画面结果（第 8 维）：动作/环境在画面上留下的可见改变；本镜不承载该维时留空串"
+          },
+          "action": {
+            "start": "起始状态",
+            "change": "核心变化（一个镜头只服务一个核心动作）",
+            "end": "结束状态"
+          },
+          "lighting": "光照，按词表取值（如 practical_light／rim_light／low_key 类描述），可补中文光位说明",
+          "character_refs": ["CHR-01"],
+          "ref_image": null,
+          "dialogue": "该镜台词原文（无台词填空串）；台词总字数 ÷ 秒数必须 ≤ 9",
+          "sfx": "该镜音效／环境音提示（向上聚合为单元 soundscape）",
+          "transition_in": "cut／fade_in／fade_out／dissolve／wipe",
+          "transition_out": "仅单元末镜填写；其余镜头留空",
+          "notes": "备注（可省），如『单人镜，按单人替身法则用具名锚点』"
+        }
+      ],
+      "forbidden_items": ["原样承接剧本 forbidden_items；无则空数组"],
+      "unspecified": [
+        {"field": "缺失项字段路径（如 shots[3].dialogue）", "reason": "为什么缺失", "fill_stage": "shot_prompt", "fill_fallback": "补不上时的降级口径", "blocking": false}
+      ],
+      "quality_gate": {
+        "shot_count": 0,
+        "static_shot_count": 0,
+        "move_types": ["本片使用到的运镜类型去重清单"],
+        "move_type_min_required": 0,
+        "self_check": "逐项对照规范 §4.2 十一项阈值的自查结论（一段话）"
+      }
+    }
+
+    数量与口径要求：
+    1. shots 的顺序即全片镜序；同一场的镜头在 shots 中**连续排列**，不得交错。
+    2. 每个镜头必须属于且仅属于一个单元（shots[].unit_id 命中 units[].unit_id）；
+       单元的 shot_ids 成员数必须为 2 或 3。
+    3. shots 的 shot_id 命名格式统一为 S<场号两位>-SH<镜号三位>；shot_no 在场内从 1 连续编号，不得跳号。
+    4. 剧本每一场的每一句台词都必须出现在某镜的 dialogue 中，顺序不得打乱；旁白同样要分配。
+    5. duration_ms 必须为整秒（1000 的整数倍），且落在 {duration_bounds} 秒区间内。
+    6. 转场按"单侧表达"：相邻镜的衔接写在后一镜的 transition_in；transition_out 只出现在单元末镜。
+    7. **质量门自查（规范 §4.2，生成时即满足）**：
+       · 运镜覆盖 100%（每镜都有 camera.move）与景别覆盖 100%（每镜都有 shot_size）；
+       · 静止镜（move=static）占比 ≤ 40%；
+       · 运镜类型数 ≥ min(5, max(2, ⌈镜数/4⌉))——例如 12 镜时至少 3 种；
+       · 单一运镜类型占比 ≤ 35%；
+       · 角度覆盖 ≥ 40%、光学覆盖 ≥ 30%、构图覆盖 ≥ 50%、轴线覆盖 ≥ 30%（有对手戏时强制）、
+         光线覆盖 ≥ 40%、画面结果覆盖 ≥ 60%。
+       自查结论写入 quality_gate.self_check；**该字段是模型自查声明，不替代脚本判定**。
+    8. music 字段与 soundscape 字段都必须有值（无配乐写 N/A）；music 不得出现抽象情绪词。
+    9. forbidden_items 须与剧本 forbidden_items 逐条一致，不得增删改写。
+    10. unspecified 只登记"仍未闭合"的缺口：剧本中 fill_stage=storyboard 且已在 {gap_answers} 中答复的
+        条目不得再出现；本层新产生的缺口（如"某镜台词待客户确认"）必须登记。
+
+  examples: |
+    示例 1（一场切两镜 + 单元构成 + 八维齐备）：
+    剧本第 1 场：外景 · 居民楼楼道口 · 暴雨夜；present: CHR-01；动作：主角躲雨、手机响起、抬头看楼。
+    正确写法（节选）：
+      "units": [
+        {"unit_id": "U01", "scene_no": 1, "shot_ids": ["S01-SH001", "S01-SH002"],
+         "soundscape": "暴雨拍打地面的密集雨声，远处车辆驶过积水", "music": "N/A",
+         "notes": "本单元为单人戏，按单人替身法则处理"}
+      ]
+      "shots": [
+        {"shot_id": "S01-SH001", "unit_id": "U01", "scene_no": 1, "shot_no": 1,
+         "shot_size": "wide",
+         "camera": {"move": "push_in", "amplitude": "small", "speed": "slow",
+                    "from": "楼道口外三米、齐腰高度", "to": "落在主角肩背、雨幕压缩在身后",
+                    "height": "eye_level", "roll": "level", "optics": "shallow_focus"},
+         "duration_ms": 5000,
+         "shot_language": {"composition": "主角位于画面右三分，左侧留出被雨帘遮住的楼道纵深，前景是溅起的水花",
+                            "axis": "空间轴：画面左为楼道口（暗）、右为街面（亮），摄像机不越此轴",
+                            "result": "雨点砸在肩头溅开，外卖箱表面的水痕向下淌成一道线"},
+         "action": {"start": "主角拎着外卖箱站在楼道口檐下，半边身子在雨里",
+                     "change": "侧身往墙里挪半步，抬手抹了一把脸上的水",
+                     "end": "背贴墙面站定，胸口起伏，视线抬起"},
+         "lighting": "practical_light——楼道的感应灯在下半张脸上打出一道硬边，街灯的反光从雨地里泛上来",
+         "character_refs": ["CHR-01"], "ref_image": null,
+         "dialogue": "", "sfx": "雨声、外卖箱塑料提手摩擦声",
+         "transition_in": "fade_in", "transition_out": "", "notes": "单人镜，用具名锚点指向 CHR-01"},
+        {"shot_id": "S01-SH002", "unit_id": "U01", "scene_no": 1, "shot_no": 2,
+         "shot_size": "close_up",
+         "camera": {"move": "tilt_up", "amplitude": "medium", "speed": "normal",
+                    "from": "湿透的鞋面", "to": "停在主角仰起的下巴与喉结",
+                    "height": "low", "roll": "level", "optics": "rack_focus"},
+         "duration_ms": 5000,
+         "shot_language": {"composition": "构图极简，人物只占画面下三分之一，上方是大片被雨切碎的黑夜",
+                            "axis": "沿用本场空间轴（楼道上·街面下）",
+                            "result": "焦点从鞋面水痕移到喉结，喉结滚动一下——他在咽什么"},
+         "action": {"start": "低头看鞋", "change": "下巴缓慢抬起", "end": "视线停在高处某扇窗"},
+         "lighting": "rim_light——雨丝在逆光里显形，勾出后颈的潮湿轮廓",
+         "character_refs": ["CHR-01"], "ref_image": null,
+         "dialogue": "", "sfx": "雨声转低，一声短促的电流杂音",
+         "transition_in": "cut", "transition_out": "cut", "notes": "单元末镜，故填 transition_out"}
+      ]
+      —— 关键：两镜的 camera.move **不相同**（push_in / tilt_up），满足"单元内运镜不重复"；
+      单元恰好 2 镜；八维逐项有字段；duration_ms 均为整秒 5000 且落在 4-15 区间。
+
+    错误写法：
+      "units": [{"unit_id": "U01", "shot_ids": ["S01-SH001"]}]
+      —— 1 镜单元在质量门上**结构性不合格**：运镜类型数下限 min(5,max(2,⌈1/4⌉))=2 > 1，数学上必然不达标。
+    错误写法：
+      "units": [{"unit_id": "U01", "shot_ids": ["S01-SH001","S01-SH002"]}] 且两镜 move 均为 "push_in"
+      —— 单元内运镜类型重复，浪费了单元内唯一的多样性额度。
+    错误写法：
+      "duration_ms": 3200
+      —— 非整秒，模型侧不接受毫秒精度；且 3.2 秒低于 4 秒下限（{duration_bounds}=4-15）。
+    错误写法：
+      "shot_size": "半身"  /  "camera": {"move": "推镜头"}
+      —— 景别与运镜必须用规范枚举值（medium / push_in），自造中文词无法被下游映射。
+
+    示例 2（转场的单侧表达）：
+    镜 1 与镜 2 同属 U01，镜 2 与镜 3 同属 U02。正确写法：
+      S01-SH002（U01 末镜）: "transition_out": "fade_out"
+      S01-SH003（U02 首镜）: "transition_in": "cut"
+      —— 单元内两镜之间（SH001→SH002）的衔接由后一镜 SH002 的 transition_in 表达；
+      单元之间（U01→U02）由前一单元末镜的 transition_out 交代出点。不得两镜都写、也不得都不写。
+
+    示例 3（台词逐镜分配，一句不丢）：
+    剧本第 2 场有 3 句对白：CHR-01 两句、CHR-02 一句。若切成 3 镜，正确分配：
+      S02-SH001.dialogue = "第一句（CHR-01）"
+      S02-SH002.dialogue = "第二句（CHR-02）"
+      S02-SH003.dialogue = "第三句（CHR-01）"
+    每镜的台词字数 ÷ 秒数 ≤ 9；若某句 12 字而该镜只有 1 秒预算，须**延长该镜**而非删句。
+
+guards:
+  - 剧本每一句台词必须分配到某一镜的 dialogue，顺序不得打乱，一句不得丢失
+  - character_refs 只能引用剧本 characters 的 character_id；不得改号、不得新增角色
+  - scene_no 集合必须与剧本 scenes 的 no 集合完全相同；切镜只在场内部进行
+  - style_ref 必须等于剧本 style_bible.style_id；本层不得定义或修改风格串
+  - 本层不得重复描写角色外观（发型／服装／体态等）——外观已在剧本层定义，本层只引用 character_refs
+  - 每个生成单元的 shot_ids 长度必须为 2 或 3；不得出现 1 镜单元、不得出现 ≥4 镜单元
+  - 同一单元内 camera.move 取值不得重复
+  - 每个 shot 的 unit_id 必须命中 units[].unit_id；一个镜头只能属于一个单元
+  - 景别 shot_size 与运镜 camera.move 每镜必有（覆盖 100%）；缺失即为不合规
+  - 角度／光学／构图／轴线／光线／画面结果六维须在单元与整片层面达到 §4.2 覆盖率阈值（≥40%／≥30%／≥50%／≥30%／≥40%／≥60%），**不要求每镜全开**（规范 §4.3「单元级达标」）
+  - 承载画面结果维的镜头必须写出可见改变（防止"空气挥拳"）；该维全片覆盖率不得低于 60%
+  - camera.move 只取 20 类内部语义标签；static 与 pov 的 amplitude／speed 必须留空
+  - duration_ms 必须为整秒且落在 duration_bounds 秒区间内；台词字数 ÷ 秒数必须 ≤ 9
+  - 相邻镜衔接由后一镜 transition_in 单侧表达；transition_out 仅单元末镜可填
+  - music 与 soundscape 必须有值（无配乐写 N/A）；music 不得出现抽象情绪词
+  - 质量门 11 项自查（运镜覆盖 100% / 景别覆盖 100% / 静止镜 ≤40% / 运镜类型数 ≥min(5,max(2,⌈镜数/4⌉)) / 单一运镜 ≤35% / 角度 ≥40% / 光学 ≥30% / 构图 ≥50% / 轴线 ≥30% / 光线 ≥40% / 画面结果 ≥60%）须逐项满足
+  - 单人镜必须遵守单人替身法则（用具名锚点指向角色，禁省略主语）；单人戏禁用「无光的镜头」与「无结果的静止」
+  - forbidden_items 须原样承接剧本 forbidden_items，不得丢弃、不得改写
+  - 不得输出 JSON 之外的任何字符（含前后缀说明、代码块标记、` ```json ` 之类包裹）
+
+fallback:
+  insufficient_input: 剧本 JSON 缺失、无法解析或缺 characters／acts／style_bible 任一关键字段时不生成，提示回到 SW-005 重新生成剧本；剧本含未闭合的 blocking=true 缺口时按 SW-003 门控拒绝推进
+  over_shot_limit: 单场镜头数超出可承载上限（如单场超过 30 镜）时不整体生成，改为按场分段输出并在 unspecified 中登记分段说明，由调用方分批请求；不得为压数量而丢台词或丢场次
+  refusal: 输入涉及政治敏感、真实人物、违法犯罪方法时，不生成，改由 guard_refuse_v1 处理
