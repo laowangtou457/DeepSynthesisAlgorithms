@@ -3,8 +3,8 @@
   "mechanism": "开发历史巡检（每 2 小时）",
   "owner_doc": "11-过程文档/开发历史/README.md",
   "workspace": "E:\\深度合成算法工程材料",
-  "last_scan_at": "2026-10-13T11:20:00+08:00",
-  "last_scanned_commit": "f2fbcf5d02f83dc0888e12f37dbdd76aee7e7c0f",
+  "last_scan_at": "2026-10-13T14:05:00+08:00",
+  "last_scanned_commit": "d5ba0463230a9bd296c288f4880933f549ee07a7",
   "last_scanned_branch": "main",
   "baseline_note": "留痕起点 2026-10-13。2026-10-09 ~ 2026-10-12 的历史动作未逐条回填。本文件自身变化不构成工程推进动作，不得记录。",
   "excluded_paths": [
@@ -16,29 +16,39 @@
     ".venv/"
   ],
   "last_scan_result": {
-    "window_start": "2026-10-13T11:12:00+08:00",
-    "window_end": "2026-10-13T11:20:00+08:00",
+    "window_start": "2026-10-13T13:50:00+08:00",
+    "window_end": "2026-10-13T14:05:00+08:00",
     "new_actions": 1,
     "documents_created": [
-      "DEV-20261013-007-以导演视角独立评审synopsis_v1模板.md"
+      "DEV-20261013-012"
     ],
-    "note": "窗口内完成一笔动作并已由主会话记录：以本机专家包 ai-video-prompt-director（v1.1.0）的同一份角色定义另起实例，对业务链路首个提示词模板 synopsis_v1（SW-004）执行一次独立导演视角评审，产出 7 条意见（P0 3 / P1 2 / P2 2），登记进 10-评审记录 归档 4 并同步要点速览。评审方身份为「本会话内加载同一份专家定义」的实例（路径 A），未经真实独立会话背书；如需备案举证，应改走文件接力（路径 B）重新取得独立意见。",
+    "note": "窗口内 1 个工程推进动作（SW-005 完成：新建 script_v1 剧本生成模板 + 用例 + 输出契约校验器），已生成 DEV-20261013-012 并同步两处文件清单。",
     "window_specifics": {
       "git_new_commits": 0,
-      "git_head": "f2fbcf5 (main, 与 origin/main 一致；本轮变更尚未提交)",
-      "git_branch_local_pending": "local-full-names@2e6c457 未推送",
+      "git_head": "d5ba046 (main) —— 全分支仍无新提交，本轮改动仍在工作区（按项目方指令于任务收尾一并提交）",
+      "git_branch_local_pending": "local-full-names@2e6c457 未推送（未变）",
       "git_status_dirty": [
-        "?? 10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见.md（属 DEV-20261013-007，新增）",
-        "M 10-评审记录/README.md（属 DEV-20261013-007，清单增归档 4 + 要点速览）",
-        "?? 11-过程文档/开发历史/DEV-20261013-007-以导演视角独立评审synopsis_v1模板.md（属 DEV-20261013-007，新增）",
-        "M 11-过程文档/开发历史/README.md（属 DEV-20261013-007，清单增第 7 条）",
-        "M 11-过程文档/README.md（属 DEV-20261013-007，清单增第 7 条）",
-        "M 12-项目管理/任务清单.md（属 DEV-20261013-007，T-001 进展 + §9 变更记录）"
+        "?? 03-工程代码/prompts/templates/script_v1.yaml（属 DEV-012，新增）",
+        "?? 03-工程代码/prompts/examples/script-case01.md（属 DEV-012，新增）",
+        "?? 03-工程代码/prompts/validate_output.py（属 DEV-012，新增）",
+        "M 03-工程代码/prompts/manifest.yaml（属 DEV-011 / DEV-012）",
+        "M 03-工程代码/prompts/SCHEMA.md（属 DEV-011 / DEV-012）",
+        "M 03-工程代码/prompts/examples/README.md（属 DEV-011 / DEV-012）",
+        "M 03-工程代码/prompts/templates/synopsis_v1.yaml（属 DEV-011）",
+        "M 03-工程代码/prompts/examples/synopsis-case01.md（属 DEV-011）",
+        "M 10-评审记录/README.md、11-过程文档/README.md、11-过程文档/开发历史/README.md、11-过程文档/开发历史/_巡检状态.json、12-项目管理/任务清单.md、12-项目管理/日程表.md（属 DEV-009~012）",
+        "?? 10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见-复查记录.md（属 DEV-011，新增）",
+        "?? 11-过程文档/编制要求/、11-过程文档/评审接力协作规程.md、DEV-008~012 各文档、独立会话评审意见（均属 DEV-008~012）"
       ],
+      "git_status_delta": "较上一轮新增：03-工程代码/prompts/ 下 script_v1.yaml / script-case01.md / validate_output.py 三份新件，及 12-项目管理 两表的本轮更新",
       "git_stash": "空",
-      "controlled_zone": "未扫描（排除路径）；本次未观察到受控资产计数变化",
-      "outside_workspace": "模型权重落 E:\\models\\Qwen2.5-7B-Instruct（工程目录之外，不入版本控制）；专家包位于用户配置目录 ~/.workbuddy/plugins/cache/experts/（不入工程版本控制）",
-      "no_touch_verification": "评审实例未修改 synopsis_v1.yaml / 用例 / SCHEMA / manifest 等既有文件；git status 仅有本轮新增与清单类修改"
+      "mtime_scan": "窗口内（mtime > 2026-10-13 13:50:00）写入：03-工程代码/prompts/ 下 templates/script_v1.yaml、examples/script-case01.md、validate_output.py、manifest.yaml、SCHEMA.md、examples/README.md；12-项目管理/ 任务清单与日程表；11-过程文档/开发历史/ DEV-20261013-012 与 README —— 合并为 1 条动作 DEV-20261013-012",
+      "controlled_zone": "排除路径，未扫描内容；仅计数复核：未观察到受控资产计数变化（本轮未触碰受控区）",
+      "outside_workspace": "模型权重落 E:\\models\\Qwen2.5-7B-Instruct（工程外，不入版本控制）；本轮未触碰",
+      "no_touch_verification": "本轮未触碰 10-评审记录/ 下两份评审意见原文（归档 4 / 归档 5），零改动；synopsis-case01.md 的「未验证」标记按项目方指令本轮未动；被评审正文零改动",
+      "manifest_check": "11-过程文档/开发历史/README.md 第七节 12 行、11-过程文档/README.md §5.2 12 行，与目录内 DEV-*.md 实存 12 个一致；本轮已同步两处清单",
+      "validator_check": "validate_templates.py：45 通过 / 8 失败 / 2 警告（较上轮 +7 OK 即 script_v1 五条 + 用例两个 JSON 块，零新增失败与警告，8 项失败仍属 T-036）；validate_output.py（本轮新建）：用例扫描 16 通过 / 0 失败 / 0 警告，另经负向样本验证 6 条规则均能触发（临时样本已删、未入库）",
+      "dedup_note": "本轮未与既有 DEV-001~011 产生重复记录；DEV-20261013-012 已登记入 recorded_actions，下一轮巡检应以此为准、勿重复生成"
     }
   },
   "open_issues": [
@@ -71,6 +81,26 @@
       "action_taken": "改用**命中计数**（`grep -rn ... | wc -l`）复核，并在 DEV-20261013-007 §4 留痕；结论为真实企业名/人名 **0**、本机用户名/机器名 **0**。",
       "resolution": "本轮结论已修正；后续巡检与自检一律采用「计数」而非「管道退出码」判定。",
       "status": "已消解"
+    },
+    {
+      "id": "ISSUE-004",
+      "raised_at": "2026-10-13T11:45:00+08:00",
+      "type": "编号体系（撞号风险）",
+      "summary": "`01-架构设计/分镜提示词交付规范-v1.1.md` §13 内部以 `T-01`~`T-09` 作**文档内待办编号**，与 `12-项目管理/任务清单.md` 的**任务编号 `T-###`**（三位）同形；两者位数不同可勉强区分，但在跨文档引用时极易混淆（例如「T-03」既可能是规范内部待办、也可能被读成清单任务）。",
+      "impact": "评审意见、复查记录、任务清单三处均有 `T-` 引用，混淆会导致「意见指向的改进项」与「排期任务」错配。",
+      "action_taken": "已在 `PROC-RELAY-001` §3.2 给出临时约定：引用规范内部编号写「**规范 T-03**」，引用任务清单写「**清单 T-003**」；并注明根治办法是把规范内部编号改为 `NT-` 前缀。",
+      "resolution": "未根除。根治须修订 `分镜提示词交付规范` 正文，属其独立修订流程，**待项目方决定是否启动**。",
+      "status": "待处置"
+    },
+    {
+      "id": "ISSUE-005",
+      "raised_at": "2026-10-13T14:05:00+08:00",
+      "type": "脱敏自检（既有命中）",
+      "summary": "本轮脱敏自检（命中计数）发现全工程 3 处命中「真实账号名」——全部位于 DEV-20261013-001 / DEV-20261013-002 两篇留痕中，内容为远程仓库地址与可见性操作记录（`origin` 的 URL 含 GitHub 账号名）。**非本轮引入**。",
+      "impact": "GitHub 账号名虽非「真实企业名 / 人名」，但属可追溯的身份标识；随仓库提交后，脱敏版与账号身份之间存在可关联路径，与「脱敏版可脱离身份使用」的目标存在张力。",
+      "action_taken": "本轮新增文件（script_v1.yaml / script-case01.md / validate_output.py / DEV-012）已逐一扫描，**0 命中**；既有 3 处如实登记于此，并在 DEV-20261013-012 §4.3 留痕，未静默抹平。",
+      "resolution": "未根除。是否处理（改写为占位符 + 历史清理）**待项目方决定**——该两篇已随早期提交推送，清理需 `--amend` + 强制推送，属不可逆的远程历史改写，不宜自行决定。",
+      "status": "待处置"
     }
   ],
   "recorded_actions": [
@@ -155,6 +185,86 @@
         "11-过程文档/开发历史/README.md"
       ],
       "note": "以本机专家包 ai-video-prompt-director（v1.1.0）同一份角色定义另起实例，对 synopsis_v1（SW-004）执行独立导演视角评审：7 条意见（P0 3 / P1 2 / P2 2），登记为 10-评审记录 归档 4。核心发现：模板「不得编造」硬约束与下游 v1.1 §3.4 必填的 character_id/appearance_lock_zh 在链路中段顶死。评审方为本会话子实例（路径 A），未取得真实独立会话背书；被评审正文零改动"
+    },
+    {
+      "id": "DEV-20261013-008",
+      "recorded_at": "2026-10-13T11:35:00+08:00",
+      "action_type": "机制",
+      "fingerprint": "manual:review-request-doc-type",
+      "files": [
+        "11-过程文档/编制要求/synopsis_v1-故事梗概生成模板-导演视角评审请求书.md",
+        "11-过程文档/README.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "在 11-过程文档/编制要求/ 下新增「评审请求书」发出件文类（与「编制要求书」并列，共用命名与保留规范），并出具首份文件 REQ-TPL-SYN-001a：委托真实独立会话（路径 B）对 synopsis_v1 出具导演视角独立评审意见。含三档评审对象界定（主评模板 / 连带评用例 / 只作参照）、承继转译四问、盲评要求、输出格式、六条硬约束、可复制的下达话术、验收口径；要求评审意见用 R- 前缀避免与既有 D- 编号撞车。独立意见尚未产出，落点为 10-评审记录/（预期归档 5），未预登记。被评审正文零改动"
+    },
+    {
+      "id": "DEV-20261013-009",
+      "recorded_at": "2026-10-13T11:45:00+08:00",
+      "action_type": "机制",
+      "fingerprint": "manual:path-b-default-and-relay-protocol",
+      "files": [
+        "11-过程文档/评审接力协作规程.md",
+        "11-过程文档/README.md",
+        "10-评审记录/README.md",
+        "12-项目管理/任务清单.md",
+        "12-项目管理/日程表.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "依用户指令定案：对外评审一律走路径 B（真实独立会话 + 文件接力），中转由项目方（人工）承担；路径 A 降级为设计期预评审、不得冒称独立评审、不作举证背书。建立强制规程 PROC-RELAY-001 V1.0（8 节 + 附录：定案理由 / 接力三步 / 四个落点命名 / 意见编号前缀分配表 D-·R-·RV- / 六件必备 / 我方七项核验与五条禁区 / 接力队列 7 项与节奏约定 / 通用话术模板）。同步：11-过程文档/README.md §3.1 与新增 §5.3、10-评审记录/README.md 新增 §2.1 与清单新增「性质」列（归档 1/3 = 路径B、归档 4 = 路径A 预评审）、任务清单新增 T-038 并将 T-037 责任方改为项目方中转、日程表 §一 新增外部评审行。识别并登记一处既有撞号风险（规范内部 T-0x vs 清单 T-###）→ ISSUE-004。关闭 DEV-20261013-008 遗留第 4 条。被评审正文零改动；脱敏自检 0 / 0"
+    },
+    {
+      "id": "DEV-20261013-010",
+      "recorded_at": "2026-10-13T12:05:00+08:00",
+      "action_type": "文档",
+      "fingerprint": "manual:path-b-first-round-review-received",
+      "files": [
+        "10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见-独立会话.md",
+        "10-评审记录/README.md",
+        "11-过程文档/评审接力协作规程.md",
+        "11-过程文档/编制要求/synopsis_v1-故事梗概生成模板-导演视角评审请求书.md",
+        "12-项目管理/任务清单.md",
+        "12-项目管理/日程表.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "路径 B 首战闭环：回收 REQ-TPL-SYN-001a 委托的独立会话评审意见（13 条：P0 2 / P1 6 / P2 5，R-01~R-13，448 行），按 PROC-RELAY-001 §5 完成七项核验（全部通过；抽查 20+ 处行号，仅 logline 字数一处偏差）后登记为 10-评审记录 归档 5。核心判断：模板「叙事上完整、视觉上全空」——硬约束「写未指定」只对叙事层生效，因视觉层无字段容器（约束的容器不在，约束就落不了地）；产物属第三种状态「下游必须自行补一层视觉描述、且无人告知哪些是补的」。与归档 4 对照：主题重合 D- 侧 6 条 ↔ R- 侧 3 条、仅独立会话发现 10 条（R-04~R-13）、仅预评审发现 1 条（D-07）、无矛盾。合并为六步处置清单 → 新增 T-039（P0，须在 SW-005 前完成）；T-037 标完成。首战暴露并修补盲评漏洞：评审方全文检索跨全工程匹配、带出既有意见三个片段，独立性部分受损（其 §0.1 主动如实声明）→ PROC-RELAY-001 §4 补「禁用跨全工程全文检索」、新增 §4.1；请求书以事后追记留痕、原文不动。被评审正文零改动；脱敏自检 0 / 0；未执行 git 写操作（HEAD 仍 d5ba046）"
+    },
+    {
+      "id": "DEV-20261013-011",
+      "recorded_at": "2026-10-13T13:50:00+08:00",
+      "action_type": "代码",
+      "fingerprint": "manual:synopsis-v2-revision-per-review",
+      "files": [
+        "03-工程代码/prompts/templates/synopsis_v1.yaml",
+        "03-工程代码/prompts/examples/synopsis-case01.md",
+        "03-工程代码/prompts/examples/README.md",
+        "03-工程代码/prompts/manifest.yaml",
+        "03-工程代码/prompts/SCHEMA.md",
+        "10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见-复查记录.md",
+        "10-评审记录/README.md",
+        "12-项目管理/任务清单.md",
+        "12-项目管理/日程表.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "T-039 完成：synopsis_v1 由 v1.0.0 修订至 v2.0.0，处置导演视角两批意见（D- 7 + R- 13 = 20 条）：已采纳 17 / 部分采纳 3（D-01/D-05/R-01，三条同源于项目方拍板「外观与风格串的首次定义落在剧本层 SW-005」）/ 未采纳 0。机制性变化：为视觉层补字段容器（character_id 不可为未指定 / age_band / appearance_lock_zh / world.visual_style_hint）、unspecified 升级为可机器读缺口台账（field/reason/fill_stage/fill_fallback/blocking）并与字段内「未指定」强制互为校验、scenes_outline 补最小可拍集（location/time_of_day/present）与场号接缝约定、logline 四要素可核查化（logline_parts）、时长预算（逐场 est_seconds + 顶层 total_est_seconds）、must_avoid 承接（forbidden_items）、guards 去插值（3→6 条）。用例口径对齐（顶层字段 11→14；新增第 8 评测项「视觉锚点下潜」；第 4/5/7 项判据修正）。版本偏离：原拟 v1.0.1，按 manifest 规范「结构变更=主版本」实升 2.0.0。校验器零新增失败与警告（38 通过 / 8 失败为既有 T-036；逐行 diff 仅两行不同）。评审意见原文（归档 4/5）零改动；脱敏自检 0/0；未执行 git 写操作（HEAD 仍 d5ba046）；产物落 10-评审记录/ 归档 6"
+    },
+    {
+      "id": "DEV-20261013-012",
+      "recorded_at": "2026-10-13T14:05:00+08:00",
+      "action_type": "代码",
+      "fingerprint": "manual:sw005-script-template-and-output-validator",
+      "files": [
+        "03-工程代码/prompts/templates/script_v1.yaml",
+        "03-工程代码/prompts/examples/script-case01.md",
+        "03-工程代码/prompts/validate_output.py",
+        "03-工程代码/prompts/manifest.yaml",
+        "03-工程代码/prompts/SCHEMA.md",
+        "03-工程代码/prompts/examples/README.md",
+        "12-项目管理/任务清单.md",
+        "12-项目管理/日程表.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "SW-005 完成：新建 script_v1（剧本生成）v1.0.0（stage=script）+ 用例 script-case01.md（CASE-SCR-001，标未验证）+ 输出契约校验器 validate_output.py（新任务 T-040）。核心设计=把链路信息切为「事实类」（不得编造）与「设计类」（本层负责定义，客户未提供者由本层提议、标 source=系统提议待确认并登记台账），从而使「首定义在剧本层」与「不得编造」两条约束不冲突；模板含 3 变量 / 硬性约束 9 条 / 口径要求 9 条 / guards 9 条 / fallback 2 条 / examples 3 组（含 3 处错误写法对照）。接缝三条：character_id 不得改号、场号 no 不得重编、本层不做镜头切分（切镜属 SW-006）。校验器首批 6 条规则（purpose 封闭枚举为首要规则，其余为 fill_stage 枚举 / 场号连续 / 时长求和 / 必备字段 / 三幕归属）。登记同步：manifest 10→11（修正业务链路口径 6→5）、SCHEMA 补剧本层承接条款与封闭枚举登记块、examples/README 补两脚本分工。验证：validate_templates.py 45 通过 / 8 失败 / 2 警告（+7 OK、零新增失败与警告）；validate_output.py 16 通过 / 0 失败，并经负向样本验证 6 条规则全部触发。评审意见原文零改动；脱敏自检 0 命中；未执行 git 写操作（HEAD 仍 d5ba046）"
     }
   ]
 }
