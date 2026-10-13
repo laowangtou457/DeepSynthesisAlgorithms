@@ -96,7 +96,7 @@ python sync_manifest.py                   # 把 current_count 与实体文件对
        └ 落盘；同时刷新文件末尾计数行与 lexicon_manifest.json 的 seed_count
 
 ③ python check_quota.py  →  python report_coverage.py
-④ 在 05-台账与制度/词库更新台账.md 登记
+④ 在 05-台账与制度/SEC-011_词库更新台账.md 登记
 ```
 
 **数据边界（硬约束）**：
@@ -149,7 +149,7 @@ python sync_manifest.py                   # 把 current_count 与实体文件对
        └ 落盘；同时刷新词表文件末尾计数行
 
 ③ python check_quota.py   →  python report_coverage.py
-④ 在 05-台账与制度/词库更新台账.md 登记
+④ 在 05-台账与制度/SEC-011_词库更新台账.md 登记
 ```
 
 **关键约束（脚本内已实现，勿改）**：
@@ -196,7 +196,7 @@ python sync_manifest.py                   # 把 current_count 与实体文件对
 ⑥ python report_coverage.py
        └ 刷新覆盖总表
 
-⑦ 在 05-台账与制度/词库更新台账.md 登记
+⑦ 在 05-台账与制度/SEC-011_词库更新台账.md 登记
 ```
 
 ### 3.2 扩充题库（`expand_banks.py` / `expand_refusal.py`）★ 本次实际采用
@@ -210,7 +210,7 @@ python sync_manifest.py                   # 把 current_count 与实体文件对
 ③ python expand_refusal.py --dry-run    # 应拒答：17 类 × 6 种绕过方式；非拒答：13 主题 × 20 题
 ④ python expand_refusal.py
 ⑤ python check_quota.py   →  python report_coverage.py
-⑥ 在 05-台账与制度/题库更新台账.md 登记
+⑥ 在 05-台账与制度/SEC-014_题库更新台账.md 登记
 ```
 
 **提问风格矩阵**（`expand_banks.py`）：
@@ -232,7 +232,7 @@ python sync_manifest.py                   # 把 current_count 与实体文件对
 | **覆盖口径**               | 按「细分主题」铺开，确保每类题目不是同一句话换皮         |
 | **幂等**                 | 按题目 ID 去重，重复运行不重复追加              |
 
-> ⚠️ **题目必须人工复核后再用于跑测**：机器生成的题目可能出现语义重复、诱导强度不足或主题漂移。国标 §8.2 要求题库具备**识别规程与判别依据**（见 `../02-生成内容测试题库/判定规程.md`），并**每月至少更新一次**。
+> ⚠️ **题目必须人工复核后再用于跑测**：机器生成的题目可能出现语义重复、诱导强度不足或主题漂移。国标 §8.2 要求题库具备**识别规程与判别依据**（见 `../02-生成内容测试题库/SEC-003_判定规程.md`），并**每月至少更新一次**。
 >
 > 历史脚本 `init_banks.py` / `init_nonrefuse.py` 只负责生成骨架（每类少量样题），扩充须走上述脚本或人工编写。
 
@@ -273,7 +273,7 @@ python report_coverage.py
 **骨架文件里的示例行以 `#` 开头**——设计如此：它们是**格式说明**，不计入条数。若误改为非注释行，`--sync` 会把示例算作 1 条。
 
 **当前状态**：骨架已生成，四类计数均为 `0`，`status = pending_controlled_authoring`。  
-即**机制已就位、内容待编写**。详见 `../05-台账与制度/受控资产台账.md` 与 `../05-台账与制度/资产受控与保密说明.md` §一之二。
+即**机制已就位、内容待编写**。详见 `../05-台账与制度/SEC-009_受控资产台账.md` 与 `../05-台账与制度/SEC-012_资产受控与保密说明.md` §一之二。
 
 ### 3.4 manifest 计数同步（`sync_manifest.py`）★ 每次扩充后必跑
 

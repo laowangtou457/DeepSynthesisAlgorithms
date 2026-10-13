@@ -1,0 +1,169 @@
+{
+  "manifest_version": "1.1.0",
+  "pack_id": "FR-PK-20261012-DEMO0001",
+  "statement_id": "FR-ST-20261012-0001",
+  "created_at": "2026-10-12T16:31:00+08:00",
+  "provider": "{{PROVIDER_NAME}}",
+  "spec_version": "NORM-DELIVERY-001 v1.1",
+  "artifacts": {
+    "shot_prompt_pack": {
+      "present": true,
+      "files": ["shot_prompt_pack.json"]
+    },
+    "aigc_meta": {
+      "present": true,
+      "files": ["shot_prompt_pack.json#aigc_meta"],
+      "note": "随 pack 顶层 aigc_meta 键写入；导出文件另各含一份，全文件仅一份"
+    },
+    "overlay_assets": {
+      "present": true,
+      "files": [
+        "assets/overlay_intro_16x9.png",
+        "assets/overlay_intro_9x16.png",
+        "assets/overlay_corner_16x9.png",
+        "assets/overlay_corner_9x16.png",
+        "assets/AST-002_overlay_spec.json"
+      ]
+    },
+    "compliance_statement": {
+      "present": true,
+      "files": ["COMPLIANCE.md"]
+    },
+    "quality_gate_report": {
+      "present": true,
+      "files": ["qa/audit_report.txt"],
+      "note": "v1.1 新增：镜头语言质量门报告（随包留档，不计入四件套，但缺失即阻断交付——规范 §1.1 / §8.3 第 13 项 / §8.4）"
+    }
+  },
+  "exports": [
+    {
+      "file": "exports/shot_prompt_pack.csv",
+      "format": "csv",
+      "explicit_mark": true,
+      "implicit_mark": true
+    },
+    {
+      "file": "exports/shot_prompt_pack.xlsx",
+      "format": "xlsx",
+      "explicit_mark": true,
+      "implicit_mark": true
+    },
+    {
+      "file": "exports/shot_prompt_pack.md",
+      "format": "md",
+      "explicit_mark": true,
+      "implicit_mark": true
+    },
+    {
+      "file": "exports/minimax_h3/minimax_h3.txt",
+      "format": "txt",
+      "explicit_mark": true,
+      "implicit_mark": true,
+      "two_section": true,
+      "note": "适配文件两段式：标识区 + 提示词区（规范 §6.8 / §9.2）"
+    },
+    {
+      "file": "exports/seedance/seedance.txt",
+      "format": "txt",
+      "explicit_mark": true,
+      "implicit_mark": true,
+      "two_section": true
+    }
+  ],
+  "adapters": [
+    {
+      "model_code": "minimax_h3",
+      "model_display": "MiniMax H3（海螺）",
+      "priority": "P0",
+      "file": "exports/minimax_h3/minimax_h3.txt",
+      "verify_status": "verified",
+      "negative_prompt_supported": false,
+      "negative_residue_check": "pass"
+    },
+    {
+      "model_code": "seedance",
+      "model_display": "Seedance",
+      "priority": "P0",
+      "file": "exports/seedance/seedance.txt",
+      "verify_status": "partial",
+      "verify_pending": ["max_prompt_chars", "min_duration_ms", "max_duration_ms"],
+      "negative_prompt_supported": true
+    }
+  ],
+  "units": [
+    {
+      "unit_id": "U01",
+      "shot_count": 3,
+      "duration_ms": 15000,
+      "camera_types": ["static", "push_in", "tilt_up"],
+      "camera_types_unique": true
+    }
+  ],
+  "quality_gate": {
+    "tool": "h3_prompt_model/audit_shots.py",
+    "command": "python audit_shots.py <适配投喂文本> --gate -u",
+    "scope": "逐生成单元 + 整片",
+    "passed": true,
+    "thresholds": {
+      "运镜覆盖": 1.0,
+      "景别覆盖": 1.0,
+      "静止镜占比": 0.4,
+      "运镜类型数": "min(5, max(2, ceil(镜数/4)))",
+      "单一运镜占比": 0.35,
+      "角度覆盖": 0.4,
+      "光学覆盖": 0.3,
+      "构图覆盖": 0.5,
+      "轴线覆盖": 0.3,
+      "光线覆盖": 0.4,
+      "画面结果覆盖": 0.6
+    },
+    "measured": {
+      "运镜覆盖": 1.0,
+      "景别覆盖": 1.0,
+      "静止镜占比": 0.333,
+      "运镜类型数": 3,
+      "单一运镜占比": 0.333,
+      "角度覆盖": 1.0,
+      "光学覆盖": 0.667,
+      "构图覆盖": 1.0,
+      "轴线覆盖": 1.0,
+      "光线覆盖": 1.0,
+      "画面结果覆盖": 1.0
+    },
+    "report_file": "qa/audit_report.txt"
+  },
+  "human_review": [
+    {
+      "no": 18,
+      "item": "角色一致性 / 跨镜连续性人工核对",
+      "result": "pass",
+      "checked_at": "2026-10-12T16:32:10+08:00",
+      "operator": "（据实填写）",
+      "detail": "三镜 CHR-01 外观锁定项一致；U01 内空间轴自左向右未翻越；相邻镜衔接由后镜 transition_in 单侧表达。"
+    }
+  ],
+  "self_check": [
+    { "no": 1, "item": "输入内容安全检测（SW-009）", "result": "pass" },
+    { "no": 2, "item": "输出内容安全复检（SW-010）", "result": "pass" },
+    { "no": 3, "item": "版权/改编风险校验（SW-015）", "result": "pass", "detail": "原创，无改编来源" },
+    { "no": 4, "item": "提示词包 Schema 校验（SW-007/025）", "result": "pass" },
+    { "no": 5, "item": "一致性校验（style_ref / character_refs / unit_id / 时长合计）", "result": "pass" },
+    { "no": 6, "item": "AIGC 元数据块完整且唯一（SW-013）", "result": "pass" },
+    { "no": 7, "item": "导出文件显式标识注入（SW-022）", "result": "pass" },
+    { "no": 8, "item": "标识素材包完整（SW-014）", "result": "pass" },
+    { "no": 9, "item": "合规声明要素齐全（SW-026）", "result": "pass" },
+    { "no": 10, "item": "交付包无密钥、离线可用（SYS-018）", "result": "pass" },
+    { "no": 11, "item": "系统内无去标识功能入口（标识办法 §10）", "result": "pass" },
+    { "no": 12, "item": "适配输出与 verify_status 一致（SW-025）", "result": "warn", "detail": "Seedance 为 partial（字数与时长上限待官方核对），输出已附「适配参数待核对」提示；H3 已 verified" },
+    { "no": 13, "item": "镜头语言质量门 11 项全通过（规范 §4.2）", "result": "pass", "detail": "见 quality_gate 与 qa/audit_report.txt" },
+    { "no": 14, "item": "台词—时长校验通过（每镜 ≤ 9 字/秒，规范 §4.5）", "result": "pass", "detail": "S01-SH001 旁白 9 字 / 4s = 2.25 字/秒" },
+    { "no": 15, "item": "动作复杂度—时长预算校验（规范 §4.6）", "result": "pass", "detail": "三镜 action 三段齐全，动作量与时长匹配" },
+    { "no": 16, "item": "生成单元划分正确（每单元 2–3 镜、单元内运镜不重复、无单镜单元，规范 §4.3）", "result": "pass", "detail": "U01 = 3 镜，运镜 static / push_in / tilt_up 互不重复" },
+    { "no": 17, "item": "目标模型不支持负向字段时无负向残留（规范 §6.4）", "result": "pass", "detail": "H3 适配文本已把负向词转写为正向约束句，无「（负向：…）」及 Negative prompt 行残留" },
+    { "no": 18, "item": "角色一致性 / 跨镜连续性人工核对（规范 §4.4、§8.3）", "result": "pass", "detail": "见 human_review；结果 + 时间 + 检查人已记录" }
+  ],
+  "retention": {
+    "months": 6,
+    "note": "对齐《人工智能生成合成内容标识办法》§9 的日志留存要求，并覆盖自检记录、镜头语言质量门报告、人工核对记录、声明副本与溯源记录（规范 §8.4）"
+  }
+}

@@ -25,7 +25,7 @@
 ★ 正式交付前注意（规范 §7.5）：
   默认字体 C:/Windows/Fonts/msyhbd.ttc（微软雅黑）为系统字体，仅用于视觉预览。
   正式素材必须替换为已获商用授权的字体（推荐：思源黑体 / 阿里巴巴普惠体）。
-  生成后本工具会在 overlay_spec.json 中记录实际使用的字体，便于核查。
+  生成后本工具会在 AST-002_overlay_spec.json 中记录实际使用的字体，便于核查。
 """
 from __future__ import annotations
 
@@ -394,10 +394,10 @@ def main() -> int:
         },
         "assets": items,
     }
-    spec_path = outdir / "overlay_spec.json"
+    spec_path = outdir / "AST-002_overlay_spec.json"
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    print(f"已生成 {len(items)} 个素材 + overlay_spec.json")
+    print(f"已生成 {len(items)} 个素材 + AST-002_overlay_spec.json")
     print(f"{'文件':<34}{'实测字高':<10}{'占最短边':<10}文案")
     for it in items:
         print(f"{it['file']:<34}{it['font_px']:<10}{it['height_ratio']:<10}{it['text']}")

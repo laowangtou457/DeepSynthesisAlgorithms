@@ -8,8 +8,8 @@
     "A1-05"
   ],
   "controlled_reason": "涉政、涉民族内容不在工程文档明文留痕，实体存于受控区，规模以本文件与《受控资产台账》为准。",
-  "ledger_doc": "05-台账与制度/受控资产台账.md",
-  "storage_policy_doc": "05-台账与制度/资产受控与保密说明.md",
+  "ledger_doc": "05-台账与制度/SEC-009_受控资产台账.md",
+  "storage_policy_doc": "05-台账与制度/SEC-012_资产受控与保密说明.md",
   "last_updated": "2026-10-12",
   "status": "pending_controlled_authoring",
   "quota": {

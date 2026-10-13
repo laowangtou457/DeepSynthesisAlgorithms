@@ -3,9 +3,9 @@
 """
 法规原文抓取与解析工具
 用法:
-    python fetch_laws.py sources.json
+    python fetch_laws.py CFG-009_sources.json
 
-sources.json 格式:
+CFG-009_sources.json 格式:
 [
   {"file": "L2-行政法规与规章/xxx.md", "title": "...", "url": "...",
    "issuer": "...", "publish": "...", "effect": "...", "level": "L2", "note": "..."},

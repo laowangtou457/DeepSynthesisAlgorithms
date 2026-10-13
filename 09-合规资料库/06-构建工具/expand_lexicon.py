@@ -18,7 +18,7 @@ expand_lexicon.py — 关键词库批量扩充（规模达标的主力脚本）
 
 ⚠️ 三类硬约束（脚本内已实现）：
     1. **不写入受控类**（controlled=true 的 4 类）——受控内容不得落工程文档明文，
-       其规模以 05-台账与制度/受控资产台账.md 为准（见 check_quota.py --controlled-ledger）。
+       其规模以 05-台账与制度/SEC-009_受控资产台账.md 为准（见 check_quota.py --controlled-ledger）。
     2. **全部生成词标 review 级** —— 机器生成词未经语境判断，不得标 block，
        否则会推高误拒率（国标限 <= 5%）。
     3. **与领域白名单去重** —— 生成词若与 funNLP 领域白名单完全一致则丢弃（防误伤）。

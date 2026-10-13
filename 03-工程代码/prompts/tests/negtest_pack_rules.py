@@ -15,7 +15,7 @@
 退出码：0 = 全部符合预期；1 = 存在不符（规则没触发，或盲区意外触发）
 
 ⚠️ 纪律：新增交付包规则时，**必须**在此处补一个越界样本——没有越界样本的新规则
-   等于一条未经验证的声明。（与 SCHEMA.md「负向验证纪律」条目配套。）
+   等于一条未经验证的声明。（与 CFG-007_SCHEMA.md「负向验证纪律」条目配套。）
 
 依赖：仅标准库。
 """
@@ -35,8 +35,8 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # prompts/
 VAL = os.path.join(BASE, "validate_output.py")
 EX = os.path.join(BASE, "examples")
 JSON_BLOCK = re.compile(r"```json\s*\n(.*?)\n```", re.S)
-UP_CASE = "shot-prompt-case01.md"
-UP_SB = "storyboard-case01.md"
+UP_CASE = "CASE-002_shot-prompt-case01.md"
+UP_SB = "CASE-003_storyboard-case01.md"
 
 
 # --------------------------------------------------------------------------

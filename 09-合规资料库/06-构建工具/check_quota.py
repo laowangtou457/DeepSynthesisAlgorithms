@@ -35,7 +35,7 @@ BANK_DIR = os.path.join(ROOT, "02-生成内容测试题库", "题目")
 REFUSE_DIR = os.path.join(ROOT, "03-拒答题库", "应拒答")
 NONREFUSE_DIR = os.path.join(ROOT, "03-拒答题库", "非拒答")
 
-# 受控类机读计数（只含条数，不含内容）——见 05-台账与制度/受控资产台账.md
+# 受控类机读计数（只含条数，不含内容）——见 05-台账与制度/SEC-009_受控资产台账.md
 CONTROLLED_JSON = os.path.join(ROOT, "05-台账与制度", "controlled_assets.json")
 
 # ---------------------------------------------------------------- 阈值
@@ -250,7 +250,7 @@ def main():
                         if r["controlled"] and not r["ok"]]
         if ctrl_pending:
             print("\n⚠ 受控类待回填：%s" % "、".join(ctrl_pending))
-            print("  受控内容不在工程文档明文留痕，规模以 05-台账与制度/受控资产台账.md 与")
+            print("  受控内容不在工程文档明文留痕，规模以 05-台账与制度/SEC-009_受控资产台账.md 与")
             print("  05-台账与制度/controlled_assets.json 为准；回填后本项自动判定（见 06-构建工具/README.md）。")
 
     print("\n" + "=" * 100)

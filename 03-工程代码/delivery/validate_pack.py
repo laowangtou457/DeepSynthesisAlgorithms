@@ -16,7 +16,7 @@
     ⑫ 镜头语言质量门（11 阈值，逐单元 + 整片；容差算法与 audit_shots.py 一致）
     ⑬ 台词—时长语速（≤ 9 字/秒）
     ⑭ 动作三段状态（action.start/change/end）
-    ⑮ 时长上下限与整秒（上下限取自 config/model_adapters.yaml，不在本脚本硬编码）
+    ⑮ 时长上下限与整秒（上下限取自 config/CFG-001_model_adapters.yaml，不在本脚本硬编码）
     ⑯ 运镜幅度/速度与 static/pov 的互斥、camera.roll 与 camera.move 重复计
     ⑰ 负向残留（目标模型不支持负向字段时，文本中不得残留负向写法）
     ⑱ 风格锚点封闭（prompt 中不得出现锚点清单之外的已知风格词）
@@ -231,11 +231,11 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
     rep = Report(str(pack_path.relative_to(HERE)) if HERE in pack_path.parents else pack_path.name)
     data = load_json(pack_path)
 
-    vocab = load_yaml(CONFIG / "shot_vocab.yaml") or {}
-    adapters = load_yaml(CONFIG / "model_adapters.yaml") or {}
+    vocab = load_yaml(CONFIG / "CFG-002_shot_vocab.yaml") or {}
+    adapters = load_yaml(CONFIG / "CFG-001_model_adapters.yaml") or {}
 
     # ① Schema 校验
-    check_schema(data, SCHEMAS / "shot_prompt_pack.v1.schema.json", rep, "pack")
+    check_schema(data, SCHEMAS / "CFG-006_shot_prompt_pack.v1.schema.json", rep, "pack")
 
     meta = data.get("meta", {}) or {}
     shots = data.get("shots", []) or []
@@ -545,7 +545,7 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
 def validate_manifest(path: Path, pack_rep: Report | None) -> Report:
     rep = Report(f"{path.name}（交付清单）")
     data = load_json(path)
-    check_schema(data, SCHEMAS / "manifest.v1.schema.json", rep, "manifest")
+    check_schema(data, SCHEMAS / "CFG-005_manifest.v1.schema.json", rep, "manifest")
 
     # 四件套齐备（规范 §1.1）
     for key, label in (("shot_prompt_pack", "① 提示词集"), ("aigc_meta", "② AIGC 元数据块"),
@@ -633,7 +633,7 @@ def main() -> int:
             continue
         r = validate_pack(t, run_gate=not args.no_quality_gate)
         reports.append(r)
-        mf = t.parent / "demo_manifest.json"
+        mf = t.parent / "CFG-003_demo_manifest.json"
         if mf.exists():
             reports.append(validate_manifest(mf, r))
 

@@ -72,7 +72,7 @@
                            camera.amplitude 只允许 small／large、camera.speed 只允许 slow／fast，
                            `medium`／`normal` 是「通常省略」的默认值，须留空串。
                            ⚠️ 本条**同时作用于分镜脚本与交付包**：分镜层 v2.1.0 已把该口径写进硬性约束，
-                           但当轮**无脚本判据**（SCHEMA.md 曾误称由 R13 判，R13 实为时长区间），
+                           但当轮**无脚本判据**（CFG-007_SCHEMA.md 曾误称由 R13 判，R13 实为时长区间），
                            导致用例残留一处 `amplitude="medium"` 未被发现。本条即补该缺口。
   R27 PACK_REQUIRED        **交付包必备结构**（规范 §3.1~§3.6、§3.8）——
                            顶层 schema_version／meta／style_bible／units／shots／aigc_meta 齐备；
@@ -94,7 +94,7 @@
                            ② 不得含负向残留写法（`（负向：`／`Negative prompt:`／`(negative:`）——
                               负向意图须走 `negative_global` 字段或转写为正向约束句；
                            ③ **风格锚点封闭**：正文不得出现 `style_anchors` 之外的**已知风格词**
-                              （词表取自 delivery/config/shot_vocab.yaml 的 style_tags，脚本内置常量）。
+                              （词表取自 delivery/config/CFG-002_shot_vocab.yaml 的 style_tags，脚本内置常量）。
   R30 AIGC_META            **AIGC 元数据块规则**（规范 §5.2／§5.3）——
                            `aigc_meta` 仅一份；7 字段齐备；`Label` 恒为 "1"；
                            `ProduceID` 必须等于 `meta.pack_id`（编号可反查生成记录）；
@@ -136,7 +136,7 @@ from collections import Counter
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# ---------------- 封闭枚举（唯一真值来源，改动须同步模板与 SCHEMA.md） ----------------
+# ---------------- 封闭枚举（唯一真值来源，改动须同步模板与 CFG-007_SCHEMA.md） ----------------
 PURPOSE_ENUM = ["建立", "升级", "转折", "反转", "收束"]
 FILL_STAGE_ENUM = ["synopsis", "script", "storyboard", "shot_prompt"]
 
@@ -185,7 +185,7 @@ CAMERA_SENTENCE_RE = re.compile(r"(?:^|[.!?]\s+)The camera\b")
 #   根治办法不是「再多写一份清单」，而是**从交付 schema 直接读字段集**（不另立一套）。
 #   schema 对顶层与各 $defs 均声明 additionalProperties:false，故「多余键」即契约外字段。
 PACK_SCHEMA_PATH = os.path.join(
-    BASE, "..", "delivery", "schemas", "shot_prompt_pack.v1.schema.json")
+    BASE, "..", "delivery", "schemas", "CFG-006_shot_prompt_pack.v1.schema.json")
 
 
 def _pack_schema_keys():
@@ -211,7 +211,7 @@ def _pack_schema_keys():
         "aigc_meta": allow("aigcMeta"),
     }
 
-# 光照词表（规范 §3.7.5，15 值；与 delivery/config/shot_vocab.yaml 的 lighting 段一致 → R32）
+# 光照词表（规范 §3.7.5，15 值；与 delivery/config/CFG-002_shot_vocab.yaml 的 lighting 段一致 → R32）
 LIGHT_ENUM = [
     "soft_key_light", "hard_key_light", "rim_light", "backlight", "side_light",
     "top_light", "under_light", "practical_light", "volumetric_light",
@@ -232,7 +232,7 @@ AIGC_FIELDS = ["Label", "ContentProducer", "ProduceID",
 # 提示词正文卫生（规范 §3.7.6 / §6.4 → R29）
 PARAM_INSTR_RE = re.compile(r"--(ar|v|style|seed|no|stylize|chaos|aspect|q|s)\b|--\w+\s*\d")
 NEG_RESIDUE_RE = re.compile(r"（负向[:：]|\(负向[:：]|negative\s*prompt\s*[:：]|\(negative\s*[:：]|no\s+negative", re.I)
-# 「已知风格词」清单（取自 delivery/config/shot_vocab.yaml 的 style_tags；用于风格锚点封闭检测）
+# 「已知风格词」清单（取自 delivery/config/CFG-002_shot_vocab.yaml 的 style_tags；用于风格锚点封闭检测）
 KNOWN_STYLE_TAGS = [
     "赛璐璐", "厚涂", "水彩", "水墨", "油画", "像素", "美式卡通", "欧式绘本",
     "日式动画", "国风", "写实", "三渲二", "平涂", "描边", "网点", "手绘",
@@ -289,9 +289,9 @@ CJK_RUN_RE = re.compile(r"[\u3400-\u9fff]+")
 #   （剧本出锚、分镜出决策），故此处允许一个用例配多个上游，按形态各归其位。
 #   真实产物请用 --script / --storyboard 显式指定上游（本脚本不猜路径）。
 EXAMPLES_UPSTREAM = {
-    "script-case01.md": ["synopsis-case01.md"],
-    "storyboard-case01.md": ["script-case01.md"],
-    "shot-prompt-case01.md": ["script-case01.md", "storyboard-case01.md"],
+    "CASE-001_script-case01.md": ["CASE-004_synopsis-case01.md"],
+    "CASE-003_storyboard-case01.md": ["CASE-001_script-case01.md"],
+    "CASE-002_shot-prompt-case01.md": ["CASE-001_script-case01.md", "CASE-003_storyboard-case01.md"],
 }
 
 RESULT = {"checks": 0, "errors": [], "warnings": []}
@@ -1501,7 +1501,7 @@ def validate_doc(doc, where):
 def _load_doc_by_shape(path, shapes=("script", "storyboard", "synopsis")):
     """读出指定形态的产物 JSON。
 
-    一个 .md 用例常含**多个** JSON 块（如 `script-case01.md` 的第 1 块是「上游梗概摘录」、
+    一个 .md 用例常含**多个** JSON 块（如 `CASE-001_script-case01.md` 的第 1 块是「上游梗概摘录」、
     第 2 块才是本层输出），故**不能取第一块**——按形态挑选，避免把摘录当成上游产物。
     """
     if not path or not os.path.exists(path):

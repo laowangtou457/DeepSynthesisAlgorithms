@@ -5,8 +5,8 @@ import pathlib
 import markdown
 
 BASE = pathlib.Path(__file__).resolve().parent
-MD = BASE / "生成合成类文本合成算法模型框架设计说明书.md"
-OUT = BASE / "生成合成类文本合成算法模型框架设计说明书.html"
+MD = BASE / "ARCH-003_生成合成类文本合成算法模型框架设计说明书.md"
+OUT = BASE / "ARCH-002_生成合成类文本合成算法模型框架设计说明书.html"
 
 INK1, INK2, INK3 = "#1b2230", "#5b6678", "#8b95a6"
 LINE, PANEL, PANEL2 = "#d9e0ea", "#f7f9fc", "#eef2f8"

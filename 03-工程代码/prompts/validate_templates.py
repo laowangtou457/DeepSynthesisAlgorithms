@@ -4,7 +4,7 @@
 提示词资产校验器 · validate_templates.py
 
 校验对象：
-  1. manifest.yaml      —— 主清单结构与登记完整性
+  1. CFG-008_manifest.yaml      —— 主清单结构与登记完整性
   2. templates/*.yaml   —— 各模板五节结构与变量引用一致性
   3. examples/*.md      —— 样例内 JSON 块的可解析性与必备字段
 
@@ -91,15 +91,15 @@ def load_yaml(path):
 
 
 def check_manifest():
-    _out("\n=== 1. 主清单 manifest.yaml ===")
-    path = os.path.join(BASE, "manifest.yaml")
+    _out("\n=== 1. 主清单 CFG-008_manifest.yaml ===")
+    path = os.path.join(BASE, "CFG-008_manifest.yaml")
     if not os.path.exists(path):
-        err("manifest.yaml 不存在")
+        err("CFG-008_manifest.yaml 不存在")
         return []
     try:
         mf = load_yaml(path)
     except Exception as e:
-        err(f"manifest.yaml 解析失败：{e}{_yaml_hint(e)}")
+        err(f"CFG-008_manifest.yaml 解析失败：{e}{_yaml_hint(e)}")
         return []
 
     tpls = mf.get("templates") or []
