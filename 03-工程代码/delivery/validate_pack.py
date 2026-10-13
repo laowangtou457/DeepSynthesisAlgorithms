@@ -3,7 +3,7 @@
 """
 交付包校验工具（delivery pack validator）
 
-规范依据：NORM-DELIVERY-001《分镜提示词交付规范 v1.1》
+规范依据：NORM-DELIVERY-001《分镜提示词交付规范 v1.3》（现行版；V1.1→V1.3 技术内容逐字未变、章节结构未变动，故 §8.3 门禁 18 项判据不变）
           §3.8 校验 / §4.2 质量门 / §4.3 单元划分 / §4.5 语速 / §4.6 动作预算
           §6.4 负向归位 / §6.6 时长上下限 / §8.3 交付前自检（18 项）
 对应需求：SW-007、SW-013、SW-014、SW-022、SW-025、SW-026
@@ -603,7 +603,7 @@ def validate_manifest(path: Path, pack_rep: Report | None) -> Report:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="交付包校验工具（NORM-DELIVERY-001 v1.1 §8.3 门禁）")
+    ap = argparse.ArgumentParser(description="交付包校验工具（NORM-DELIVERY-001 v1.3 §8.3 门禁）")
     ap.add_argument("targets", nargs="*", help="提示词包 JSON 路径；缺省校验 examples/ 下全部")
     ap.add_argument("--no-quality-gate", action="store_true",
                     help="跳过镜头语言质量门（不推荐；仅用于中间态调试）")

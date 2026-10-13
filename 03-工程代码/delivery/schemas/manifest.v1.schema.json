@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://feixuan.example/schemas/manifest.v1.schema.json",
   "title": "交付清单 (delivery manifest)",
-  "description": "NORM-DELIVERY-001《分镜提示词交付规范 v1.1》§1.4 的交付包清单定义。用于校验交付包完整性与四件套齐备（SW-014 / SW-026）。v1.1.0 变化：新增 quality_gate_report 随包留档项、quality_gate 质量门结论、units 单元摘要、human_review 人工核对记录；自检项 12 → 18；adapters.verify_status 增加 partial；fileEntry 增加 two_section（适配文件两段式）。",
+  "description": "NORM-DELIVERY-001《分镜提示词交付规范 v1.3》（现行版）§1.4 的交付包清单定义（V1.1→V1.3 技术内容逐字未变、章节结构未变动，故 §1.4 编号继续有效；本 Schema 自身的 v1.1.0 修订号不变）。用于校验交付包完整性与四件套齐备（SW-014 / SW-026）。v1.1.0 变化：新增 quality_gate_report 随包留档项、quality_gate 质量门结论、units 单元摘要、human_review 人工核对记录；自检项 12 → 18；adapters.verify_status 增加 partial；fileEntry 增加 two_section（适配文件两段式）。",
   "type": "object",
   "required": ["manifest_version", "pack_id", "statement_id", "created_at", "artifacts"],
   "additionalProperties": false,
