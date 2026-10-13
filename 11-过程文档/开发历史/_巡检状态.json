@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "mechanism": "开发历史巡检（每 2 小时）",
+  "owner_doc": "11-过程文档/开发历史/README.md",
+  "workspace": "E:\\深度合成算法工程材料",
+  "last_scan_at": "2026-10-13T10:19:53+08:00",
+  "last_scanned_commit": "2b464bf92fe32f300b615d728bfa0c442eed0a15",
+  "last_scanned_branch": "main",
+  "baseline_note": "留痕起点 2026-10-13。2026-10-09 ~ 2026-10-12 的历史动作未逐条回填。本文件自身变化不构成工程推进动作，不得记录。",
+  "excluded_paths": [
+    ".git/",
+    "_受控区/",
+    "09-合规资料库/07-第三方词库源/funNLP/",
+    "__pycache__/",
+    "node_modules/",
+    ".venv/"
+  ],
+  "last_scan_result": {
+    "window_start": "2026-10-13T10:16:13+08:00",
+    "window_end": "2026-10-13T10:19:53+08:00",
+    "new_actions": 0,
+    "documents_created": [],
+    "note": "窗口内工作区确有文件落地（11-过程文档/README.md 更新、00-需求/硬件级需求/硬件级需求文档.md 新建、04-部署运维/硬件配置清单与采购建议.md 新建、DEV-20261013-001~004 落地），但逐条比对 recorded_actions 后，全部已归属 DEV-20261013-001/002/003/004 四笔既有记录，无新增动作；_巡检状态.json 与 .workbuddy/ 为机制元数据与工具缓存，不计。",
+    "window_specifics": {
+      "git_new_commits": 0,
+      "git_head": "2b464bf (main, 与 origin/main 一致)",
+      "git_branch_local_pending": "local-full-names@2e6c457 未推送且未纳入扫描窗口变更",
+      "git_status_dirty": [
+        "M 11-过程文档/README.md（属 DEV-20261013-003）",
+        "?? 00-需求/硬件级需求/（属 DEV-20261013-004）",
+        "?? 04-部署运维/（属 DEV-20261013-004）",
+        "?? 11-过程文档/开发历史/（属 DEV-20261013-003）"
+      ],
+      "git_stash": "空",
+      "controlled_zone": "未扫描（排除路径）；本次未观察到受控资产计数变化"
+    }
+  },
+  "open_issues": [
+    {
+      "id": "ISSUE-001",
+      "raised_at": "2026-10-13T10:19:05+08:00",
+      "type": "记录一致性",
+      "summary": "本轮巡检开始时，recorded_actions 与两处文件清单均已登记 DEV-20261013-004，但其对应 .md 文件及其两个变更对象在磁盘上尚不存在（00-需求/硬件级需求/、04-部署运维/ 目录当时为空）。",
+      "impact": "曾使开发历史/README.md 第七节与 11-过程文档/README.md §5.2 指向缺失文件。",
+      "action_taken": "先按幂等与「无证据不闭环」原则登记待确认、未生成占位件；随后于同一窗口内复核，发现并发写入在 2026-10-13 10:18:47 ~ 10:19:31 补齐了 00-需求/硬件级需求/硬件级需求文档.md、04-部署运维/硬件配置清单与采购建议.md 与 DEV-20261013-004 文档，实体与清单已自洽。",
+      "resolution": "已消解：2026-10-13 10:19:53 复核确认四个文件均存在且清单一致，无需人工干预；本记录按幂等原则不重复生成。",
+      "status": "已消解"
+    }
+  ],
+  "recorded_actions": [
+    {
+      "id": "DEV-20261013-001",
+      "recorded_at": "2026-10-13T10:16:13+08:00",
+      "action_type": "版本控制",
+      "fingerprint": "git:2b464bf",
+      "files": [
+        "README.md",
+        ".gitignore",
+        ".git/hooks/pre-push"
+      ],
+      "note": "含 .gitignore 提交 90820bb 与全量脱敏版提交 2b464bf；本地分支 local-full-names(2e6c457) 未推送"
+    },
+    {
+      "id": "DEV-20261013-002",
+      "recorded_at": "2026-10-13T10:16:13+08:00",
+      "action_type": "版本控制",
+      "fingerprint": "manual:repo-visibility-private",
+      "files": [],
+      "note": "远程仓库可见性由 public 调整为 private，操作在 GitHub 网页端完成，无本地变更"
+    },
+    {
+      "id": "DEV-20261013-003",
+      "recorded_at": "2026-10-13T10:16:13+08:00",
+      "action_type": "机制",
+      "fingerprint": "manual:dev-history-mechanism",
+      "files": [
+        "11-过程文档/开发历史/README.md",
+        "11-过程文档/README.md"
+      ],
+      "note": "建立动作粒度工程留痕目录与每 2 小时巡检任务"
+    },
+    {
+      "id": "DEV-20261013-004",
+      "recorded_at": "2026-10-13T10:16:13+08:00",
+      "action_type": "需求",
+      "fingerprint": "manual:hw-requirements-d014",
+      "files": [
+        "00-需求/硬件级需求/硬件级需求文档.md",
+        "04-部署运维/硬件配置清单与采购建议.md"
+      ],
+      "note": "编制硬件级需求文档（D-014，HW-DOC-001 V1.0）与硬件配置清单（OPS-HW-001）；正文文档与 DEV 记录均于 2026-10-13 10:18:47 ~ 10:19:31 落地，清单一致"
+    }
+  ]
+}
