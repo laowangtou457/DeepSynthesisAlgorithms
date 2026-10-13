@@ -164,6 +164,53 @@ TRANSITION_ENUM = ["cut", "fade_in", "fade_out", "dissolve", "wipe"]
 AMPLITUDE_ENUM = ["", "small", "large"]
 SPEED_ENUM = ["", "slow", "fast"]
 
+# 交付包「留空口径」相关（2026-10-13 依评审 PR-02 / PR-04 新增 R33 / R34）——
+#   交付 schema 的枚举/vocabRef **不含空串**（门禁会判 `'' is not one of [...]`），
+#   故「留空」必须以「省略键」表达。这是本层产出能过 delivery/validate_pack.py 的必要条件。
+PACK_ENUM_OPTIONAL = {
+    "camera.amplitude": ["small", "medium", "large"],
+    "camera.speed": ["slow", "normal", "fast"],
+    "camera.height": ["eye_level", "low", "high", "overhead", "ground"],
+    "camera.roll": ["level", "dutch", "roll_cw", "roll_ccw"],
+    "camera.optics": ["deep_focus", "shallow_focus", "rack_focus",
+                      "long_lens_compression", "wide_angle_distortion"],
+    "transition_in": ["cut", "fade_in", "fade_out", "dissolve", "wipe"],
+    "transition_out": ["cut", "fade_in", "fade_out", "dissolve", "wipe"],
+}
+VOCABREF_OPTIONAL = ["lighting"]          # pattern ^[a-z][a-z_]*$，空串不匹配
+CAMERA_SENTENCE_RE = re.compile(r"(?:^|[.!?]\s+)The camera\b")
+
+# 交付契约字段集的**唯一真值来源**（2026-10-13 依评审 PR-14 新增 R36）——
+#   PR-14 的原文担忧是「两处清单不一致会留下『清单外字段无人管』的漏洞」；
+#   根治办法不是「再多写一份清单」，而是**从交付 schema 直接读字段集**（不另立一套）。
+#   schema 对顶层与各 $defs 均声明 additionalProperties:false，故「多余键」即契约外字段。
+PACK_SCHEMA_PATH = os.path.join(
+    BASE, "..", "delivery", "schemas", "shot_prompt_pack.v1.schema.json")
+
+
+def _pack_schema_keys():
+    """读交付 schema，返回各层的**契约字段集**；schema 不可得时返回 None（不伪判）。
+
+    ⚠️ 刻意**不做本地副本**：字段集随 schema 升版自动跟随，避免又造一份会陈旧的清单。
+    """
+    try:
+        with open(PACK_SCHEMA_PATH, encoding="utf-8") as f:
+            doc = json.load(f)
+    except Exception:
+        return None
+    defs = doc.get("$defs") or doc.get("definitions") or {}
+    def allow(name):
+        return set(((defs.get(name) or {}).get("properties") or {}).keys())
+    return {
+        "顶层": set((doc.get("properties") or {}).keys()),
+        "shot": allow("shot"),
+        "unit": allow("unit"),
+        "character": allow("character"),
+        "meta": allow("meta"),
+        "style_bible": allow("styleBible"),
+        "aigc_meta": allow("aigcMeta"),
+    }
+
 # 光照词表（规范 §3.7.5，15 值；与 delivery/config/shot_vocab.yaml 的 lighting 段一致 → R32）
 LIGHT_ENUM = [
     "soft_key_light", "hard_key_light", "rim_light", "backlight", "side_light",
@@ -1042,6 +1089,135 @@ def rule_move_param_omission(doc, where):
            f"（只出现空串／small／large 与 空串／slow／fast）")
 
 
+def rule_pack_no_empty_string(doc, where):
+    """R33：交付包可选字段**不得为空串**，留空须「省略该键」（2026-10-13 依评审 PR-02 新增）。
+
+    为什么单列一条：交付 schema 的枚举与 vocabRef **不含空串**——
+      · 枚举（amplitude/speed/height/roll/optics/transition_in/transition_out）：
+        空串 → `'' is not one of [...]`；
+      · vocabRef（lighting）：pattern `^[a-z][a-z_]*$`，空串不匹配；
+      · `characters[].ref_image` 为 `type: string` → **null 亦不合法**（须省略键）。
+    原口径「medium/normal 规范化为空串」正是由此产出**不合法**的包
+    （实测：本案 21 处空串 + 2 处 characters[].ref_image=null → 23 条门禁 BLOCK）。
+    注：`shots[].ref_image` 在 schema 是 `oneOf[string,null]`，null **合法**，故不报——
+    本规则与门禁**严格对齐**，不写比契约更严的私有口径。
+    """
+    shots = _shots(doc)
+    bad = []
+    for r in shots:
+        sid = r.get("shot_id")
+        cam = r.get("camera") or {}
+        for key, allowed in PACK_ENUM_OPTIONAL.items():
+            if key.startswith("camera."):
+                v = cam.get(key.split(".", 1)[1], None)
+            else:
+                v = r.get(key, None)
+            if v == "":
+                bad.append(f"{sid}.{key}=空串（应省略该键）")
+            elif v is not None and v not in allowed:
+                bad.append(f"{sid}.{key}=『{v}』不在枚举内")
+        for key in VOCABREF_OPTIONAL:
+            v = r.get(key, None)
+            if v == "":
+                bad.append(f"{sid}.{key}=空串（应省略该键）")
+            elif v is not None and not re.fullmatch(r"[a-z][a-z_]*", str(v)):
+                bad.append(f"{sid}.{key}=『{v}』非纯词表 code")
+    for c in (doc.get("characters") or []):
+        if c.get("ref_image", "MISSING") is None:
+            bad.append(f"characters[{c.get('character_id')}].ref_image=null"
+                       f"（schema 此处为 type:string → 应省略该键）")
+    if bad:
+        err(f"{where} · R33 PACK_NO_EMPTY_STRING：{len(bad)} 处 → " + "；".join(bad[:6])
+            + "（交付 schema 的枚举/vocabRef 不含空串，留空须省略键）")
+    else:
+        ok(f"{where} · R33 PACK_NO_EMPTY_STRING：{len(shots)} 镜无可选字段空串、无非法 null")
+
+
+def rule_pack_en_camera_sentence(doc, where):
+    """R34：英文正文须含以 `The camera` 起句的**独立句**（规范 §3.7.2，依评审 PR-04 新增）。
+
+    H3 侧校验器只认连续字符串 `The camera`，且要求成句（不得并入前一句）。
+    实测 14 镜中 1 镜违反（`S01-SH002`：把运镜并进了画面叙述句），
+    靠人眼逐镜扫必然漏 → 必须脚本化。`static`/`pov` 也须有运镜句
+    （如 `The camera holds a static shot.`），只是不带幅度速度。
+    """
+    shots = _shots(doc)
+    bad = [r.get("shot_id") for r in shots
+           if (r.get("prompt_en") or "") and not CAMERA_SENTENCE_RE.search(r["prompt_en"])]
+    if bad:
+        err(f"{where} · R34 EN_CAMERA_SENTENCE：{len(bad)} 镜的 prompt_en 缺以 `The camera` "
+            f"起句的独立句 → " + "；".join(str(x) for x in bad[:6]))
+    else:
+        ok(f"{where} · R34 EN_CAMERA_SENTENCE：{len(shots)} 镜英文运镜句均为独立句")
+
+
+def rule_pack_no_prop_refs(doc, where):
+    """R35：交付包的 shots[] **不得出现 `prop_refs` 键**（依评审 PR-01/PR-14 新增）。
+
+    上游 storyboard_v1 v2.0.0 的 shots[] 含 `prop_refs`，但**交付规范 §3.6 的镜头字段集
+    与交付 schema 均无此字段**（规范全文无「道具」二字，已逐字核对），且 schema 的 shot 为
+    `additionalProperties: false` → 本层若承继该键会被门禁判「多余属性」而阻断交付。
+    本条把「承继守恒」与「交付契约」的这个冲突点**机器可见化**：
+    「上游有、本层不该有」不再只写在模板说明里，而是有判据。
+    （道具锚的结构化落地须由契约责任方评估 → 规范层缺口 `ISSUE-011`。）
+    """
+    hits = [r.get("shot_id") for r in _shots(doc) if "prop_refs" in r]
+    if hits:
+        err(f"{where} · R35 NO_PROP_REFS：{len(hits)} 镜出现 prop_refs 键"
+            f"（交付契约无此字段，additionalProperties:false 会拒绝）→ "
+            + "；".join(str(x) for x in hits[:6]))
+    else:
+        ok(f"{where} · R35 NO_PROP_REFS：交付包未出现 prop_refs 结构键（符合交付契约）")
+
+
+def rule_pack_no_extra_key(doc, where):
+    """R36：交付包只允许出现**契约字段集内**的键——多余键一律阻断（依评审 PR-14 新增）。
+
+    PR-14 的原文担忧：「两处清单不一致会留下『**清单外字段无人管**』的漏洞」。
+    根因是判据只查「必备」（R27），不查「多余」→ 任何上游带来的、规范里没有的字段
+    （如 `shots[].prop_refs`、顶层 `forbidden_items`）都能悄悄进入交付包，
+    到门禁才被 `additionalProperties:false` 拦下——**拦得太晚，且只看得到一条汇总报错**。
+
+    本条的字段集**直接读交付 schema**（`single source of truth`，不另写一份清单）：
+    schema 对顶层与各 `$defs` 均声明 `additionalProperties:false`，故「多余键」即契约外字段。
+    ⚠️ schema 不可读时**跳过（不伪判）**——与 R33 的取舍一致：契约不可得则不下结论。
+    """
+    S = _pack_schema_keys()
+    if not S:
+        return
+    bad = []
+    top_extra = sorted(set(doc) - S["顶层"])
+    if top_extra:
+        bad.append(f"顶层 {top_extra}")
+    for r in _shots(doc):
+        e = sorted(set(r) - S["shot"])
+        if e:
+            bad.append(f"{r.get('shot_id')} {e}")
+    for u in (doc.get("units") or []):
+        if isinstance(u, dict):
+            e = sorted(set(u) - S["unit"])
+            if e:
+                bad.append(f"unit {u.get('unit_id')} {e}")
+    for c in (doc.get("characters") or []):
+        if isinstance(c, dict):
+            e = sorted(set(c) - S["character"])
+            if e:
+                bad.append(f"characters[{c.get('character_id')}] {e}")
+    for seg, dfn in (("meta", "meta"), ("style_bible", "style_bible"),
+                     ("aigc_meta", "aigc_meta")):
+        v = doc.get(seg)
+        if isinstance(v, dict):
+            e = sorted(set(v) - S[dfn])
+            if e:
+                bad.append(f"{seg} {e}")
+    if bad:
+        err(f"{where} · R36 NO_EXTRA_KEY：{len(bad)} 处出现**契约字段集之外**的键"
+            f"（交付 schema additionalProperties:false 会拒绝）→ " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R36 NO_EXTRA_KEY：顶层/镜头/单元/角色/meta/style_bible/aigc_meta "
+           f"均未出现契约外字段（字段集取自交付 schema）")
+
+
 def rule_pack_required(doc, where):
     """R27：交付包必备结构（规范 §3.1~§3.6、§3.8 阻断项）。"""
     miss = [k for k in PACK_TOP_REQUIRED if k not in doc]
@@ -1281,7 +1457,11 @@ def validate_doc(doc, where):
         #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层六段无此段），故 R2 不适用——
         #     上游台账留在上游产物自身，本层不输出、不搬运、不重编号。
         rule_pack_required(doc, where)
-        rule_move_param_omission(doc, where)
+        rule_pack_no_prop_refs(doc, where)       # R35
+        rule_pack_no_extra_key(doc, where)       # R36
+        rule_move_param_omission(doc, where)     # R26（分镜脚本与交付包共用）
+        rule_pack_no_empty_string(doc, where)    # R33
+        rule_pack_en_camera_sentence(doc, where) # R34
         rule_pack_appearance_echo(doc, where)
         rule_pack_prompt_hygiene(doc, where)
         rule_aigc_meta(doc, where)

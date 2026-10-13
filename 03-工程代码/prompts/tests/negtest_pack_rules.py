@@ -205,6 +205,72 @@ def _(d):
     put(d, "style_bible.lighting_default", "实景光（楼道感应灯为主）")
 
 
+# ---- R33 交付包留空口径：留空须「省略键」、不得写空串（依评审 PR-02 新增）----
+@case("R33 camera.amplitude 写空串（应省略键）", "R33")
+def _(d):
+    put(d, "shots.0.camera.amplitude", "")
+
+
+@case("R33 camera.speed 写空串", "R33")
+def _(d):
+    put(d, "shots.0.camera.speed", "")
+
+
+@case("R33 camera.optics 写空串", "R33")
+def _(d):
+    put(d, "shots.0.camera.optics", "")
+
+
+@case("R33 transition_out 写空串（非末镜亦然）", "R33")
+def _(d):
+    put(d, "shots.0.transition_out", "")
+
+
+@case("R33 lighting 写空串（vocabRef 不匹配空串）", "R33")
+def _(d):
+    put(d, "shots.0.lighting", "")
+
+
+@case("R33 characters[].ref_image = null（schema 为 type:string）", "R33")
+def _(d):
+    put(d, "characters.0.ref_image", None)
+
+
+# ---- R34 英文正文须含以 `The camera` 起句的独立句（依评审 PR-04 新增）------
+@case("R34 英文运镜句并入前句（`as the camera` 小写）", "R34")
+def _(d):
+    en = d["shots"][0]["prompt_en"]
+    put(d, "shots.0.prompt_en", en.replace(". The camera ", " as the camera "))
+
+
+@case("R34 英文正文去掉 `The camera` 起句", "R34")
+def _(d):
+    en = d["shots"][0]["prompt_en"]
+    put(d, "shots.0.prompt_en", en.replace("The camera ", "The rig "))
+
+
+# ---- R35 交付包不得含 prop_refs 结构键（依评审 PR-01／PR-14 新增）----------
+@case("R35 shots[] 出现 prop_refs 键（上游有、交付契约无）", "R35")
+def _(d):
+    put(d, "shots.0.prop_refs", ["PRP-01"])
+
+
+# ---- R36 交付包不得含契约字段集之外的键（依评审 PR-14 新增）---------------
+@case("R36 顶层出现 forbidden_items（上游顶层字段，交付契约无容器）", "R36")
+def _(d):
+    put(d, "forbidden_items", ["禁止出现真实人名"])
+
+
+@case("R36 shots[] 出现契约外键 continuity_note", "R36")
+def _(d):
+    put(d, "shots.0.continuity_note", "本镜承接上镜视线")
+
+
+@case("R36 meta 出现契约外键 director_intent", "R36")
+def _(d):
+    put(d, "meta.director_intent", "全片以冷调压迫感为主")
+
+
 # ---- 已知盲区（预期**不**触发；登记在案，防止日后误以为规则更强）---------
 def _bs_selfconsistent(d):
     add(d, "shots.7.duration_ms", 1000)
@@ -223,6 +289,15 @@ blindspot("meta.total_duration_ms 缺失", _bs_no_total,
           "该字段在 schema 的 meta.required 里是可选的（规范亦未列为必须）→ 本层无从守恒")
 
 
+def _bs_shot_ref_null(d):
+    put(d, "shots.0.ref_image", None)
+
+
+blindspot("shots[].ref_image = null", _bs_shot_ref_null,
+          "该处 schema 为 oneOf[string,null]，null **合法**；R33 刻意只报 characters[].ref_image"
+          "（type:string）与枚举／vocabRef 的空串——与门禁**严格对齐**，不写比契约更严的私有口径")
+
+
 # --------------------------------------------------------------------------
 # 执行
 # --------------------------------------------------------------------------
@@ -239,7 +314,7 @@ def _run(doc, need_sb, tmpdir):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="交付包规则 R26~R32 负向验证")
+    ap = argparse.ArgumentParser(description="交付包规则 R26~R36 负向验证")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--keep", action="store_true", help="保留临时样本目录（排查用）")
     args = ap.parse_args()

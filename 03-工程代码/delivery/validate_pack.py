@@ -508,11 +508,24 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
         rep.add(BLOCK, "style.anchors", "缺少 style_bible.style_anchors（固定 3–5 条，§3.3）")
     elif vocab:
         known = set((vocab.get("style_tags", {}) or {}).get("items", []) or [])
-        outside = known - set(anchors)
+        anchor_set = set(anchors)
+        # ⚠️ 2026-10-13 修正（随 SW-007 复核自查发现，与 `prompts/validate_output.py` R28 同源）：
+        #   原实现 `outside = known - anchor_set` 后用**子串包含** `w in v` 判正文，
+        #   当「锚点是清单词的**超串**」时必然误报——如词表含「赛璐璐上色」、本片锚点是
+        #   「柔和赛璐璐上色」，正文**逐字复述锚点**反被判「清单外风格词」（实测 9 镜误报）。
+        #   根因是「字符串粒度 ≠ 语义粒度」，与 R28 的中英尺度错配同类。
+        #   修法两条：① 清单词若被任一锚点包含，则不视为「清单外」（锚点是更具体的表述）；
+        #             ② 比对前先把正文里的锚点原文剔除，再在**剩余文本**里找清单外词。
+        outside = {w for w in known
+                   if w and w not in anchor_set and not any(w in a for a in anchors)}
         for s in shots:
             for f in ("prompt_zh", "prompt_en"):
                 v = s.get(f) or ""
-                hit = {w for w in outside if w in v}
+                rest = v
+                for a in anchors:
+                    if a:
+                        rest = rest.replace(a, " ")
+                hit = {w for w in outside if w in rest}
                 if hit:
                     rep.add(WARN, "style.drift",
                             f"镜头 {s.get('shot_id')} 的 {f} 出现锚点清单之外的风格词 {sorted(hit)}（§3.3）")

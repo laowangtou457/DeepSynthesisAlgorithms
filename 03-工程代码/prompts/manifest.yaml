@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/shot_prompt_v1.yaml
-    version: "1.0.0"
+    version: "1.1.0"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:
@@ -118,7 +118,7 @@ templates:
       - 短剧分镜的分镜提示词编译与交付包装配
     constraints:
       - 编译表达层定位：SW-006 决定「切几刀、切在哪、每镜怎么拍」，本层决定「怎么把这些决策写成目标模型读得懂的话」——本层**不改变任何导演决策**，只把决策翻译成表达并补全结构
-      - 承继守恒**（本层的第一条纪律）**：shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera.*／action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／character_refs／prop_refs／soundscape／music 一律原样承继，一字不得改；尤其**不得改 duration_ms**（它是导演决策，也是与 total_duration_ms 一致性的凭据）
+      - 承继守恒**（本层的第一条纪律）**：shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera.*／action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／character_refs／soundscape／music／notes 一律原样承继，一字不得改；尤其**不得改 duration_ms**（它是导演决策，也是与 total_duration_ms 一致性的凭据）。⚠️ 上游 shots[].prop_refs **不在承继列**（v1.1 依评审 PR-01：交付规范 §3.6 与交付 schema 均无该字段，规范全文无「道具」二字；本层不输出该结构键——见判据 R35 与登记项 ISSUE-011）
       - 双上游，缺一不可**（本层是链路里唯一需要两份上游的一段）**：锚的内容取自剧本层 script_v1（style_bible／characters／props／forbidden_items），镜头决策取自分镜层 storyboard_v1（units／shots／total_duration_ms）。只喂一份必然缺字段——这是「分镜层产出是规范字段集真子集」的必然结果
       - 补出必填字段**（本层存在的理由）**：每镜 style_ref／prompt_zh／prompt_en／aspect_ratio，以及顶层 schema_version／meta／style_bible／characters／aigc_meta
       - 八维双落地（规范 §4.1）：每个维度须同时 ① 有字段承载 ② 写进 prompt_zh 与 prompt_en 正文——只填字段不写正文等于该维不存在
@@ -130,13 +130,13 @@ templates:
       - 负向词不进正文（规范 §6.4）：negative_global／negative_prompt 是负向意图容器，正文中不得出现「（负向：…）」类残留；须转写为正向约束句
       - 元数据不得编造**（备案举证的最后一道口）**：pack_id／created_at／session_id／task_id／statement_id／provider_code／compliance.* 一律取自服务层注入的 pack_meta；缺失时写占位符并登记，不得自拟——自拟编号会使「编号 → 生成记录」反查断链（§5.2）
       - aigc_meta 是规则区不是生成区：字段由 pack_meta 拼接，ProduceID 必须等于 meta.pack_id，ContentPropagator 首次写入与 ContentProducer 同值，文件中仅一份
-      - 字段投影的三处必要改写（全链路唯一允许「不逐字承继」处）：① 上游 lighting／lighting_default 的「词表值 + 中文光位说明」须拆分——字段取纯词表 code、说明移入 prompt 正文（上游取值为词表外描述性说法时按语义映射并在 meta.notes 写明，不得自造 code）；② notes 须删除内部标注（如「本节点①」）；③ camera.amplitude／speed 若为 medium／normal 则规范化为空串（与「通常省略」的规范语义无损等价）——三类均由 validate_output.py 判据兜底
+      - 字段投影「**三类必改 + 一类条件改写**」（全链路唯一允许「不逐字承继」处）：① 上游 lighting／lighting_default 的「词表值 + 中文光位说明」须拆分——字段取纯词表 code、说明移入 prompt 正文（上游取值为词表外描述性说法时按语义映射并在 meta.notes 写明，不得自造 code）；② notes 须删除内部标注（如「本节点①」）；③ camera.amplitude／speed 若为 medium／normal 则**省略该键**（**v1.1 更正**：原为「规范化为空串」，但交付 schema 的枚举不含空串、写空串会被门禁阻断——**全包留空一律「省略键」**，见判据 R33）；④ **条件改写**：上游因分镜层留空而交付 schema 要求非空的字段（如 shot_language.*），**仅可从未改动的本镜已有字段派生**、不得引入本镜之外内容，并须在 meta.notes 逐处留痕。四类均由 validate_output.py 判据兜底（R26／R33／R34）
       - 缺口台账不在本层输出：交付包无 unspecified 字段（§3.1 顶层六段中无此项）；本层不产生新的叙事事实类缺口，上游未闭合条目保持原状留在上游产物中，不改写、不搬运、不重编号；映射与回退说明一律写进 meta.notes
       - 不改时长：语速（§4.5）复核发现超标属上游缺陷，须回退上游重出，不得在本层悄悄改秒数
       - 本层只产出**通用规范包（基准）**，不做模型适配：适配是第 2 层的「单向投影」，由 delivery/config/model_adapters.yaml 配置驱动（规范 §6.1「基准唯一 + 配置化」）——把适配写进模板等于每接一个模型就要改一次提示词
-      - 分段策略：总镜数 > 6 时应当按 segment 分段（package_head → unit:<id> → …），因为规范 §3.5 明写「生成单元 = 一次生成调用所提交的完整分镜块」，分段粒度与业务语义粒度一致；拼装后须能过 validate_pack.py
-      - 禁止项承接：剧本 forbidden_items 须原样承继
-    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` 1.1.0，对齐 `03-工程代码/delivery/schemas/shot_prompt_pack.v1.schema.json`，**可直接过 `validate_pack.py` 门禁**）。契约来源《分镜提示词交付规范 v1.3》§3／§4／§5／§6.1；用例见 examples/shot-prompt-case01.md
+      - 分段策略：segment 默认 **auto**（按上游镜数自动决定：≤6 镜 all、>6 镜 package_head + 逐单元），因为规范 §3.5 明写「生成单元 = 一次生成调用所提交的完整分镜块」，分段粒度与业务语义粒度一致；输出超单次窗口时进入 fallback.output_too_long；拼装后须能过 validate_pack.py（⚠️ **分段产物本身不可能单独过交付包 schema**——required 六项不齐，只做段级结构自检）
+      - 禁止项承接（**v1.1 更正**）：剧本层与分镜层的**顶层** `forbidden_items` 均**不在交付包内**——交付契约（规范 §3.1 顶层六段）无对应容器，§3.3 `negative_global` 的三类组织覆盖的是**画质与伪影**、非「内容层禁忌」（如「禁止出现真实人名」）→ 本层**不搬运**该字段，已登记规范层缺口 **ISSUE-012**，提请契约责任方定案。⚠️ 与之区分：`characters[].forbidden`（规范 §3.4）是**本层从 `appearance_lock_zh` 提炼**的角色不变要素，属交付包字段集的**内建**字段，须照常产出。判据 **R36** 从交付 schema 读字段集，机器化「契约外字段禁入」
+    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` 1.1.0，对齐 `03-工程代码/delivery/schemas/shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 v1.3》§3／§4／§5／§6.1；用例见 examples/shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）；**无 output 字段增删故属次版本**。配套登记规范层缺口 **ISSUE-011**（道具维度）与 **ISSUE-012**（顶层 forbidden_items 无容器），两条均**只登记、不改契约**。⚠️ **门禁现状（不得表述为「可直接过门禁」）**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` **尚余 1 条 BLOCK**（`prompt_en` 上限 900 字符，属**契约级缺陷**，已依评审 PR-07 提请复核）
 
   - id: gen_article_v1
     name: 长文内容生成

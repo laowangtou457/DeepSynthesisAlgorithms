@@ -115,15 +115,18 @@
 #       一律**搬运**上游（剧本层）已定义的锚，`style_bible` 与 `characters[].appearance_lock_*` 逐字承继。
 #       故本层产出**不涉及 `design_source`**，也不在交付包内登记缺口台账（见 ⑥ 末段）。
 #
-#   —— 产物契约的静态校验见同目录 validate_output.py（**R1~R32 共 32 条**：
-#      梗概/剧本层 9 条 + 分镜层 13 条 + 交付包层 7 条 + 跨层 3 条（R23／R24 需 `--script`，
+#   —— 产物契约的静态校验见同目录 validate_output.py（**R1~R36 共 36 条**：
+#      梗概/剧本层 9 条 + 分镜层 13 条 + 交付包层 11 条 + 跨层 3 条（R23／R24 需 `--script`，
 #      R31 需 `--storyboard`）+ 通用 1 条，
 #      含 purpose 封闭枚举、dialogue.type 枚举、缺口台账 owner 责任归属、11 项镜头语言质量门、
 #      外观锚重述检测（R23）、道具覆盖检测（R24）、质量门自声明复算（R25）、
 #      运镜幅度／速度省略规则（R26）、交付包必备结构（R27）、外观复用检测（R28）、
-#      提示词正文卫生（R29）、AIGC 元数据块规则（R30）、时长守恒（R31）与光照词表纯度（R32））。
+#      提示词正文卫生（R29）、AIGC 元数据块规则（R30）、时长守恒（R31）、光照词表纯度（R32）、
+#      交付包留空口径（R33）、英文运镜句独立成句（R34）、`prop_refs` 禁入（R35）
+#      与**契约外字段禁入**（R36，字段集直接读交付 schema，不另立清单））。
 #      ⚠️ **负向验证纪律**：只跑通过样本证明不了校验器有效——新增规则必须构造越界样本验证能触发。
-#         R26~R32 已逐条验证（19 个越界样本全部 EXIT=1；2 个已知盲区登记在案，见 R31 条目）。
+#         R26~R36 已逐条验证（**31 个越界样本全部 EXIT=1；3 个已知盲区**登记在案，见 R31／R33 条目；
+#         脚本落点 `tests/negtest_pack_rules.py`，可复现）。
 #   variables   变量清单，加载时校验必填项
 #   sampling    推荐采样参数（服务层默认值，可被请求覆盖）
 #   sections    提示分节，按固定顺序拼装：
@@ -226,7 +229,8 @@
 # ------------------------------------------------------------
 # 【交付包层校验（形态 `pack`；SW-007）】
 #   R26 MOVE_PARAM_OMISSION `camera.amplitude` ∈ {空串, small, large}、`camera.speed` ∈ {空串, slow, fast}；
-#                           `medium`／`normal` 是「通常省略」的默认值，须留空串。
+#                           `medium`／`normal` 是「通常省略」的默认值。⚠️ **上游侧**允许写空串；
+#                           **交付包侧**则由 R33 要求「留空即省略键」（枚举不含空串）——两条合读见 R33。
 #                           ⚠️ **同时作用于分镜脚本与交付包**——这是修 SCHEMA 错指的同一处缺口（见 amplitude 条目）。
 #   R27 PACK_REQUIRED       顶层 `schema_version`／`meta`／`style_bible`／`units`／`shots`／`aigc_meta` 齐备；
 #                           每镜必备 13 字段（与 schema `$defs/shot.required` **逐字一致**）；
@@ -243,6 +247,40 @@
 #                              `meta.required` 里**是可选的**，缺失时本层无从守恒。
 #                              → **结论：校验交付包时须始终带 `--storyboard`。**
 #   R32 LIGHTING_VOCAB      见 lighting 条目。
+#   R33 PACK_NO_EMPTY_STRING **交付包可选字段不得为空串**——留空须「省略该键」（依评审 PR-02 新增）。
+#                           覆盖 `camera.amplitude/speed/height/roll/optics`、`transition_in/out`（枚举）
+#                           与 `lighting`（vocabRef `^[a-z][a-z_]*$`）；`characters[].ref_image`
+#                           为 `type:string`，**null 亦不合法**，须省略键。
+#                           ⚠️ 与门禁**严格对齐**，不写比契约更严的私有口径：`shots[].ref_image` 在 schema
+#                              为 `oneOf[string,null]`、null **合法**，故**刻意不报**（已登记为已知盲区）。
+#                           背景：原口径「medium／normal 规范化为空串」会产出**不合法**的包
+#                              （实测：21 处空串 + 2 处 characters 非法 null → 23 条门禁 BLOCK）。
+#   R34 EN_CAMERA_SENTENCE  英文正文须含以 `The camera` **起句的独立句**（依评审 PR-04 新增）。
+#                           判据 `(?:^|[.!?]\s+)The camera\b`——`static`／`pov` 也须有运镜句，只是不带幅度速度。
+#                           实测 `S01-SH002` 曾把小写 `as the camera …` 并入起句（**人眼看不出来**）。
+#   R35 NO_PROP_REFS        交付包 `shots[]` **不得出现 `prop_refs` 键**（依评审 PR-01／PR-14 新增）。
+#                           上游 `storyboard_v1` 有该字段，但**交付规范 §3.6 与交付 schema 均无**
+#                           （规范全文无「道具」二字，已逐字核对），schema 的 `shot` 为
+#                           `additionalProperties:false` → 承继即被门禁判「多余属性」。
+#                           ⚠️ **道具锚的结构化落地缺口登记为 `ISSUE-011`**，须契约责任方定案
+#                              （本层只登记、不改契约）；本条把该冲突点**机器可见化**。
+#   R36 NO_EXTRA_KEY        交付包**只允许出现契约字段集内的键**（依评审 PR-14 新增）。
+#                           PR-14 的担忧是「两处清单不一致会留下『**清单外字段无人管**』的漏洞」——
+#                             根因是判据只查「必备」（R27）不查「多余」：任何上游带来的、规范里
+#                             没有的字段（`shots[].prop_refs`、顶层 `forbidden_items`）都能悄悄
+#                             进入交付包，到门禁才被 `additionalProperties:false` 拦下（**拦得太晚，
+#                             且只看得到一条汇总报错**）。
+#                           ⚠️ **字段集直接读交付 schema**（`single source of truth`，
+#                             落点 `delivery/schemas/shot_prompt_pack.v1.schema.json` 的
+#                             `properties` 与 `$defs`），**刻意不另写一份会陈旧的清单**；
+#                             schema 不可读时**跳过（不伪判）**——与 R33 的取舍一致。
+#                           检查七处：顶层／`shots[]`／`units[]`／`characters[]`／`meta`／
+#                             `style_bible`／`aigc_meta`。
+#                           与 **R35** 的关系：R35 是 `prop_refs` 的**定向**判据（报错文案直指
+#                             `ISSUE-011`），R36 是**通用**闸门；两条并存，R36 兜住今后所有同类。
+#                           配套登记规范层缺口 **`ISSUE-012`**（上游顶层 `forbidden_items` 在交付包
+#                             无容器——§3.1 顶层六段与 §3.3 `negative_global` 三类组织均未覆盖
+#                             「内容层禁忌」）。
 # ============================================================
 
 schema_version: "1.0.0"
