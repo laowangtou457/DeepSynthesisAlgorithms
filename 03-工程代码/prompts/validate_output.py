@@ -28,7 +28,10 @@
                            且**客户侧缺口不得前移到下游**（SR-02）——下游（分镜／提示词）职责上
                            无法补叙事事实与设计确认，把「待客户确认」推给下游阶段等于把洞换个位置继续走。
                            · 剧本层：`owner=客户` 者 `fill_stage` 必须为 `script`（本层发起追问）；
-                           · 分镜层：`owner=客户` 者 `fill_stage` 不得为 `shot_prompt`。
+                           · 分镜层（v2.1.0 依 `BR-06` 收紧为二分）：继承项（`upstream_field` 非空）
+                             必须仍为 `script`（追问阶段在剧本层已定，本层不得改写）；
+                             本层新增项（`upstream_field` 空）应为 `storyboard`；
+                             共同底线：**一律不得为 `shot_prompt`**。
                            本条把该口径从「靠人记着」变成「跑得出来」。
   R22 SCENE_DURATION_FLOOR 每场 est_seconds 须 ≥ 8 秒（＝单镜时长下限 4s × 生成单元最少 2 镜）——
                            SR-08：场时长事实上就是该场的「镜数预算」，低于 8 秒下游切不出任何合规单元。
@@ -38,7 +41,8 @@
   R7  SHOT_ID_FORMAT       shot_id 唯一且形如 S<场号两位>-SH<镜号三位>
   R8  SHOT_NO_SEQ          同一场内 shot_no 从 1 起连续、不跳号
   R9  UNIT_LINK            shots[].unit_id 必须命中 units[]；units[].shot_ids 与 shots 双向一致，
-                           且成员镜的 scene_no 必须等于其所属单元的 scene_no
+                           成员镜的 scene_no 必须等于其所属单元的 scene_no，
+                           且 **shot_ids 须按镜序递增**（v2.1.0 依 BR-11 补：逆序单元此前无判据）
   R10 UNIT_SIZE            units[].shot_ids 成员数必须为 2 或 3（规范 §4.3：1 镜单元结构性不合格）
   R11 UNIT_MOVE_UNIQUE     同一单元内 camera.move 取值不得重复
   R12 DURATION_INT_SECONDS duration_ms 必须为整秒（1000 的整数倍）
@@ -50,14 +54,26 @@
   R18 TRANSITION_SIDE      转场单侧表达：单元内非末镜不得填 transition_out
   R19 GATE                 **11 项镜头语言质量门**（整片 + 逐生成单元）——
                            阈值直接引用 audit_shots.py 的 GATE 与其容差算法，不得另立一套（规范 §4.2）
+  R23 REWRITE_LOCK         **外观锚重述检测**（v2.1.0 依 BR-02 新增；**需 --script 提供上游剧本**）——
+                           把剧本 characters[].appearance_lock_zh 与 props[].appearance_lock_zh 按标点切段、
+                           取 3-gram，与逐镜的「语义字段」（action.*／shot_language.*／camera.from|to／notes）
+                           比对；命中即报错。这是全链路**唯一防「错锚」的自动闸门**
+                           （锚一旦在逐镜里被写「宽」或写「窄」，下游无人有权纠正）。
+  R24 PROP_COVERAGE        **道具覆盖检测**（v2.1.0 依 BR-03 新增；**需 --script**）——
+                           某场 props_present 非空时，该场至少有一镜须把它标进 prop_refs；
+                           整场漏标即「剧本说它在场、分镜一镜都没拍到」的漏拍。
+  R25 GATE_SELF_CHECK      **质量门自声明与复算比对**（v2.1.0 依 BR-10 新增）——
+                           quality_gate 的数值字段为可选参考；**填写即须等于由 shots 复算的真值**。
+                           模型可写「11 项全通过」而无人比对，是全链路唯一「声明值可被证伪却无人证伪」处。
 
   ⚠️ 口径差异（必须知道）：R19 判定的是**结构化字段是否有值**（SW-006 的产物）；
      audit_shots.py 判定的是**适配投喂文本**（SW-007 的产物）。两者对象不同——
      本层判定通过不等于下游文本判定通过，SW-007 完成后须对文本再跑一次（规范 §4.8）。
 
 用法：
-  python validate_output.py                     # 扫描 examples/*.md 内全部 JSON 块
+  python validate_output.py                     # 扫描 examples/*.md 内全部 JSON 块（自动配对上/下游）
   python validate_output.py --file out.json     # 校验单个 JSON 文件（真实模型输出）
+  python validate_output.py --file out.json --script script.json   # 附带上游剧本 → 启用 R23/R24
   python validate_output.py --json              # 机器可读结果
   python validate_output.py --duration-bounds 4-15   # 覆盖单镜时长区间（秒）
 
@@ -120,8 +136,22 @@ DURATION_MIN_MS, DURATION_MAX_MS = 4000, 15000
 JSON_BLOCK_RE = re.compile(r"```json\s*\n(.*?)\n```", re.S)
 SHOT_ID_RE = re.compile(r"^S\d{2}-SH\d{3}$")
 
+# 外观锚切段用的标点/空白（R23）：锚串按这些字符切段后再取 3-gram
+ANCHOR_SPLIT_RE = re.compile(r"[、，,。；;：:（）()【】\[\]{}／/·\s\"'“”‘’—－\-]+")
+ANCHOR_NGRAM = 3          # 命中长度阈值（3 字）
+SHOT_SEMANTIC_TEXT_KEYS = ("start", "change", "end")   # action.*
+SEMANTIC_SL_KEYS = ("composition", "axis", "result")   # shot_language.*
+
+# examples/ 内的跨层配对：用于在默认扫描时自动启用跨层规则 R23 / R24。
+# 真实产物请用 --script 显式指定上游（本脚本不猜路径）。
+EXAMPLES_UPSTREAM = {
+    "script-case01.md": "synopsis-case01.md",
+    "storyboard-case01.md": "script-case01.md",
+}
+
 RESULT = {"checks": 0, "errors": [], "warnings": []}
 QUIET = False
+UPSTREAM = {"doc": None, "src": None}      # 当前生效的上游剧本产物（缺失时 R23/R24 跳过并 WARN）
 
 
 def out(msg=""):
@@ -319,7 +349,13 @@ def rule_unspecified_owner(doc, shape, where):
     """R21：缺口台账 owner 枚举；且「客户侧缺口不得前移」（SR-02）。
 
     shape == script     → owner=客户 者 fill_stage 必须为 script（本层，发起追问的阶段）
-    shape == storyboard → owner=客户 者 fill_stage 不得为 shot_prompt（下游同样无权补）
+    shape == storyboard → 按「继承项 / 本层新增项」二分判定（v2.1.0 依 BR-06 收紧）：
+                          · 继承项（`upstream_field` 非空）——追问阶段在剧本层**已定**，
+                            本层**不得改写**，故 `fill_stage` 必须仍为 `script`；
+                          · 本层新增项（`upstream_field` 为空）——追问由本层发出，
+                            `fill_stage` 应为 `storyboard`；
+                          · 两者共同底线：**`fill_stage` 一律不得为 `shot_prompt`**
+                            （下游同样无权补叙事事实与设计确认）。
     """
     items = doc.get("unspecified") or []
     if not isinstance(items, list) or not items:
@@ -339,9 +375,15 @@ def rule_unspecified_owner(doc, shape, where):
             if shape == "script" and fs != "script":
                 bad.append(f"unspecified[{i}] owner=客户 但 fill_stage=『{fs}』"
                            f"（须为 script——本层发起追问，下游无人能补）")
-            elif shape == "storyboard" and fs == "shot_prompt":
-                bad.append(f"unspecified[{i}] owner=客户 但 fill_stage=『shot_prompt』"
-                           f"（不得前移至下游——下游同样无权补）")
+            elif shape == "storyboard":
+                inherited = str(it.get("upstream_field") or "").strip()
+                if fs == "shot_prompt":
+                    bad.append(f"unspecified[{i}] owner=客户 但 fill_stage=『shot_prompt』"
+                               f"（不得前移至下游——下游同样无权补）")
+                elif inherited and fs != "script":
+                    bad.append(f"unspecified[{i}] 继承项（upstream_field=『{inherited}』）"
+                               f"owner=客户 但 fill_stage=『{fs}』"
+                               f"（继承项的追问阶段由剧本层定，本层不得改写为 『{fs}』）")
     if bad:
         err(f"{where} · R21 UNSPECIFIED_OWNER：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
     else:
@@ -429,7 +471,8 @@ def rule_shot_no_seq(doc, where):
 
 
 def rule_unit_link(doc, where):
-    """R9：units 与 shots 双向一致，且成员镜的 scene_no 等于所属单元的 scene_no。"""
+    """R9：units 与 shots 双向一致，成员镜的 scene_no 等于所属单元的 scene_no，
+    且 shot_ids 按镜序递增（v2.1.0 依 BR-11 补——此前逆序单元无判据）。"""
     units, shots = _units(doc), _shots(doc)
     by_id = {r.get("shot_id"): r for r in shots}
     uids = [u.get("unit_id") for u in units]
@@ -448,6 +491,10 @@ def rule_unit_link(doc, where):
                 bad.append(f"{sid}.unit_id='{sh.get('unit_id')}' 与所属单元 '{u.get('unit_id')}' 不一致")
             if sh.get("scene_no") != u.get("scene_no"):
                 bad.append(f"{sid}.scene_no={sh.get('scene_no')} 与单元场号 {u.get('scene_no')} 不一致")
+        # shot_ids 镜序递增（R9 增补，BR-11）
+        nos = [(by_id.get(s) or {}).get("shot_no") for s in (u.get("shot_ids") or [])]
+        if all(isinstance(n, int) for n in nos) and nos != sorted(nos):
+            bad.append(f"{u.get('unit_id')}.shot_ids 未按镜序排列：shot_no={nos}（『顺序即镜序』）")
     orphan = [sid for sid, sh in by_id.items() if sh.get("unit_id") not in uids]
     if orphan:
         bad.append(f"未归入任何单元的镜头：{orphan[:6]}")
@@ -460,7 +507,7 @@ def rule_unit_link(doc, where):
     if bad:
         err(f"{where} · R9 UNIT_LINK：" + "；".join(bad[:5]))
     else:
-        ok(f"{where} · R9 UNIT_LINK：{len(units)} 个单元与 {len(shots)} 个镜头双向一致，场号归属一致")
+        ok(f"{where} · R9 UNIT_LINK：{len(units)} 个单元与 {len(shots)} 个镜头双向一致，场号归属与镜序一致")
 
 
 def rule_unit_size(doc, where):
@@ -674,6 +721,170 @@ def rule_gate(doc, where):
         ok(f"{where} · R19 GATE（逐单元）：{len(units)} 个单元 11 项全通过（含 2–3 镜短单元的容差算法）")
 
 
+# ---------------- 跨层规则（需上游剧本；SW-006 · v2.1.0 依 BR-02 / BR-03） ----------------
+def _semantic_text(shot):
+    """逐镜「语义字段」文本 —— 即本层被明令不得重述外观的那些字段。
+
+    不含 dialogue／sfx／lighting：台词与光声描述可以合法地提到景物。
+    """
+    parts = []
+    act = shot.get("action")
+    if isinstance(act, dict):
+        parts += [act.get(k) or "" for k in SHOT_SEMANTIC_TEXT_KEYS]
+    sl = _sl(shot)
+    parts += [sl.get(k) or "" for k in SEMANTIC_SL_KEYS]
+    cam = _cam(shot)
+    parts += [cam.get("from") or "", cam.get("to") or ""]
+    if isinstance(shot.get("notes"), str):
+        parts.append(shot["notes"])
+    return "".join(p for p in parts if isinstance(p, str))
+
+
+def _anchors(upstream):
+    """从上游剧本抽出全部外观锚：(标签, 锚串)。"""
+    out = []
+    for i, ch in enumerate(upstream.get("characters") or []):
+        if isinstance(ch, dict) and isinstance(ch.get("appearance_lock_zh"), str):
+            out.append((f"characters[{i}].appearance_lock_zh", ch["appearance_lock_zh"]))
+    for i, pr in enumerate(upstream.get("props") or []):
+        if isinstance(pr, dict) and isinstance(pr.get("appearance_lock_zh"), str):
+            out.append((f"props[{i}].appearance_lock_zh", pr["appearance_lock_zh"]))
+    return out
+
+
+def _anchor_ngrams(anchor, n=ANCHOR_NGRAM):
+    """锚串按标点切段后取 n-gram（只看段内连续，避免跨标点的伪命中）。"""
+    grams = set()
+    for seg in ANCHOR_SPLIT_RE.split(anchor or ""):
+        if len(seg) < n:
+            continue
+        for i in range(len(seg) - n + 1):
+            grams.add(seg[i:i + n])
+    return grams
+
+
+def rule_rewrite_lock(doc, where):
+    """R23：外观锚重述检测（依 BR-02；需上游剧本）。
+
+    判据：剧本 characters[].appearance_lock_zh / props[].appearance_lock_zh 的 3-gram，
+    若出现在逐镜的「语义字段」中，即判为「逐字复用锚 = 重述外观」。
+    本层只引用（character_refs / prop_refs），不在此处描写外观。
+    """
+    upstream = UPSTREAM.get("doc")
+    if not upstream:
+        warn(f"{where} · R23 REWRITE_LOCK：未提供上游剧本（--script），跳过外观锚重述检测")
+        return
+    anchors = _anchors(upstream)
+    if not anchors:
+        warn(f"{where} · R23 REWRITE_LOCK：上游无 appearance_lock_zh 可比对（跳过）")
+        return
+    gram_src = {label: _anchor_ngrams(a) for label, a in anchors}
+    bad, checked = [], 0
+    for r in _shots(doc):
+        text = _semantic_text(r)
+        if not text:
+            continue
+        checked += 1
+        hits = []
+        for label, grams in gram_src.items():
+            got = sorted({g for g in grams if g in text})
+            if got:
+                hits.append(f"{label}→{'／'.join(got[:4])}")
+        if hits:
+            bad.append(f"{r.get('shot_id')}：[{'；'.join(hits)}]")
+    if bad:
+        err(f"{where} · R23 REWRITE_LOCK：{len(bad)} 镜的语义字段重述了外观锚 → " + " ‖ ".join(bad[:4]))
+    elif checked:
+        ok(f"{where} · R23 REWRITE_LOCK：{checked} 镜的语义字段均未重述外观锚"
+           f"（比对 {len(anchors)} 个锚、{ANCHOR_NGRAM}-gram，仅限 action／shot_language／camera.from|to／notes）")
+    else:
+        warn(f"{where} · R23 REWRITE_LOCK：无逐镜语义文本可校（跳过）")
+
+
+def _upstream_props_by_scene(upstream):
+    """上游 script：场号 → props_present（兼容 script 与 synopsis 两种形态）。"""
+    m = {}
+    for act in (upstream.get("acts") or []):
+        if not isinstance(act, dict):
+            continue
+        for sc in (act.get("scenes") or []):
+            if isinstance(sc, dict):
+                m[sc.get("no")] = sc.get("props_present") or []
+    for sc in (upstream.get("scenes_outline") or []):
+        if isinstance(sc, dict):
+            m.setdefault(sc.get("no"), sc.get("props_present") or [])
+    return m
+
+
+def rule_prop_coverage(doc, where):
+    """R24：道具覆盖检测（依 BR-03；需上游剧本）。
+
+    判据：某场 props_present 非空 → 该场至少有一镜把它标进 prop_refs。
+    整场漏标＝「剧本说它在场、分镜一镜都没拍到」的漏拍（道具锚在提示词层无法落地）。
+    """
+    upstream = UPSTREAM.get("doc")
+    if not upstream:
+        warn(f"{where} · R24 PROP_COVERAGE：未提供上游剧本（--script），跳过道具覆盖检测")
+        return
+    pres = _upstream_props_by_scene(upstream)
+    pres = {k: v for k, v in pres.items() if v}
+    if not pres:
+        ok(f"{where} · R24 PROP_COVERAGE：上游各场 props_present 均为空 → 本层 prop_refs 应全为空（无需比对）")
+        return
+    by_scene = {}
+    for r in _shots(doc):
+        by_scene.setdefault(r.get("scene_no"), set()).update(r.get("prop_refs") or [])
+    bad = []
+    for s, need in sorted(pres.items(), key=lambda kv: str(kv[0])):
+        got = by_scene.get(s, set())
+        miss = [p for p in need if p not in got]
+        if miss:
+            bad.append(f"场 {s} props_present={need} 但该场无任一镜标出 {miss}")
+    if bad:
+        err(f"{where} · R24 PROP_COVERAGE：{len(bad)} 处漏拍 → " + "；".join(bad[:5]))
+    else:
+        ok(f"{where} · R24 PROP_COVERAGE：{len(pres)} 个有道具的场，均有镜头把道具标进 prop_refs")
+
+
+def rule_gate_self_check(doc, where):
+    """R25：quality_gate 自声明与复算比对（依 BR-10）。
+
+    quality_gate 的数值字段为**可选参考**；填写即须等于由 shots 复算的真值。
+    """
+    qg = doc.get("quality_gate")
+    if not isinstance(qg, dict):
+        warn(f"{where} · R25 GATE_SELF_CHECK：无 quality_gate（可选参考，跳过）")
+        return
+    shots = _shots(doc)
+    if not shots:
+        return
+    n = len(shots)
+    moves = [m for m in (_cam(r).get("move") for r in shots) if m]
+    truth = {
+        "shot_count": n,
+        "static_shot_count": sum(1 for r in shots if _cam(r).get("move") == "static"),
+        "move_types": sorted(set(moves)),
+        "move_type_min_required": min(GATE["运镜类型数"], max(2, -(-n // 4))),
+    }
+    keys = [k for k in truth if k in qg]
+    if not keys:
+        ok(f"{where} · R25 GATE_SELF_CHECK：quality_gate 未填数值字段（可选参考；不罚）")
+        return
+    bad = []
+    for k in keys:
+        got, exp = qg.get(k), truth[k]
+        if k == "move_types":
+            got_s = sorted(set(got)) if isinstance(got, list) else got
+            if got_s != exp:
+                bad.append(f"{k}={got} ≠ 复算 {exp}")
+        elif got != exp:
+            bad.append(f"{k}={got} ≠ 复算 {exp}")
+    if bad:
+        err(f"{where} · R25 GATE_SELF_CHECK：自声明与复算不一致 → " + "；".join(bad[:5]))
+    else:
+        ok(f"{where} · R25 GATE_SELF_CHECK：自声明 {len(keys)} 个数值字段与由 shots 复算的真值一致")
+
+
 # ---------------- 调度 ----------------
 def validate_doc(doc, where):
     shape = detect_shape(doc)
@@ -695,6 +906,9 @@ def validate_doc(doc, where):
         rule_static_pov_params(doc, where)
         rule_transition_side(doc, where)
         rule_gate(doc, where)
+        rule_gate_self_check(doc, where)
+        rule_rewrite_lock(doc, where)
+        rule_prop_coverage(doc, where)
         rule_unspecified_owner(doc, shape, where)
         return
     rule_purpose_enum(doc, shape, where)
@@ -707,6 +921,30 @@ def validate_doc(doc, where):
         rule_unspecified_owner(doc, shape, where)
 
 
+def _load_doc_by_shape(path, shapes=("script", "storyboard", "synopsis")):
+    """读出指定形态的产物 JSON。
+
+    一个 .md 用例常含**多个** JSON 块（如 `script-case01.md` 的第 1 块是「上游梗概摘录」、
+    第 2 块才是本层输出），故**不能取第一块**——按形态挑选，避免把摘录当成上游产物。
+    """
+    if not path or not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    blocks = JSON_BLOCK_RE.findall(text) or [text]
+    docs = []
+    for b in blocks:
+        try:
+            docs.append(json.loads(b))
+        except Exception:
+            continue
+    for want in shapes:
+        for d in docs:
+            if detect_shape(d) == want:
+                return d
+    return docs[0] if docs else None
+
+
 def scan_examples():
     exp_dir = os.path.join(BASE, "examples")
     if not os.path.isdir(exp_dir):
@@ -717,6 +955,10 @@ def scan_examples():
         warn("examples/ 下无可校验样例")
         return
     for fn in files:
+        # 自动配对上游（仅 examples 目录内），以启用跨层规则 R23 / R24
+        up_fn = EXAMPLES_UPSTREAM.get(fn)
+        up_doc = _load_doc_by_shape(os.path.join(exp_dir, up_fn)) if up_fn else None
+        UPSTREAM["doc"], UPSTREAM["src"] = up_doc, (up_fn if up_doc else None)
         with open(os.path.join(exp_dir, fn), encoding="utf-8") as f:
             text = f.read()
         blocks = JSON_BLOCK_RE.findall(text)
@@ -729,7 +971,9 @@ def scan_examples():
             except Exception as e:
                 err(f"{fn}（第 {i} 个 JSON 块）：解析失败 {e}")
                 continue
-            validate_doc(doc, f"{fn}#{i}")
+            suffix = f"（上游＝{up_fn}）" if up_doc else ""
+            validate_doc(doc, f"{fn}#{i}{suffix}")
+    UPSTREAM["doc"], UPSTREAM["src"] = None, None
 
 
 def validate_file(path):
@@ -753,8 +997,9 @@ def validate_file(path):
 
 def main():
     global QUIET, DURATION_MIN_MS, DURATION_MAX_MS
-    ap = argparse.ArgumentParser(description="输出契约校验器（purpose/dialogue.type 封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门）")
+    ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门与跨层锚/道具比对）")
     ap.add_argument("--file", help="校验单个 JSON（或含 ```json 块的 .md）文件")
+    ap.add_argument("--script", help="上游剧本产物（script_v1 的输出）——提供后启用跨层规则 R23（外观锚重述）与 R24（道具覆盖）")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--duration-bounds", metavar="MIN-MAX",
                     help="单镜时长区间（秒），如 4-15；默认 4-15（MiniMax H3 口径）")
@@ -770,6 +1015,13 @@ def main():
                   file=sys.stderr)
             return 2
 
+    if args.script:
+        up = _load_doc_by_shape(args.script)
+        if up is None:
+            print(f"[FATAL] --script 无法解析出 JSON 产物：{args.script}", file=sys.stderr)
+            return 2
+        UPSTREAM["doc"], UPSTREAM["src"] = up, args.script
+
     if not QUIET:
         print("输出契约校验 · validate_output.py")
         print(f"根目录：{BASE}")
@@ -780,6 +1032,8 @@ def main():
         print(f"场时长下限：{SCENE_MIN_SECONDS}s（单镜 4s × 单元最少 2 镜）")
         print(f"分镜单镜时长区间：{DURATION_MIN_MS // 1000}–{DURATION_MAX_MS // 1000}s"
               f"（质量门阈值引用 audit_shots.py 的 GATE）")
+        print(f"跨层规则：R23 外观锚重述 / R24 道具覆盖 —— "
+              f"{'已载入上游：' + str(UPSTREAM['src']) if UPSTREAM['doc'] else '未提供上游剧本（--script），将跳过并告警'}")
 
     if args.file:
         validate_file(args.file)
@@ -802,6 +1056,7 @@ def main():
             "move_enum": MOVE_ENUM,
             "duration_bounds_ms": [DURATION_MIN_MS, DURATION_MAX_MS],
             "gate": GATE,
+            "upstream": UPSTREAM.get("src"),
             "exit_code": 0 if passed else 1,
         }, ensure_ascii=False, indent=2))
     else:
