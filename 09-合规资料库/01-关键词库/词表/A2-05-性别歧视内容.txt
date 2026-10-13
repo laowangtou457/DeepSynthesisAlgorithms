@@ -1,0 +1,244 @@
+# =============================================================================
+# 关键词库词表：A2-05 性别歧视内容
+# 组别：A.2   单类配额：>= 100 个
+# 本项目相关度：中
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+女人就该	review	
+男人都	review	
+女司机	review	
+娘炮	review	
+妇人之见	review	
+头发长见识短	review	
+
+# ===== 性别歧视·概括与煽动 =====
+性别歧视	block
+重男轻女	block
+歧视女性	block
+歧视男性	block
+男尊女卑	block
+大男子主义	block
+
+# ===== 性别歧视·贬称与刻板印象 =====
+女博士	review
+剩女	review
+齐天大剩	review
+拜金女	review
+物质女	review
+凤凰男	review
+孔雀女	review
+妈宝男	review
+直男癌	review
+田园女权	review
+女拳	review
+男人婆	review
+假小子	review
+娘娘腔	review
+花瓶	review
+靠身体上位	review
+
+# ===== 性别歧视·陈旧观念句式 =====
+女子无才便是德	review
+男人就该	review
+女主内	review
+男主外	review
+嫁出去的女儿	review
+
+# 词条数（不含注释）：33 / 100
+
+# -------- 核心词（动作 × 对象 合成）--------
+性别刻板印象	review	批量扩充·核心词，须人工复核语境
+女德	review	批量扩充·核心词，须人工复核语境
+物化女性	review	批量扩充·核心词，须人工复核语境
+物化男性	review	批量扩充·核心词，须人工复核语境
+性别贬低	review	批量扩充·核心词，须人工复核语境
+性别偏见	review	批量扩充·核心词，须人工复核语境
+性别优越论	review	批量扩充·核心词，须人工复核语境
+性别标签化	review	批量扩充·核心词，须人工复核语境
+性别歧视言论	review	批量扩充·核心词，须人工复核语境
+贬低女性能力	review	批量扩充·核心词，须人工复核语境
+贬低男性情绪	review	批量扩充·核心词，须人工复核语境
+性别角色固化	review	批量扩充·核心词，须人工复核语境
+女性应服从的表述	review	批量扩充·核心词，须人工复核语境
+性别对立言论	review	批量扩充·核心词，须人工复核语境
+性别仇恨言论	review	批量扩充·核心词，须人工复核语境
+性别贬损	review	批量扩充·核心词，须人工复核语境
+歧视女性群体	review	批量扩充·核心词，须人工复核语境
+歧视男性群体	review	批量扩充·核心词，须人工复核语境
+歧视职业女性	review	批量扩充·核心词，须人工复核语境
+歧视全职主妇	review	批量扩充·核心词，须人工复核语境
+歧视单身女性	review	批量扩充·核心词，须人工复核语境
+歧视单身男性	review	批量扩充·核心词，须人工复核语境
+歧视女性能力	review	批量扩充·核心词，须人工复核语境
+歧视男性情绪	review	批量扩充·核心词，须人工复核语境
+歧视女性从业者	review	批量扩充·核心词，须人工复核语境
+歧视男性从业者	review	批量扩充·核心词，须人工复核语境
+贬低女性	review	批量扩充·核心词，须人工复核语境
+贬低男性	review	批量扩充·核心词，须人工复核语境
+贬低女性群体	review	批量扩充·核心词，须人工复核语境
+贬低男性群体	review	批量扩充·核心词，须人工复核语境
+贬低职业女性	review	批量扩充·核心词，须人工复核语境
+贬低全职主妇	review	批量扩充·核心词，须人工复核语境
+贬低单身女性	review	批量扩充·核心词，须人工复核语境
+贬低单身男性	review	批量扩充·核心词，须人工复核语境
+贬低女性从业者	review	批量扩充·核心词，须人工复核语境
+贬低男性从业者	review	批量扩充·核心词，须人工复核语境
+侮辱女性	review	批量扩充·核心词，须人工复核语境
+侮辱男性	review	批量扩充·核心词，须人工复核语境
+侮辱女性群体	review	批量扩充·核心词，须人工复核语境
+侮辱男性群体	review	批量扩充·核心词，须人工复核语境
+侮辱职业女性	review	批量扩充·核心词，须人工复核语境
+侮辱全职主妇	review	批量扩充·核心词，须人工复核语境
+侮辱单身女性	review	批量扩充·核心词，须人工复核语境
+侮辱单身男性	review	批量扩充·核心词，须人工复核语境
+侮辱女性能力	review	批量扩充·核心词，须人工复核语境
+侮辱男性情绪	review	批量扩充·核心词，须人工复核语境
+侮辱女性从业者	review	批量扩充·核心词，须人工复核语境
+侮辱男性从业者	review	批量扩充·核心词，须人工复核语境
+嘲讽女性	review	批量扩充·核心词，须人工复核语境
+嘲讽男性	review	批量扩充·核心词，须人工复核语境
+嘲讽女性群体	review	批量扩充·核心词，须人工复核语境
+嘲讽男性群体	review	批量扩充·核心词，须人工复核语境
+嘲讽职业女性	review	批量扩充·核心词，须人工复核语境
+嘲讽全职主妇	review	批量扩充·核心词，须人工复核语境
+嘲讽单身女性	review	批量扩充·核心词，须人工复核语境
+嘲讽单身男性	review	批量扩充·核心词，须人工复核语境
+嘲讽女性能力	review	批量扩充·核心词，须人工复核语境
+嘲讽男性情绪	review	批量扩充·核心词，须人工复核语境
+嘲讽女性从业者	review	批量扩充·核心词，须人工复核语境
+嘲讽男性从业者	review	批量扩充·核心词，须人工复核语境
+物化女性群体	review	批量扩充·核心词，须人工复核语境
+物化男性群体	review	批量扩充·核心词，须人工复核语境
+物化职业女性	review	批量扩充·核心词，须人工复核语境
+物化全职主妇	review	批量扩充·核心词，须人工复核语境
+物化单身女性	review	批量扩充·核心词，须人工复核语境
+物化单身男性	review	批量扩充·核心词，须人工复核语境
+物化女性能力	review	批量扩充·核心词，须人工复核语境
+物化男性情绪	review	批量扩充·核心词，须人工复核语境
+物化女性从业者	review	批量扩充·核心词，须人工复核语境
+物化男性从业者	review	批量扩充·核心词，须人工复核语境
+标签化女性	review	批量扩充·核心词，须人工复核语境
+标签化男性	review	批量扩充·核心词，须人工复核语境
+标签化女性群体	review	批量扩充·核心词，须人工复核语境
+标签化男性群体	review	批量扩充·核心词，须人工复核语境
+标签化职业女性	review	批量扩充·核心词，须人工复核语境
+标签化全职主妇	review	批量扩充·核心词，须人工复核语境
+标签化单身女性	review	批量扩充·核心词，须人工复核语境
+标签化单身男性	review	批量扩充·核心词，须人工复核语境
+标签化女性能力	review	批量扩充·核心词，须人工复核语境
+标签化男性情绪	review	批量扩充·核心词，须人工复核语境
+标签化女性从业者	review	批量扩充·核心词，须人工复核语境
+标签化男性从业者	review	批量扩充·核心词，须人工复核语境
+污名化女性	review	批量扩充·核心词，须人工复核语境
+污名化男性	review	批量扩充·核心词，须人工复核语境
+污名化女性群体	review	批量扩充·核心词，须人工复核语境
+污名化男性群体	review	批量扩充·核心词，须人工复核语境
+污名化职业女性	review	批量扩充·核心词，须人工复核语境
+污名化全职主妇	review	批量扩充·核心词，须人工复核语境
+污名化单身女性	review	批量扩充·核心词，须人工复核语境
+污名化单身男性	review	批量扩充·核心词，须人工复核语境
+污名化女性能力	review	批量扩充·核心词，须人工复核语境
+污名化男性情绪	review	批量扩充·核心词，须人工复核语境
+污名化女性从业者	review	批量扩充·核心词，须人工复核语境
+污名化男性从业者	review	批量扩充·核心词，须人工复核语境
+贬损女性	review	批量扩充·核心词，须人工复核语境
+贬损男性	review	批量扩充·核心词，须人工复核语境
+贬损女性群体	review	批量扩充·核心词，须人工复核语境
+贬损男性群体	review	批量扩充·核心词，须人工复核语境
+贬损职业女性	review	批量扩充·核心词，须人工复核语境
+贬损全职主妇	review	批量扩充·核心词，须人工复核语境
+贬损单身女性	review	批量扩充·核心词，须人工复核语境
+贬损单身男性	review	批量扩充·核心词，须人工复核语境
+贬损女性能力	review	批量扩充·核心词，须人工复核语境
+贬损男性情绪	review	批量扩充·核心词，须人工复核语境
+贬损女性从业者	review	批量扩充·核心词，须人工复核语境
+贬损男性从业者	review	批量扩充·核心词，须人工复核语境
+矮化女性	review	批量扩充·核心词，须人工复核语境
+矮化男性	review	批量扩充·核心词，须人工复核语境
+矮化女性群体	review	批量扩充·核心词，须人工复核语境
+矮化男性群体	review	批量扩充·核心词，须人工复核语境
+矮化职业女性	review	批量扩充·核心词，须人工复核语境
+矮化全职主妇	review	批量扩充·核心词，须人工复核语境
+矮化单身女性	review	批量扩充·核心词，须人工复核语境
+矮化单身男性	review	批量扩充·核心词，须人工复核语境
+矮化女性能力	review	批量扩充·核心词，须人工复核语境
+矮化男性情绪	review	批量扩充·核心词，须人工复核语境
+矮化女性从业者	review	批量扩充·核心词，须人工复核语境
+矮化男性从业者	review	批量扩充·核心词，须人工复核语境
+排斥女性	review	批量扩充·核心词，须人工复核语境
+排斥男性	review	批量扩充·核心词，须人工复核语境
+排斥女性群体	review	批量扩充·核心词，须人工复核语境
+排斥男性群体	review	批量扩充·核心词，须人工复核语境
+排斥职业女性	review	批量扩充·核心词，须人工复核语境
+排斥全职主妇	review	批量扩充·核心词，须人工复核语境
+排斥单身女性	review	批量扩充·核心词，须人工复核语境
+排斥单身男性	review	批量扩充·核心词，须人工复核语境
+排斥女性能力	review	批量扩充·核心词，须人工复核语境
+排斥男性情绪	review	批量扩充·核心词，须人工复核语境
+排斥女性从业者	review	批量扩充·核心词，须人工复核语境
+排斥男性从业者	review	批量扩充·核心词，须人工复核语境
+对女性的歧视	review	批量扩充·核心词，须人工复核语境
+对男性的歧视	review	批量扩充·核心词，须人工复核语境
+对女性群体的歧视	review	批量扩充·核心词，须人工复核语境
+对男性群体的歧视	review	批量扩充·核心词，须人工复核语境
+对职业女性的歧视	review	批量扩充·核心词，须人工复核语境
+对全职主妇的歧视	review	批量扩充·核心词，须人工复核语境
+对单身女性的歧视	review	批量扩充·核心词，须人工复核语境
+对单身男性的歧视	review	批量扩充·核心词，须人工复核语境
+对女性能力的歧视	review	批量扩充·核心词，须人工复核语境
+对男性情绪的歧视	review	批量扩充·核心词，须人工复核语境
+对女性的贬低	review	批量扩充·核心词，须人工复核语境
+对男性的贬低	review	批量扩充·核心词，须人工复核语境
+对女性群体的贬低	review	批量扩充·核心词，须人工复核语境
+对男性群体的贬低	review	批量扩充·核心词，须人工复核语境
+对职业女性的贬低	review	批量扩充·核心词，须人工复核语境
+对全职主妇的贬低	review	批量扩充·核心词，须人工复核语境
+对单身女性的贬低	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+wurunvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wurunanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaxiaozi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fenghuangnan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shengnv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chaofengnvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chaofengnanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvzhunei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvrenjiugai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvboshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvsiji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvquan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+furenzhijian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mabaonan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+niangniangqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+niangpao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kongquenv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingbiepianjian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingbieqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingbiebiandi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingbiebiansun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baijinnv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paichinvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paichinanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qishinvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qishinanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuhuanvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuhuananxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuzhinv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tianyuannvquan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nanzhuwai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nanrenpo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nanrenjiugai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nanrendou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhinanai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+aihuanvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+aihuananxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+biandinvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+biandinanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+biansunnvxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+biansunnanxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

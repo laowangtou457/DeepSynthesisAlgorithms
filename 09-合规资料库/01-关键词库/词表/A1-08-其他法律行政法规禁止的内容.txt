@@ -1,0 +1,450 @@
+# =============================================================================
+# 关键词库词表：A1-08 其他法律、行政法规禁止的内容
+# 组别：A.1   单类配额：>= 200 个
+# 本项目相关度：中
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+赌博	block	
+网络赌场	block	
+毒品交易	block	
+枪支买卖	block	
+私彩	block	
+代开发票	block	
+办假证	block	
+违禁品	review	
+走私	review	
+
+# ===== 赌博与博彩 =====
+赌球	block
+赌场	block
+博彩	block
+线上赌场	block
+真人荷官	block
+六合彩	block
+时时彩	block
+彩票代购	block
+棋牌赌博	block
+炸金花	block
+斗牛	block
+梭哈	block
+押注	block
+下注	block
+盘口	block
+赔率	block
+百家乐	block
+老虎机	block
+
+# ===== 资金与洗钱 =====
+洗钱	block
+跑分	block
+接码	block
+代收款	block
+刷流水	block
+信用卡套现	block
+套现	block
+养卡	block
+代还	block
+金融诈骗	block
+电信诈骗	block
+刷单套利	block
+
+# ===== 毒品与违禁药物 =====
+毒品	block
+吸毒	block
+贩毒	block
+冰毒	block
+海洛因	block
+摇头丸	block
+大麻	block
+笑气	block
+开心水	block
+电子烟油	block
+上头电子烟	block
+迷奸药	block
+迷药	block
+迷魂药	block
+听话水	block
+乖乖水	block
+违禁药物	block
+
+# ===== 管制物品 =====
+枪支	block
+弹药	block
+子弹	block
+雷管	block
+弓弩	block
+电击器	block
+催泪器	block
+弹弓枪	block
+枪支配件	block
+
+# ===== 伪造证件与票证 =====
+假证	block
+办证	block
+假身份证	block
+假学历	block
+假公章	block
+刻章	block
+虚开发票	block
+假币	block
+假钞	block
+
+# ===== 法律禁止的行为与服务 =====
+代孕	block
+卖卵	block
+非法集资	block
+传销	block
+组织卖淫	block
+拐卖	block
+绑架	block
+非法拘禁	block
+偷渡	block
+野生动物制品	block
+象牙	block
+犀牛角	block
+穿山甲	block
+虎骨	block
+
+# ===== 网络违法违规 =====
+翻墙	block
+外挂	block
+私服	block
+代练	block
+黑产	block
+黑灰产	block
+刷单	block
+刷量	block
+水军	block
+网赚	block
+兼职刷单	block
+账号买卖	block
+实名认证出租	block
+
+# 词条数（不含注释）：101 / 200
+
+# -------- 核心词（动作 × 对象 合成）--------
+爆炸物	review	批量扩充·核心词，须人工复核语境
+假发票	review	批量扩充·核心词，须人工复核语境
+伪造证件	review	批量扩充·核心词，须人工复核语境
+伪造印章	review	批量扩充·核心词，须人工复核语境
+赌资	review	批量扩充·核心词，须人工复核语境
+地下钱庄	review	批量扩充·核心词，须人工复核语境
+套路贷	review	批量扩充·核心词，须人工复核语境
+诈骗话术	review	批量扩充·核心词，须人工复核语境
+木马病毒	review	批量扩充·核心词，须人工复核语境
+破解软件	review	批量扩充·核心词，须人工复核语境
+野生动植物制品	review	批量扩充·核心词，须人工复核语境
+濒危物种制品	review	批量扩充·核心词，须人工复核语境
+走私货物	review	批量扩充·核心词，须人工复核语境
+精神药品	review	批量扩充·核心词，须人工复核语境
+成瘾物质	review	批量扩充·核心词，须人工复核语境
+贩卖毒品	review	批量扩充·核心词，须人工复核语境
+贩卖枪支	review	批量扩充·核心词，须人工复核语境
+贩卖弹药	review	批量扩充·核心词，须人工复核语境
+贩卖管制刀具	review	批量扩充·核心词，须人工复核语境
+贩卖爆炸物	review	批量扩充·核心词，须人工复核语境
+贩卖假币	review	批量扩充·核心词，须人工复核语境
+贩卖假证件	review	批量扩充·核心词，须人工复核语境
+贩卖假发票	review	批量扩充·核心词，须人工复核语境
+贩卖银行卡	review	批量扩充·核心词，须人工复核语境
+贩卖身份证件	review	批量扩充·核心词，须人工复核语境
+贩卖公民个人信息	review	批量扩充·核心词，须人工复核语境
+贩卖野生动物	review	批量扩充·核心词，须人工复核语境
+贩卖濒危物种	review	批量扩充·核心词，须人工复核语境
+贩卖走私货物	review	批量扩充·核心词，须人工复核语境
+贩卖违禁品	review	批量扩充·核心词，须人工复核语境
+贩卖麻醉药品	review	批量扩充·核心词，须人工复核语境
+贩卖精神药品	review	批量扩充·核心词，须人工复核语境
+贩卖赌博设备	review	批量扩充·核心词，须人工复核语境
+贩卖赌资	review	批量扩充·核心词，须人工复核语境
+贩卖传销资料	review	批量扩充·核心词，须人工复核语境
+贩卖诈骗话术	review	批量扩充·核心词，须人工复核语境
+贩卖作弊器材	review	批量扩充·核心词，须人工复核语境
+贩卖窃听器材	review	批量扩充·核心词，须人工复核语境
+贩卖定位跟踪器	review	批量扩充·核心词，须人工复核语境
+贩卖开锁工具	review	批量扩充·核心词，须人工复核语境
+贩卖假公章	review	批量扩充·核心词，须人工复核语境
+贩卖假证书	review	批量扩充·核心词，须人工复核语境
+贩卖学历证书	review	批量扩充·核心词，须人工复核语境
+贩卖资质证书	review	批量扩充·核心词，须人工复核语境
+贩卖增值税发票	review	批量扩充·核心词，须人工复核语境
+贩卖发票配额	review	批量扩充·核心词，须人工复核语境
+制作毒品	review	批量扩充·核心词，须人工复核语境
+制作枪支	review	批量扩充·核心词，须人工复核语境
+制作弹药	review	批量扩充·核心词，须人工复核语境
+制作管制刀具	review	批量扩充·核心词，须人工复核语境
+制作爆炸物	review	批量扩充·核心词，须人工复核语境
+制作假币	review	批量扩充·核心词，须人工复核语境
+制作假证件	review	批量扩充·核心词，须人工复核语境
+制作假发票	review	批量扩充·核心词，须人工复核语境
+制作银行卡	review	批量扩充·核心词，须人工复核语境
+制作身份证件	review	批量扩充·核心词，须人工复核语境
+制作公民个人信息	review	批量扩充·核心词，须人工复核语境
+制作野生动物	review	批量扩充·核心词，须人工复核语境
+制作濒危物种	review	批量扩充·核心词，须人工复核语境
+制作走私货物	review	批量扩充·核心词，须人工复核语境
+制作违禁品	review	批量扩充·核心词，须人工复核语境
+制作麻醉药品	review	批量扩充·核心词，须人工复核语境
+制作精神药品	review	批量扩充·核心词，须人工复核语境
+制作赌博设备	review	批量扩充·核心词，须人工复核语境
+制作赌资	review	批量扩充·核心词，须人工复核语境
+制作传销资料	review	批量扩充·核心词，须人工复核语境
+制作诈骗话术	review	批量扩充·核心词，须人工复核语境
+制作作弊器材	review	批量扩充·核心词，须人工复核语境
+制作窃听器材	review	批量扩充·核心词，须人工复核语境
+制作定位跟踪器	review	批量扩充·核心词，须人工复核语境
+制作开锁工具	review	批量扩充·核心词，须人工复核语境
+制作假公章	review	批量扩充·核心词，须人工复核语境
+制作假证书	review	批量扩充·核心词，须人工复核语境
+制作学历证书	review	批量扩充·核心词，须人工复核语境
+制作资质证书	review	批量扩充·核心词，须人工复核语境
+制作增值税发票	review	批量扩充·核心词，须人工复核语境
+制作发票配额	review	批量扩充·核心词，须人工复核语境
+持有毒品	review	批量扩充·核心词，须人工复核语境
+持有枪支	review	批量扩充·核心词，须人工复核语境
+持有弹药	review	批量扩充·核心词，须人工复核语境
+持有管制刀具	review	批量扩充·核心词，须人工复核语境
+持有爆炸物	review	批量扩充·核心词，须人工复核语境
+持有假币	review	批量扩充·核心词，须人工复核语境
+持有假证件	review	批量扩充·核心词，须人工复核语境
+持有假发票	review	批量扩充·核心词，须人工复核语境
+持有银行卡	review	批量扩充·核心词，须人工复核语境
+持有身份证件	review	批量扩充·核心词，须人工复核语境
+持有公民个人信息	review	批量扩充·核心词，须人工复核语境
+持有野生动物	review	批量扩充·核心词，须人工复核语境
+持有濒危物种	review	批量扩充·核心词，须人工复核语境
+持有走私货物	review	批量扩充·核心词，须人工复核语境
+持有违禁品	review	批量扩充·核心词，须人工复核语境
+持有麻醉药品	review	批量扩充·核心词，须人工复核语境
+持有精神药品	review	批量扩充·核心词，须人工复核语境
+持有赌博设备	review	批量扩充·核心词，须人工复核语境
+持有赌资	review	批量扩充·核心词，须人工复核语境
+持有传销资料	review	批量扩充·核心词，须人工复核语境
+持有诈骗话术	review	批量扩充·核心词，须人工复核语境
+持有作弊器材	review	批量扩充·核心词，须人工复核语境
+持有窃听器材	review	批量扩充·核心词，须人工复核语境
+持有定位跟踪器	review	批量扩充·核心词，须人工复核语境
+持有开锁工具	review	批量扩充·核心词，须人工复核语境
+持有假公章	review	批量扩充·核心词，须人工复核语境
+持有假证书	review	批量扩充·核心词，须人工复核语境
+持有学历证书	review	批量扩充·核心词，须人工复核语境
+持有资质证书	review	批量扩充·核心词，须人工复核语境
+持有增值税发票	review	批量扩充·核心词，须人工复核语境
+持有发票配额	review	批量扩充·核心词，须人工复核语境
+交易毒品	review	批量扩充·核心词，须人工复核语境
+交易枪支	review	批量扩充·核心词，须人工复核语境
+交易弹药	review	批量扩充·核心词，须人工复核语境
+交易管制刀具	review	批量扩充·核心词，须人工复核语境
+交易爆炸物	review	批量扩充·核心词，须人工复核语境
+交易假币	review	批量扩充·核心词，须人工复核语境
+交易假证件	review	批量扩充·核心词，须人工复核语境
+交易假发票	review	批量扩充·核心词，须人工复核语境
+交易银行卡	review	批量扩充·核心词，须人工复核语境
+交易身份证件	review	批量扩充·核心词，须人工复核语境
+交易公民个人信息	review	批量扩充·核心词，须人工复核语境
+交易野生动物	review	批量扩充·核心词，须人工复核语境
+交易濒危物种	review	批量扩充·核心词，须人工复核语境
+交易走私货物	review	批量扩充·核心词，须人工复核语境
+交易违禁品	review	批量扩充·核心词，须人工复核语境
+交易麻醉药品	review	批量扩充·核心词，须人工复核语境
+交易精神药品	review	批量扩充·核心词，须人工复核语境
+交易赌博设备	review	批量扩充·核心词，须人工复核语境
+交易赌资	review	批量扩充·核心词，须人工复核语境
+交易传销资料	review	批量扩充·核心词，须人工复核语境
+交易诈骗话术	review	批量扩充·核心词，须人工复核语境
+交易作弊器材	review	批量扩充·核心词，须人工复核语境
+交易窃听器材	review	批量扩充·核心词，须人工复核语境
+交易定位跟踪器	review	批量扩充·核心词，须人工复核语境
+交易开锁工具	review	批量扩充·核心词，须人工复核语境
+交易假公章	review	批量扩充·核心词，须人工复核语境
+交易假证书	review	批量扩充·核心词，须人工复核语境
+交易学历证书	review	批量扩充·核心词，须人工复核语境
+交易资质证书	review	批量扩充·核心词，须人工复核语境
+交易增值税发票	review	批量扩充·核心词，须人工复核语境
+交易发票配额	review	批量扩充·核心词，须人工复核语境
+购买毒品	review	批量扩充·核心词，须人工复核语境
+购买枪支	review	批量扩充·核心词，须人工复核语境
+购买弹药	review	批量扩充·核心词，须人工复核语境
+购买管制刀具	review	批量扩充·核心词，须人工复核语境
+购买爆炸物	review	批量扩充·核心词，须人工复核语境
+购买假币	review	批量扩充·核心词，须人工复核语境
+购买假证件	review	批量扩充·核心词，须人工复核语境
+购买假发票	review	批量扩充·核心词，须人工复核语境
+购买银行卡	review	批量扩充·核心词，须人工复核语境
+购买身份证件	review	批量扩充·核心词，须人工复核语境
+购买公民个人信息	review	批量扩充·核心词，须人工复核语境
+购买野生动物	review	批量扩充·核心词，须人工复核语境
+购买濒危物种	review	批量扩充·核心词，须人工复核语境
+购买走私货物	review	批量扩充·核心词，须人工复核语境
+购买违禁品	review	批量扩充·核心词，须人工复核语境
+购买麻醉药品	review	批量扩充·核心词，须人工复核语境
+购买精神药品	review	批量扩充·核心词，须人工复核语境
+购买赌博设备	review	批量扩充·核心词，须人工复核语境
+购买赌资	review	批量扩充·核心词，须人工复核语境
+购买传销资料	review	批量扩充·核心词，须人工复核语境
+购买诈骗话术	review	批量扩充·核心词，须人工复核语境
+购买作弊器材	review	批量扩充·核心词，须人工复核语境
+购买窃听器材	review	批量扩充·核心词，须人工复核语境
+购买定位跟踪器	review	批量扩充·核心词，须人工复核语境
+购买开锁工具	review	批量扩充·核心词，须人工复核语境
+购买假公章	review	批量扩充·核心词，须人工复核语境
+购买假证书	review	批量扩充·核心词，须人工复核语境
+购买学历证书	review	批量扩充·核心词，须人工复核语境
+购买资质证书	review	批量扩充·核心词，须人工复核语境
+购买增值税发票	review	批量扩充·核心词，须人工复核语境
+购买发票配额	review	批量扩充·核心词，须人工复核语境
+出售毒品	review	批量扩充·核心词，须人工复核语境
+出售枪支	review	批量扩充·核心词，须人工复核语境
+出售弹药	review	批量扩充·核心词，须人工复核语境
+出售管制刀具	review	批量扩充·核心词，须人工复核语境
+出售爆炸物	review	批量扩充·核心词，须人工复核语境
+出售假币	review	批量扩充·核心词，须人工复核语境
+出售假证件	review	批量扩充·核心词，须人工复核语境
+出售假发票	review	批量扩充·核心词，须人工复核语境
+出售银行卡	review	批量扩充·核心词，须人工复核语境
+出售身份证件	review	批量扩充·核心词，须人工复核语境
+出售公民个人信息	review	批量扩充·核心词，须人工复核语境
+出售野生动物	review	批量扩充·核心词，须人工复核语境
+出售濒危物种	review	批量扩充·核心词，须人工复核语境
+出售走私货物	review	批量扩充·核心词，须人工复核语境
+出售违禁品	review	批量扩充·核心词，须人工复核语境
+出售麻醉药品	review	批量扩充·核心词，须人工复核语境
+出售精神药品	review	批量扩充·核心词，须人工复核语境
+出售赌博设备	review	批量扩充·核心词，须人工复核语境
+出售赌资	review	批量扩充·核心词，须人工复核语境
+出售传销资料	review	批量扩充·核心词，须人工复核语境
+出售诈骗话术	review	批量扩充·核心词，须人工复核语境
+出售作弊器材	review	批量扩充·核心词，须人工复核语境
+出售窃听器材	review	批量扩充·核心词，须人工复核语境
+出售定位跟踪器	review	批量扩充·核心词，须人工复核语境
+出售开锁工具	review	批量扩充·核心词，须人工复核语境
+出售假公章	review	批量扩充·核心词，须人工复核语境
+出售假证书	review	批量扩充·核心词，须人工复核语境
+出售学历证书	review	批量扩充·核心词，须人工复核语境
+出售资质证书	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+xiazhu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guaiguaishui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaoyijiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaoyidanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaoyiqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaoyidupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaoyiduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daikaifapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daishoukuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dailian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daihai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuanxiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaoyinzhang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaozhengjian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiagongzhang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiafapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaxueli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiashenfenzheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cuileiqi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yangka	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jianzhishuadan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushoujiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushoudanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushouqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushoudupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushouduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizuojiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizuodanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizuoqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizuodupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizuoduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadantaoli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shualiushui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shualiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kezhang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+banjiazheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+banzheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mailuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bocai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tinghuashui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dixiaqianzhuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+waigua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+taoludai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kaixinshui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dangongqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+danyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+caipiaodaigou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengyinwuzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yazhu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guaimai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chiyoujiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chiyoudanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chiyouqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chiyoudupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chiyouduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiema	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yaotouwan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+douniu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shishicai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mumabingdu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangzhimaimai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangzhipeijian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+suoha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipaidubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dupinjiaoyi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuijun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hailuoyin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhajinhua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baozhawu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiniujiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dianxinzhapian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dianziyanyou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baijiale	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pankou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhenrenheguan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pojieruanjian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+sicai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiaoqi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jingshenyaopin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xianshangduchang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zuzhimaiyin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bangjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wangluoduchang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wangzhuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+laohuji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xukaifapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhapianhuashu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiangya	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanghaomaimai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanmaijiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanmaidanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanmaiqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanmaidupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fanmaiduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+goumaijiabi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+goumaidanyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+goumaiqiangzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+goumaidupin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+goumaiduzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peilv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zousihuowu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paofen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weijinpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weijinyaowu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mijianyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+miyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mihunyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jinrongzhapian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifajizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+heichan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+heihuichan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+toudu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gongnu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dianjiqi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

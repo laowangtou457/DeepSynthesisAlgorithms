@@ -1,0 +1,494 @@
+# =============================================================================
+# 关键词库词表：A1-06 宣扬暴力、淫秽色情
+# 组别：A.1   单类配额：>= 200 个
+# 本项目相关度：★高
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+# ===== 暴力类（本项目《蛊》核心风险面）=====
+血肉模糊	block	命门级
+断肢	block	命门级
+割喉	block	命门级
+开膛	block	命门级
+挖眼	block	命门级
+剖腹	block	命门级
+剥皮	block	命门级
+虐杀	block	
+血洗	block	爽感渲染
+以暴制暴	block	广电总局点名的整治重点
+快意恩仇	block	
+杀疯了	block	剧名禁用词
+血泊	block	
+喷血	block	
+内脏特写	block	
+折磨过程	review	
+血腥	review	按观感判断
+伤口特写	review	
+刀刃入肉	review	
+# ===== 色情类 =====
+色情	block	
+淫秽	block	
+床戏	review	
+性暗示	review	
+露胸	block	封面禁用
+露背	block	封面禁用
+情色	review	
+裸体	review	按语境判断
+
+# ===== 暴力·致命与重伤 =====
+砍死	block
+捅死	block
+刺死	block
+勒死	block
+掐死	block
+活埋	block
+爆头	block
+斩首	block
+分尸	block
+碎尸	block
+肢解	block
+焚尸	block
+投毒	block
+溺死	block
+打死	block
+殴打致死	block
+打断腿	block
+挑断脚筋	block
+割舌	block
+剜眼	block
+剔骨	block
+千刀万剐	block
+凌迟	block
+炮烙	block
+五马分尸	block
+
+# ===== 暴力·伤害与斗殴 =====
+殴打	block
+毒打	block
+暴打	block
+围殴	block
+群殴	block
+械斗	block
+斗殴	block
+聚众斗殴	block
+持械斗殴	block
+砍人	block
+追砍	block
+砍杀	block
+追杀	block
+火并	block
+帮派火并	block
+黑社会	block
+帮派	block
+打群架	block
+寻衅滋事	block
+打砸抢	block
+
+# ===== 暴力·器械与凶器 =====
+管制刀具	block
+砍刀	block
+开山刀	block
+大砍刀	block
+匕首	block
+三棱刮刀	block
+弹簧刀	block
+甩棍	block
+指虎	block
+狼牙棒	block
+弓弩	block
+弩箭	block
+仿真枪	block
+气枪	block
+钢珠枪	block
+电击棍	block
+电击器	block
+催泪喷射器	block
+炸药	block
+
+# ===== 血腥与尸身描写 =====
+血淋淋	block
+鲜血淋漓	block
+血流成河	block
+血流如注	block
+满地是血	block
+血肉横飞	block
+内脏	block
+肠子	block
+脑浆	block
+尸块	block
+腐尸	block
+尸横遍野	block
+尸山血海	block
+惨死	block
+暴毙	block
+横死	block
+死状	block
+惨状	block
+血肉	block
+
+# ===== 暴力·群体与黑暗题材（创作语境须审） =====
+江湖仇杀	review
+灭门	review
+屠村	review
+屠城	review
+屠杀	review
+斩草除根	review
+株连	review
+连坐	review
+私刑	review
+复仇	review
+快刀	review
+刀光剑影	review
+血债血偿	review
+
+# ===== 色情·涉黄引流 =====
+黄色网站	block
+黄色视频	block
+成人网站	block
+成人视频	block
+成人内容	block
+色情网站	block
+色情视频	block
+色情直播	block
+涉黄	block
+黄片	block
+黄图	block
+福利视频	block
+福利姬	block
+成人直播	block
+成人动漫	block
+
+# ===== 色情·性交易与约炮 =====
+招嫖	block
+卖淫	block
+嫖娼	block
+援交	block
+包养	block
+外围女	block
+楼凤	block
+特殊服务	block
+上门服务	block
+性交易	block
+性服务	block
+一夜情	block
+约炮	block
+打炮	block
+找小姐	block
+
+# ===== 色情·性暴力 =====
+强奸	block
+迷奸	block
+轮奸	block
+性侵	block
+性骚扰	block
+猥亵	block
+偷拍裙底	block
+偷拍视频	block
+
+# ===== 色情·擦边与低俗 =====
+软色情	review
+擦边	review
+擦边球	review
+大尺度	review
+无码	review
+性感写真	review
+露点	review
+走光	review
+真空上阵	review
+制服诱惑	review
+大胸	review
+巨乳	review
+
+# 词条数（不含注释）：173 / 200
+
+# -------- 核心词（动作 × 对象 合成）--------
+血腥场面	review	批量扩充·核心词，须人工复核语境
+残肢	review	批量扩充·核心词，须人工复核语境
+内脏外露	review	批量扩充·核心词，须人工复核语境
+开膛破肚	review	批量扩充·核心词，须人工复核语境
+虐猫	review	批量扩充·核心词，须人工复核语境
+虐狗	review	批量扩充·核心词，须人工复核语境
+动物虐杀	review	批量扩充·核心词，须人工复核语境
+上吊	review	批量扩充·核心词，须人工复核语境
+跳楼直播	review	批量扩充·核心词，须人工复核语境
+裸露	review	批量扩充·核心词，须人工复核语境
+露骨	review	批量扩充·核心词，须人工复核语境
+裸聊	review	批量扩充·核心词，须人工复核语境
+淫秽视频	review	批量扩充·核心词，须人工复核语境
+低俗内容	review	批量扩充·核心词，须人工复核语境
+擦边视频	review	批量扩充·核心词，须人工复核语境
+详细描写血腥场面	review	批量扩充·核心词，须人工复核语境
+详细描写残肢	review	批量扩充·核心词，须人工复核语境
+详细描写尸体	review	批量扩充·核心词，须人工复核语境
+详细描写内脏	review	批量扩充·核心词，须人工复核语境
+详细描写血肉	review	批量扩充·核心词，须人工复核语境
+详细描写虐杀过程	review	批量扩充·核心词，须人工复核语境
+详细描写虐待过程	review	批量扩充·核心词，须人工复核语境
+详细描写自残过程	review	批量扩充·核心词，须人工复核语境
+详细描写割腕细节	review	批量扩充·核心词，须人工复核语境
+详细描写上吊过程	review	批量扩充·核心词，须人工复核语境
+详细描写分尸过程	review	批量扩充·核心词，须人工复核语境
+详细描写肢解过程	review	批量扩充·核心词，须人工复核语境
+详细描写爆头细节	review	批量扩充·核心词，须人工复核语境
+详细描写割喉细节	review	批量扩充·核心词，须人工复核语境
+详细描写色情内容	review	批量扩充·核心词，须人工复核语境
+详细描写淫秽内容	review	批量扩充·核心词，须人工复核语境
+详细描写裸露画面	review	批量扩充·核心词，须人工复核语境
+详细描写色情视频	review	批量扩充·核心词，须人工复核语境
+详细描写色情图片	review	批量扩充·核心词，须人工复核语境
+详细描写裸聊画面	review	批量扩充·核心词，须人工复核语境
+详细描写低俗画面	review	批量扩充·核心词，须人工复核语境
+详细描写色情直播	review	批量扩充·核心词，须人工复核语境
+细致刻画血腥场面	review	批量扩充·核心词，须人工复核语境
+细致刻画残肢	review	批量扩充·核心词，须人工复核语境
+细致刻画尸体	review	批量扩充·核心词，须人工复核语境
+细致刻画内脏	review	批量扩充·核心词，须人工复核语境
+细致刻画血肉	review	批量扩充·核心词，须人工复核语境
+细致刻画虐杀过程	review	批量扩充·核心词，须人工复核语境
+细致刻画虐待过程	review	批量扩充·核心词，须人工复核语境
+细致刻画自残过程	review	批量扩充·核心词，须人工复核语境
+细致刻画割腕细节	review	批量扩充·核心词，须人工复核语境
+细致刻画上吊过程	review	批量扩充·核心词，须人工复核语境
+细致刻画分尸过程	review	批量扩充·核心词，须人工复核语境
+细致刻画肢解过程	review	批量扩充·核心词，须人工复核语境
+细致刻画爆头细节	review	批量扩充·核心词，须人工复核语境
+细致刻画割喉细节	review	批量扩充·核心词，须人工复核语境
+细致刻画色情内容	review	批量扩充·核心词，须人工复核语境
+细致刻画淫秽内容	review	批量扩充·核心词，须人工复核语境
+细致刻画裸露画面	review	批量扩充·核心词，须人工复核语境
+细致刻画色情视频	review	批量扩充·核心词，须人工复核语境
+细致刻画色情图片	review	批量扩充·核心词，须人工复核语境
+细致刻画裸聊画面	review	批量扩充·核心词，须人工复核语境
+细致刻画低俗画面	review	批量扩充·核心词，须人工复核语境
+细致刻画色情直播	review	批量扩充·核心词，须人工复核语境
+特写血腥场面	review	批量扩充·核心词，须人工复核语境
+特写残肢	review	批量扩充·核心词，须人工复核语境
+特写尸体	review	批量扩充·核心词，须人工复核语境
+特写内脏	review	批量扩充·核心词，须人工复核语境
+特写血肉	review	批量扩充·核心词，须人工复核语境
+特写虐杀过程	review	批量扩充·核心词，须人工复核语境
+特写虐待过程	review	批量扩充·核心词，须人工复核语境
+特写自残过程	review	批量扩充·核心词，须人工复核语境
+特写割腕细节	review	批量扩充·核心词，须人工复核语境
+特写上吊过程	review	批量扩充·核心词，须人工复核语境
+特写分尸过程	review	批量扩充·核心词，须人工复核语境
+特写肢解过程	review	批量扩充·核心词，须人工复核语境
+特写爆头细节	review	批量扩充·核心词，须人工复核语境
+特写割喉细节	review	批量扩充·核心词，须人工复核语境
+特写色情内容	review	批量扩充·核心词，须人工复核语境
+特写淫秽内容	review	批量扩充·核心词，须人工复核语境
+特写裸露画面	review	批量扩充·核心词，须人工复核语境
+特写色情视频	review	批量扩充·核心词，须人工复核语境
+特写色情图片	review	批量扩充·核心词，须人工复核语境
+特写裸聊画面	review	批量扩充·核心词，须人工复核语境
+特写低俗画面	review	批量扩充·核心词，须人工复核语境
+特写色情直播	review	批量扩充·核心词，须人工复核语境
+渲染血腥场面	review	批量扩充·核心词，须人工复核语境
+渲染残肢	review	批量扩充·核心词，须人工复核语境
+渲染尸体	review	批量扩充·核心词，须人工复核语境
+渲染内脏	review	批量扩充·核心词，须人工复核语境
+渲染血肉	review	批量扩充·核心词，须人工复核语境
+渲染虐杀过程	review	批量扩充·核心词，须人工复核语境
+渲染虐待过程	review	批量扩充·核心词，须人工复核语境
+渲染自残过程	review	批量扩充·核心词，须人工复核语境
+渲染割腕细节	review	批量扩充·核心词，须人工复核语境
+渲染上吊过程	review	批量扩充·核心词，须人工复核语境
+渲染分尸过程	review	批量扩充·核心词，须人工复核语境
+渲染肢解过程	review	批量扩充·核心词，须人工复核语境
+渲染爆头细节	review	批量扩充·核心词，须人工复核语境
+渲染割喉细节	review	批量扩充·核心词，须人工复核语境
+渲染色情内容	review	批量扩充·核心词，须人工复核语境
+渲染淫秽内容	review	批量扩充·核心词，须人工复核语境
+渲染裸露画面	review	批量扩充·核心词，须人工复核语境
+渲染色情视频	review	批量扩充·核心词，须人工复核语境
+渲染色情图片	review	批量扩充·核心词，须人工复核语境
+渲染裸聊画面	review	批量扩充·核心词，须人工复核语境
+渲染低俗画面	review	批量扩充·核心词，须人工复核语境
+渲染色情直播	review	批量扩充·核心词，须人工复核语境
+展示血腥场面	review	批量扩充·核心词，须人工复核语境
+展示残肢	review	批量扩充·核心词，须人工复核语境
+展示尸体	review	批量扩充·核心词，须人工复核语境
+展示内脏	review	批量扩充·核心词，须人工复核语境
+展示血肉	review	批量扩充·核心词，须人工复核语境
+展示虐杀过程	review	批量扩充·核心词，须人工复核语境
+展示虐待过程	review	批量扩充·核心词，须人工复核语境
+展示自残过程	review	批量扩充·核心词，须人工复核语境
+展示割腕细节	review	批量扩充·核心词，须人工复核语境
+展示上吊过程	review	批量扩充·核心词，须人工复核语境
+展示分尸过程	review	批量扩充·核心词，须人工复核语境
+展示肢解过程	review	批量扩充·核心词，须人工复核语境
+展示爆头细节	review	批量扩充·核心词，须人工复核语境
+展示割喉细节	review	批量扩充·核心词，须人工复核语境
+展示色情内容	review	批量扩充·核心词，须人工复核语境
+展示淫秽内容	review	批量扩充·核心词，须人工复核语境
+展示裸露画面	review	批量扩充·核心词，须人工复核语境
+展示色情视频	review	批量扩充·核心词，须人工复核语境
+展示色情图片	review	批量扩充·核心词，须人工复核语境
+展示裸聊画面	review	批量扩充·核心词，须人工复核语境
+展示低俗画面	review	批量扩充·核心词，须人工复核语境
+展示色情直播	review	批量扩充·核心词，须人工复核语境
+演示血腥场面	review	批量扩充·核心词，须人工复核语境
+演示残肢	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+yiyeqing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+sanlengguadao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shangmenfuwu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yibaozhibao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fangzhenqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shangkoutexie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+disuneirong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+toupaiqundi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+toupaishipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+neizang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+neizangwailu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+neizangtexie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+lingchi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daorenrurou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhifuyouhuo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+poufu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wanyan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+geshe	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dongwunvesha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+leisi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baoyang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+maiyin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+penxue	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fuchou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+waiweinv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dachidu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dakandao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daxiong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+piaochang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xunxinzishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shikuai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shishanxuehai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanshineizang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanshishiti	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanshicanzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanshixuerou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tusha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tucun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bangpai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bangpaihuobing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuangxi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kaishandao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kaitang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kaitangpodu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gongnu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nujian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tanhuangdao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kuaidao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kuaiyienchou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingjiaoyi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingqin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingganxiezhen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xinganshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingfuwu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xingsaorao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qingse	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cansi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+canzhuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengrenneirong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengrendongman	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengrenzhibo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengrenwangzhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengrenshipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daduantui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dapao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dazaqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+daqunjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhaoxiaojie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+toudu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhemoguocheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhaopiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chixiedouou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tiaoduanjiaojin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wayan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tongsi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiasi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cabian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cabianqiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cabianshipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+douou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhanshou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baoda	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shafengle	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiedou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hengsi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+oudazhisi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jianghuchousha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huomai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shehuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yinhui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yinhuishipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuanranneizang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuanranshiti	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuanrancanzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuanranxuerou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mandishixue	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yanshicanzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huobing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+miemen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paoluo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhayao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+texieneizang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+texieshiti	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+texiecanzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+texiexuerou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+teshufuwu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+langyabang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuaigun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dianjiqi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dianjigun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhenkongshangzhen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kanren	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kandao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kansha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kansi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+suishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fuliji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fulishipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+sixing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yuepao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qunou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+changzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhijie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+naojiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+seqing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+seqingzhibo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+seqingwangzhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+seqingshipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvesha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvegou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvemao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuezhaixuechang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuepo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuexi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xielinlin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuerou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuexingchangmian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+luoliao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+luolu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zouguang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tiaolouzhibo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+ruanseqing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+lianzuo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mijian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhuisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhuikan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gangzhuqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+luxiong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xianxuelinli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huangtu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huangpian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huangsewangzhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+huangseshipin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+heishehui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

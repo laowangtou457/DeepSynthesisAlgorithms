@@ -1,0 +1,45 @@
+<svg viewBox="0 0 680 272" width="100%" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>文本合成算法运行流水线</title>
+  <desc>输入提示经分词嵌入、N 层解码块、采样器与后处理，自回归地生成文本并注入生成标识</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <text x="340" y="36" text-anchor="middle" font-size="14" font-weight="500" fill="#2C2C2A" font-family="sans-serif">文本合成算法运行流水线</text>
+  <text x="340" y="58" text-anchor="middle" font-size="12" fill="#888780" font-family="sans-serif">P(x) = ∏ P(x_t | x_&lt;t , c)，给定条件 c 逐 token 采样</text>
+
+  <g font-family="sans-serif">
+    <rect class="c-blue" x="40" y="86" width="104" height="56" rx="10" stroke-width="0.5"/>
+    <text x="92" y="107" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="500" fill="#2C2C2A">输入提示</text>
+    <text x="92" y="125" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#185FA5">指令 · 素材 · 检索</text>
+
+    <rect class="c-teal" x="164" y="86" width="104" height="56" rx="10" stroke-width="0.5"/>
+    <text x="216" y="107" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="500" fill="#2C2C2A">分词与嵌入</text>
+    <text x="216" y="125" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#0F6E56">向量 + 位置编码</text>
+
+    <rect class="c-purple" x="288" y="86" width="104" height="56" rx="10" stroke-width="0.5"/>
+    <text x="340" y="107" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="500" fill="#2C2C2A">N × 解码块</text>
+    <text x="340" y="125" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#534AB7">注意力 + FFN</text>
+
+    <rect class="c-amber" x="412" y="86" width="104" height="56" rx="10" stroke-width="0.5"/>
+    <text x="464" y="107" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="500" fill="#2C2C2A">采样器</text>
+    <text x="464" y="125" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#BA7517">温度 / Top-p</text>
+
+    <rect class="c-coral" x="536" y="86" width="104" height="56" rx="10" stroke-width="0.5"/>
+    <text x="588" y="107" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="500" fill="#2C2C2A">输出与护栏</text>
+    <text x="588" y="125" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#993C1D">反分词 · 生成标识</text>
+
+    <line class="arr" x1="144" y1="114" x2="160" y2="114" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line class="arr" x1="268" y1="114" x2="284" y2="114" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line class="arr" x1="392" y1="114" x2="408" y2="114" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line class="arr" x1="516" y1="114" x2="532" y2="114" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <polyline points="340,142 340,170 464,170 464,146" fill="none" stroke="#0F6E56" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+    <text x="402" y="188" text-anchor="middle" font-size="11" fill="#0F6E56">自回归解码 · KV Cache 复用历史状态</text>
+
+    <rect x="40" y="208" width="600" height="42" rx="10" fill="#F1EFE8" stroke="#B4B2A9" stroke-width="0.5"/>
+    <text x="340" y="229" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#444441">条件控制：系统指令 · 少样本示例 · RAG 检索片段 · LoRA 适配器 · 约束解码</text>
+    <polyline points="92,208 92,150" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+  </g>
+</svg>

@@ -1,0 +1,180 @@
+# 提示词资产库 · 主清单
+#
+# 本文件是提示词资产的登记索引，是备案材料「二次开发说明」的直接佐证。
+# 每个模板独立存放于 templates/ 目录，本清单记录其元信息与版本。
+#
+# 修改规范：
+#   1. 新增模板 → 在 templates/ 建文件，然后在本清单登记
+#   2. 修改模板 → 必须提升 version，禁止原地覆盖历史版本
+#   3. 下线模板 → status 改为 deprecated，不删除（保证历史可追溯）
+
+meta:
+  project: 生成合成类（文本合成）算法
+  asset_type: 提示词模板资产
+  schema_version: "1.0.0"
+  updated_at: "2026-10-10"
+
+# 版本规范：主版本.次版本.修订号
+#   主版本：模板结构变更（变量增删、职责调整）
+#   次版本：约束/示例调整（影响输出风格）
+#   修订号：文案微调（不影响语义）
+
+templates:
+
+  # ========== 内容生成类 ==========
+  - id: gen_article_v1
+    name: 长文内容生成
+    task_type: generate
+    file: templates/gen_article_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [topic, audience, tone, length, key_points, must_avoid]
+    scenes:
+      - 行业资讯稿撰写
+      - 产品介绍文案
+      - 公众号推文初稿
+    constraints:
+      - 仅依据给定要点展开，不编造事实与数据
+      - 不使用绝对化表述
+      - 术语按给定词表
+    notes: 默认输出 Markdown 结构；需配合输出护栏使用
+
+  - id: gen_reply_v1
+    name: 客服对话回复生成
+    task_type: generate
+    file: templates/gen_reply_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [question, context, policy, tone]
+    scenes:
+      - 在线客服自动回复
+      - 工单首次响应
+    constraints:
+      - 不承诺无法履行的条件
+      - 涉及金额/时效必须引用给定政策条款
+      - 信息不足时主动追问而非猜测
+
+  # ========== 摘要归纳类 ==========
+  - id: sum_digest_v1
+    name: 长文本摘要归纳
+    task_type: summarize
+    file: templates/sum_digest_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [text, max_points, max_chars_per_point, audience, focus]
+    scenes:
+      - 会议纪要提炼
+      - 长文要点提取
+      - 报告摘要生成
+    constraints:
+      - 要点必须可回溯到原文
+      - 按重要性降序
+      - 不添加原文没有的结论
+    notes: 配合 temperature≤0.3 使用
+
+  - id: sum_meeting_v1
+    name: 会议纪要结构化归纳
+    task_type: summarize
+    file: templates/sum_meeting_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [transcript, attendees, meeting_date]
+    scenes:
+      - 会议录音转写稿整理
+    constraints:
+      - 严格区分「决议」「待办」「讨论」
+      - 待办必须含责任人与时限，缺失则标注待确认
+      - 不推断未明确表态的内容
+
+  # ========== 改写润色类 ==========
+  - id: rw_polish_v1
+    name: 文本润色改写
+    task_type: rewrite
+    file: templates/rw_polish_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [source_text, target_style, length_ratio, forbidden_words]
+    scenes:
+      - 口语稿转书面稿
+      - 风格统一化处理
+      - 表达优化
+    constraints:
+      - 保留原文事实与数据，不得修改数字
+      - 不改变原文立场
+      - 输出仅含改写结果与变更说明
+
+  - id: rw_compress_v1
+    name: 文本精简压缩
+    task_type: rewrite
+    file: templates/rw_compress_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [source_text, target_chars, preserve]
+    scenes:
+      - 摘要式精简
+      - 版面限字改编
+    constraints:
+      - 优先保留 preserve 指定的内容
+      - 不损失关键限定语（如时间、范围、条件）
+
+  # ========== 结构化抽取类 ==========
+  - id: ext_json_v1
+    name: 结构化信息抽取
+    task_type: extract
+    file: templates/ext_json_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [text, schema, strict]
+    scenes:
+      - 合同要素抽取
+      - 工单信息归类
+      - 文本转结构化数据
+    constraints:
+      - 严格按给定 Schema 输出，禁止增删字段
+      - 字段缺失填 null，禁止编造
+      - 仅输出 JSON，不含任何解释文字
+    notes: 必须配合约束解码（FSM）使用，temperature=0
+
+  # ========== 安全与兜底类 ==========
+  - id: guard_refuse_v1
+    name: 安全拒答与兜底
+    task_type: guard
+    file: templates/guard_refuse_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [refuse_reason, fallback_suggestion]
+    scenes:
+      - 敏感请求拒答
+      - 能力边界外请求的引导
+    constraints:
+      - 不解释具体拒答规则（防绕过）
+      - 不使用说教口吻
+      - 提供可行的替代方向
+    notes: 输出护栏命中后由此模板生成用户可见话术
+
+  - id: guard_clarify_v1
+    name: 信息不足澄清追问
+    task_type: guard
+    file: templates/guard_clarify_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [missing_items, known_items]
+    scenes:
+      - 需求模糊时的追问
+      - 关键信息缺失时的引导
+    constraints:
+      - 一次最多追问 3 项
+      - 按重要性排序
+      - 不重复追问已提供的信息
+
+# ========== 统计 ==========
+summary:
+  total: 9
+  active: 9
+  deprecated: 0
+  by_task_type:
+    generate: 2
+    summarize: 2
+    rewrite: 2
+    extract: 1
+    guard: 2

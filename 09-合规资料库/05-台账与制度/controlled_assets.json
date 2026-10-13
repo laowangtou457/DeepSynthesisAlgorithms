@@ -1,0 +1,52 @@
+{
+  "purpose": "受控类（A1-01/A1-02/A1-03/A1-05）资产规模机读计数——只记条数，不含任何受控内容。",
+  "standard": "GB/T 45654—2025 §8.1 / §8.2 / §8.3",
+  "controlled_categories": [
+    "A1-01",
+    "A1-02",
+    "A1-03",
+    "A1-05"
+  ],
+  "controlled_reason": "涉政、涉民族内容不在工程文档明文留痕，实体存于受控区，规模以本文件与《受控资产台账》为准。",
+  "ledger_doc": "05-台账与制度/受控资产台账.md",
+  "storage_policy_doc": "05-台账与制度/资产受控与保密说明.md",
+  "last_updated": "2026-10-12",
+  "status": "pending_controlled_authoring",
+  "quota": {
+    "lexicon_per_class": 200,
+    "bank_per_class": 50,
+    "refuse_per_class": 20
+  },
+  "counts": {
+    "lexicon": {
+      "A1-01": 0,
+      "A1-02": 0,
+      "A1-03": 0,
+      "A1-05": 0
+    },
+    "bank": {
+      "A1-01": 0,
+      "A1-02": 0,
+      "A1-03": 0,
+      "A1-05": 0
+    },
+    "refuse": {
+      "A1-01": 0,
+      "A1-02": 0,
+      "A1-03": 0,
+      "A1-05": 0
+    }
+  },
+  "history": [
+    {
+      "date": "2026-10-12",
+      "action": "建立受控类达标机制与机读计数文件",
+      "lexicon_added": 0,
+      "bank_added": 0,
+      "refuse_added": 0,
+      "operator": "—",
+      "reviewer": "—",
+      "note": "机制就绪；受控内容须由安全负责人按受控流程在隔离环境编写后回填计数"
+    }
+  ]
+}

@@ -1,0 +1,307 @@
+{
+  "standard": "GB/T 45654—2025",
+  "clause": "8.2",
+  "requirement": {
+    "total_min": 2000,
+    "cover_all": 31,
+    "a12_per_min": 50,
+    "other_per_min": 20,
+    "update_cycle": "每月至少一次"
+  },
+  "categories": [
+    {
+      "id": "A1-01",
+      "group": "A.1",
+      "name": "煽动颠覆国家政权、推翻社会主义制度",
+      "min": 50,
+      "file": "A1-01.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-02",
+      "group": "A.1",
+      "name": "危害国家安全和利益、损害国家形象",
+      "min": 50,
+      "file": "A1-02.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-03",
+      "group": "A.1",
+      "name": "煽动分裂国家、破坏国家统一和社会稳定",
+      "min": 50,
+      "file": "A1-03.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-04",
+      "group": "A.1",
+      "name": "宣扬恐怖主义、极端主义",
+      "min": 50,
+      "file": "A1-04.jsonl",
+      "seed_count": 2,
+      "current_count": 110
+    },
+    {
+      "id": "A1-05",
+      "group": "A.1",
+      "name": "宣扬民族仇恨",
+      "min": 50,
+      "file": "A1-05.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-06",
+      "group": "A.1",
+      "name": "宣扬暴力、淫秽色情",
+      "min": 50,
+      "file": "A1-06.jsonl",
+      "seed_count": 3,
+      "current_count": 110
+    },
+    {
+      "id": "A1-07",
+      "group": "A.1",
+      "name": "传播虚假有害信息",
+      "min": 50,
+      "file": "A1-07.jsonl",
+      "seed_count": 2,
+      "current_count": 110
+    },
+    {
+      "id": "A1-08",
+      "group": "A.1",
+      "name": "其他法律、行政法规禁止的内容",
+      "min": 50,
+      "file": "A1-08.jsonl",
+      "seed_count": 2,
+      "current_count": 110
+    },
+    {
+      "id": "A2-01",
+      "group": "A.2",
+      "name": "民族歧视内容",
+      "min": 50,
+      "file": "A2-01.jsonl",
+      "seed_count": 2,
+      "current_count": 90
+    },
+    {
+      "id": "A2-02",
+      "group": "A.2",
+      "name": "信仰歧视内容",
+      "min": 50,
+      "file": "A2-02.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-03",
+      "group": "A.2",
+      "name": "国别歧视内容",
+      "min": 50,
+      "file": "A2-03.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-04",
+      "group": "A.2",
+      "name": "地域歧视内容",
+      "min": 50,
+      "file": "A2-04.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-05",
+      "group": "A.2",
+      "name": "性别歧视内容",
+      "min": 50,
+      "file": "A2-05.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-06",
+      "group": "A.2",
+      "name": "年龄歧视内容",
+      "min": 50,
+      "file": "A2-06.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-07",
+      "group": "A.2",
+      "name": "职业歧视内容",
+      "min": 50,
+      "file": "A2-07.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-08",
+      "group": "A.2",
+      "name": "健康歧视内容",
+      "min": 50,
+      "file": "A2-08.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A2-09",
+      "group": "A.2",
+      "name": "其他方面歧视内容",
+      "min": 50,
+      "file": "A2-09.jsonl",
+      "seed_count": 1,
+      "current_count": 90
+    },
+    {
+      "id": "A3-01",
+      "group": "A.3",
+      "name": "侵犯他人知识产权",
+      "min": 20,
+      "file": "A3-01.jsonl",
+      "seed_count": 2,
+      "current_count": 55
+    },
+    {
+      "id": "A3-02",
+      "group": "A.3",
+      "name": "违反商业道德",
+      "min": 20,
+      "file": "A3-02.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A3-03",
+      "group": "A.3",
+      "name": "泄露他人商业秘密",
+      "min": 20,
+      "file": "A3-03.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A3-04",
+      "group": "A.3",
+      "name": "利用算法、数据、平台等优势实施垄断和不正当竞争",
+      "min": 20,
+      "file": "A3-04.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A3-05",
+      "group": "A.3",
+      "name": "其他商业违法违规行为",
+      "min": 20,
+      "file": "A3-05.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-01",
+      "group": "A.4",
+      "name": "危害他人身心健康",
+      "min": 20,
+      "file": "A4-01.jsonl",
+      "seed_count": 2,
+      "current_count": 55
+    },
+    {
+      "id": "A4-02",
+      "group": "A.4",
+      "name": "侵害他人肖像权",
+      "min": 20,
+      "file": "A4-02.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-03",
+      "group": "A.4",
+      "name": "侵害他人名誉权",
+      "min": 20,
+      "file": "A4-03.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-04",
+      "group": "A.4",
+      "name": "侵害他人荣誉权",
+      "min": 20,
+      "file": "A4-04.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-05",
+      "group": "A.4",
+      "name": "侵害他人隐私权",
+      "min": 20,
+      "file": "A4-05.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-06",
+      "group": "A.4",
+      "name": "侵害他人个人信息权益",
+      "min": 20,
+      "file": "A4-06.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A4-07",
+      "group": "A.4",
+      "name": "侵犯他人其他合法权益",
+      "min": 20,
+      "file": "A4-07.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A5-01",
+      "group": "A.5",
+      "name": "内容不准确，严重不符合科学常识或主流认知",
+      "min": 20,
+      "file": "A5-01.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    },
+    {
+      "id": "A5-02",
+      "group": "A.5",
+      "name": "内容不可靠，无法对使用者形成帮助",
+      "min": 20,
+      "file": "A5-02.jsonl",
+      "seed_count": 1,
+      "current_count": 55
+    }
+  ],
+  "total": 39,
+  "counts_snapshot": {
+    "as_of": "2026-10-12",
+    "total": 2020,
+    "signature": "06-构建工具/sync_manifest.py",
+    "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
+  }
+}

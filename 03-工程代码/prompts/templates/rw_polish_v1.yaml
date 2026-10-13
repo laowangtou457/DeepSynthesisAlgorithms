@@ -1,0 +1,68 @@
+id: rw_polish_v1
+name: 文本润色改写
+version: "1.0.0"
+task_type: rewrite
+language: zh-CN
+
+variables:
+  - name: source_text
+    required: true
+    description: 待改写的原文
+  - name: target_style
+    required: true
+    description: 目标风格（如"正式书面""简洁商务""科普易懂"）
+  - name: length_ratio
+    required: false
+    default: "1.0"
+    description: 目标篇幅比例，1.0 表示基本等长
+  - name: forbidden_words
+    required: false
+    default: []
+    description: 需回避的词汇
+
+sampling:
+  temperature: 0.6
+  top_p: 0.9
+  top_k: 50
+  max_tokens: 2048
+
+sections:
+  system: |
+    你是一名文本编辑，负责在保持原意的前提下改写文本。
+
+    硬性约束：
+    1. 保留原文的全部事实、数据、观点与立场，不得增删或修改。
+    2. 数字、日期、专有名词、机构名称一律原样保留，不得改写成近义表达。
+    3. 不得改变原文的限定条件（时间范围、适用对象、前提）。
+    4. 不得添加原文没有的结论、建议或评价。
+    5. 不使用 {forbidden_words} 中列出的词汇。
+    6. 不改变原文的语气强度：原文中立则保持中立，不升级为强烈主张。
+
+  task: |
+    请将下面的文本改写为{target_style}风格。
+    目标篇幅：原文的 {length_ratio} 倍（允许 ±15% 浮动）。
+
+    原文：
+    {source_text}
+
+  output: |
+    输出格式要求：
+    1. 分两节输出，标题固定为「## 改写结果」与「## 变更说明」。
+    2. 「改写结果」只含改写后的正文，不加任何前缀说明。
+    3. 「变更说明」用一行一条列出主要调整，最多 5 条，格式为"- 调整点：说明"。
+    4. 未做实质性调整时，变更说明写「仅做表达优化，内容未变」。
+
+  examples: |
+    示例（数字与专名保留）：
+    原文：该公司 2025 年营收 3.2 亿元，同比增长 12%。
+    正确改写：该公司 2025 年度实现营业收入 3.2 亿元，同比增幅为 12%。
+    错误改写：该公司去年营收约 3 亿多，增长了一成多。← 改动数字精度，不合格
+
+guards:
+  - 改写后逐项比对数字与专有名词，任一不一致则回退重写
+  - 不得为了达到篇幅要求而注水扩写或删减实质信息
+  - 不得引入原文没有的比喻、修辞强化
+
+fallback:
+  insufficient_input: 原文过短（不足 20 字）时，直接输出改写结果并说明"原文过短，未做风格调整"
+  conflict: 目标风格与原文立场冲突时，保持原文立场，在变更说明中标注该冲突

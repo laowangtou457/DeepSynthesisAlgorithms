@@ -1,0 +1,207 @@
+{
+  "schema_version": "1.1.0",
+  "meta": {
+    "pack_id": "FR-PK-20261012-DEMO0001",
+    "title": "示例作品 · 雨巷",
+    "created_at": "2026-10-12T16:30:00+08:00",
+    "task_type": "text_to_video",
+    "unsupported_task_types": [
+      "keyframe_completion：需 Ref2VA 六段式骨架与 350-500 词 detailed_description，本期不作适配",
+      "reference_generation：需 Ref2VA 全参考模式与素材上限体系，本期不作适配",
+      "video_editing：同上",
+      "video_continuation：同上",
+      "audio_reuse：同上",
+      "audio_reference：同上"
+    ],
+    "generator": {
+      "system": "AI 漫剧剧本与分镜提示词生成系统",
+      "version": "0.1.0",
+      "provider": "{{PROVIDER_NAME}}",
+      "provider_code": "{{PROVIDER_CODE}}"
+    },
+    "generation_trace": {
+      "session_id": "SESS-DEMO-0001",
+      "task_id": "TASK-DEMO-0001",
+      "stage_chain": ["synopsis", "script", "storyboard", "shot_prompt"],
+      "templates": [
+        { "id": "gen_article_v1", "version": "1.0.0" },
+        { "id": "rw_polish_v1", "version": "1.0.0" }
+      ],
+      "model": { "name": "Qwen2.5-7B-Instruct", "backend": "vllm", "revision": "main" }
+    },
+    "compliance": {
+      "safety_check": { "input": "passed", "output": "passed", "checked_at": "2026-10-12T16:29:40+08:00" },
+      "copyright_check": { "status": "passed", "note": "原创内容，无改编来源" },
+      "marking_check": { "explicit": "present", "implicit": "present" },
+      "statement_id": "FR-ST-20261012-0001"
+    },
+    "aspect_ratio_default": "16:9",
+    "total_duration_ms": 15000,
+    "notes": "示例交付包（v1.1）：1 个生成单元 / 3 镜 / 15 秒；已通过 Schema 校验与 11 项镜头语言质量门。用于验证规范可用性与交付前校验流程。"
+  },
+  "style_bible": {
+    "style_id": "STYLE-ANIME-CN-A",
+    "style_prompt_zh": "日式动画电影质感，柔和赛璐璐上色，冷蓝色调，细腻雨丝质感",
+    "style_prompt_en": "Japanese anime film look, soft cel shading, cool blue palette, delicate rain texture",
+    "style_anchors": ["日式动画电影质感", "柔和赛璐璐上色", "冷蓝色调", "细腻雨丝质感"],
+    "color_palette": ["#1B2A41", "#3E5C76", "#E8C07D"],
+    "lighting_default": "soft_key_light",
+    "film_grain": "light",
+    "negative_global": [
+      "lowres", "blurry", "watermark", "text", "extra fingers", "deformed", "extra limbs",
+      "flicker", "temporal jitter", "frame inconsistency",
+      "clipping", "morphing", "limb popping"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "CHR-01",
+      "name": "少女",
+      "appearance_lock_zh": "十六岁少女，黑色齐肩短发，深蓝色校服外套，白色衬衫，眼神平静",
+      "appearance_lock_en": "16-year-old girl, black shoulder-length hair, dark blue school blazer, white shirt, calm eyes",
+      "ref_image": "refs/CHR-01.png",
+      "forbidden": ["发型变化", "服装颜色变化"]
+    }
+  ],
+  "units": [
+    {
+      "unit_id": "U01",
+      "scene_no": 1,
+      "shot_ids": ["S01-SH001", "S01-SH002", "S01-SH003"],
+      "soundscape": "细雨持续打在屋檐与伞面上，远处偶有自行车铃，巷口水滴成串落下。",
+      "music": "N/A",
+      "notes": "单人戏，按单人替身法则处理：每镜点名一个光源并写出它在这一镜做了什么；静止镜里有在动的东西且已写出。"
+    }
+  ],
+  "shots": [
+    {
+      "shot_id": "S01-SH001",
+      "unit_id": "U01",
+      "scene_no": 1,
+      "shot_no": 1,
+      "shot_size": "wide",
+      "camera": {
+        "move": "static",
+        "height": "eye_level",
+        "roll": "level",
+        "from": "固定机位，架在巷口平视高度",
+        "to": "全镜不动，靠画面内运动提供动感"
+      },
+      "duration_ms": 4000,
+      "aspect_ratio": "16:9",
+      "resolution": "1080p",
+      "prompt_zh": "远景：黄昏雨中的江南老巷，青石板路映着灯笼光，少女撑伞立在画面右侧，在画框里显得很小；前景是湿漉漉的石板与积水，中景是少女，背景是消失在雨幕里的巷子深处。灯笼暖光勾勒她的肩线，白墙大半留在阴影里。雨丝自左向右掠过画框，水珠沿着伞骨成串滴落。",
+      "prompt_en": "Wide shot of a rainy old alley in Jiangnan at dusk. The camera holds a static shot at eye level, the rain streaking left to right across the frame. Wet cobblestone in the foreground reflects a lantern glow, while the girl with an umbrella stands small in frame right against the alley falling away into the background. Warm lamplight rims her shoulders and the white walls stay half in shadow. Rain beads along the umbrella ribs and drips from its edge.",
+      "action": {
+        "start": "少女撑伞静立于巷口，伞面略前倾",
+        "change": "她微微侧头，视线投向巷子深处",
+        "end": "保持静立，伞沿水珠连成一线"
+      },
+      "shot_language": {
+        "composition": "前景湿石板占下三分之一，少女位于画框右三分之一，左侧留大片负空间，背景巷子向纵深收束",
+        "axis": "空间轴自左（巷内）向右（巷口），本镜确立轴线；雨丝与视线同向自左向右",
+        "result": "伞骨水珠成串滴落、积水被雨点打出涟漪"
+      },
+      "lighting": "golden_hour",
+      "style_ref": "STYLE-ANIME-CN-A",
+      "character_refs": ["CHR-01"],
+      "ref_image": null,
+      "dialogue": "（旁白）那年的雨，下了很久。",
+      "sfx": "细雨声、远处自行车铃",
+      "transition_in": "cut",
+      "notes": ""
+    },
+    {
+      "shot_id": "S01-SH002",
+      "unit_id": "U01",
+      "scene_no": 1,
+      "shot_no": 2,
+      "shot_size": "close_up",
+      "camera": {
+        "move": "push_in",
+        "amplitude": "small",
+        "speed": "slow",
+        "height": "low",
+        "roll": "level",
+        "optics": "shallow_focus",
+        "from": "从半身机位起幅，与少女视线大致齐平",
+        "to": "推进并微降至仰角，收在她抬起头的那一刻"
+      },
+      "duration_ms": 5000,
+      "aspect_ratio": "16:9",
+      "resolution": "1080p",
+      "prompt_zh": "近景：少女缓缓抬头，雨水顺着发梢滑落，眼神平静而坚定；她占据画框左侧三分之一，右侧留出负空间，与前一镜同为左向右的视线方向，不跳轴。浅景深让身后的雨幕化开，轮廓光从侧后方勾出下颌与发缘。",
+      "prompt_en": "Close-up of the girl as she slowly lifts her head. The camera pushes in with small amplitude at slow speed toward her eyes from a slightly low angle, holding a shallow depth of field so the rain curtain behind her stays out of focus. She sits in the left third of the frame with negative space to her right, still facing left along the same eyeline as the previous shot, so the axis is not crossed. A rim light lifts her jaw line and the edge of her hair. Rain beads roll down her hair tips and fall past her collar.",
+      "action": {
+        "start": "低着头，睫毛上挂着雨珠",
+        "change": "匀速缓慢抬头，肩线随之松开",
+        "end": "抬头到位后定格，视线与镜头轴平齐"
+      },
+      "shot_language": {
+        "composition": "少女占画框左三分之一，右侧负空间，背景雨幕被浅景深化开",
+        "axis": "沿用 U01 空间轴，仍自左向右，不越轴",
+        "result": "发梢水珠滚落、雨幕在虚焦中持续流动"
+      },
+      "lighting": "rim_light",
+      "style_ref": "STYLE-ANIME-CN-A",
+      "character_refs": ["CHR-01"],
+      "ref_image": null,
+      "dialogue": "",
+      "sfx": "雨声渐强",
+      "transition_in": "cut",
+      "notes": ""
+    },
+    {
+      "shot_id": "S01-SH003",
+      "unit_id": "U01",
+      "scene_no": 1,
+      "shot_no": 3,
+      "shot_size": "medium",
+      "camera": {
+        "move": "tilt_up",
+        "amplitude": "small",
+        "speed": "slow",
+        "height": "low",
+        "roll": "dutch",
+        "optics": "deep_focus",
+        "from": "自湿石板的低机位起幅",
+        "to": "沿少女身形上摇，落在她的肩线与巷子深处"
+      },
+      "duration_ms": 6000,
+      "aspect_ratio": "16:9",
+      "resolution": "1080p",
+      "prompt_zh": "中景：少女转身沿巷子走入雨中，画面轻微倾斜（荷兰角）制造失衡感；她自画框右侧移向左侧，屏幕方位与前一镜一致，轴线随她转动而未翻转，巷道纵深在深景深中保持可读。逆光穿过雨幕在湿墙上留下微光，她身后的灯笼光晕逐渐沉进阴影。伞面大幅摆动，甩出一片水花，水珠在空中被灯笼照出亮斑，随后沿伞沿落到石板上。",
+      "prompt_en": "Medium shot of the girl turning and walking off down the alley. The camera tilts up with small amplitude at slow speed from a low angle and a slight dutch angle as she leaves, keeping a deep focus so the whole alley stays readable. She crosses from frame right to frame left, the same screen direction as before, so the axis turns with her and is never crossed. Backlight through the rain glints along the wet wall while the lantern pools behind her dim into shadow. The umbrella swings wide, scattering a spray of drops that catch the lamplight and settle on the stone.",
+      "action": {
+        "start": "静立，面向左侧巷内",
+        "change": "转身迈步，踏入雨幕向纵深走去",
+        "end": "走出画面纵深，身影缩进远处灯光"
+      },
+      "shot_language": {
+        "composition": "少女自画框右三分之一移向左三分之一，巷道纵深占据后半段，前景石板反光托底",
+        "axis": "屏幕方位保持右到左，与 U01 前两镜同侧，轴线随人物转向而非翻越",
+        "result": "伞面摆动甩出水花、水珠被灯笼照亮后落到石板并溅开"
+      },
+      "lighting": "backlight",
+      "style_ref": "STYLE-ANIME-CN-A",
+      "character_refs": ["CHR-01"],
+      "ref_image": null,
+      "dialogue": "",
+      "sfx": "雨声、脚步声踩过积水、伞面甩水声",
+      "transition_in": "dissolve",
+      "transition_out": "fade_out",
+      "notes": ""
+    }
+  ],
+  "aigc_meta": {
+    "AIGC": {
+      "Label": "1",
+      "ContentProducer": "{{PROVIDER_NAME}}/{{PROVIDER_CODE}}",
+      "ProduceID": "FR-PK-20261012-DEMO0001",
+      "ReservedCode1": "",
+      "ContentPropagator": "{{PROVIDER_NAME}}/{{PROVIDER_CODE}}",
+      "PropagateID": "FR-PK-20261012-DEMO0001",
+      "ReservedCode2": ""
+    }
+  }
+}

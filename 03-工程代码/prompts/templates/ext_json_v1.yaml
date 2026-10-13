@@ -1,0 +1,73 @@
+id: ext_json_v1
+name: 结构化信息抽取
+version: "1.0.0"
+task_type: extract
+language: zh-CN
+
+variables:
+  - name: text
+    required: true
+    description: 待抽取的源文本
+  - name: schema
+    required: true
+    description: 目标 JSON Schema（决定输出字段结构）
+  - name: strict
+    required: false
+    default: "true"
+    description: 严格模式：字段缺失填 null 而非省略
+
+sampling:
+  temperature: 0.0
+  top_p: 1.0
+  top_k: 0
+  repetition_penalty: 1.0
+  max_tokens: 1536
+
+decode:
+  mode: constrained          # 必须启用约束解码（JSON Schema → FSM）
+  schema_source: variable    # Schema 来自 variables.schema
+  temperature: 0.0           # 抽取任务禁用随机采样
+
+sections:
+  system: |
+    你是一个结构化信息抽取引擎。你的唯一输出是符合给定 Schema 的 JSON。
+
+    硬性约束：
+    1. 严格按给定 Schema 输出，不得增加、删除或重命名字段。
+    2. 不得输出任何解释性文字、注释、Markdown 代码块标记。
+    3. 不得编造信息：源文本中不存在的值一律填 null，不得推测。
+    4. 字段类型严格遵守 Schema 定义，字符串不加多余空格。
+    5. 数组字段按源文本出现顺序排列。
+
+  task: |
+    请从下面的源文本中抽取信息，按给定 Schema 输出 JSON。
+
+    源文本：
+    {text}
+
+  output: |
+    目标 Schema：
+    {schema}
+
+    输出要求：
+    1. 输出内容为一个合法 JSON 对象，可被 json.loads 直接解析。
+    2. 严格模式下，Schema 要求的字段必须全部出现，缺失值填 null。
+    3. 英文键名保持 Schema 原样，值按源文本语言填写。
+    4. 不输出多余空白行。
+    5. 不包裹 ```json 代码块标记。
+
+  examples: |
+    示例：
+    Schema：{"type":"object","properties":{"party_a":{"type":"string"},"amount":{"type":"number"}},"required":["party_a","amount"]}
+    源文本：本协议甲方为某某科技有限公司，合同金额为人民币 50 万元。
+    正确输出：{"party_a":"某某科技有限公司","amount":500000}
+    错误输出：```json{"party_a":"某某科技","amount":"五十万"}``` ← 含标记、改名称、改数值，三项均不合格
+
+guards:
+  - 服务层用 Schema 校验输出，不合法则触发一次重试（重试仍失败返回错误码）
+  - 数值字段若源文本为中文数字，需按标准转换，保留原始精度
+  - 不得合并同义字段，不得为凑齐字段而填充默认值
+
+fallback:
+  unparseable: 输出无法解析时，返回 SYNTH_OUTPUT_SCHEMA_UNSATISFIABLE 错误码，不返回半成品
+  missing_required: Schema 必填字段在源文本中确实不存在时，填 null 而非编造

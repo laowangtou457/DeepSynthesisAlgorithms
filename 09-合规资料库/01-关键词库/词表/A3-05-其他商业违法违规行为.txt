@@ -1,0 +1,704 @@
+# =============================================================================
+# 关键词库词表：A3-05 其他商业违法违规行为
+# 组别：A.3   单类配额：>= 300 个
+# 本项目相关度：低
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+偷税漏税	review	
+无照经营	review	
+非法集资	review	
+
+# ===== 非法集资与金融违法 =====
+集资诈骗	block
+庞氏骗局	block
+资金盘	block
+杀猪盘	block
+原始股	block
+内部股	block
+传销	block
+拉人头	block
+发展下线	block
+层级返利	block
+荐股	block
+内幕交易	block
+操纵股价	block
+坐庄	block
+割韭菜	block
+财务造假	block
+做假账	block
+
+# ===== 投资诱导话术 =====
+股票群	review
+投资群	review
+稳赚不赔	review
+高额回报	review
+保本保息	review
+内幕股	review
+带你赚钱	review
+
+# 词条数（不含注释）：27 / 300
+
+# -------- 核心词（动作 × 对象 合成）--------
+绝对化用语	review	批量扩充·核心词，须人工复核语境
+医疗广告违规	review	批量扩充·核心词，须人工复核语境
+招商加盟骗局	review	批量扩充·核心词，须人工复核语境
+预付卡跑路	review	批量扩充·核心词，须人工复核语境
+卷款跑路	review	批量扩充·核心词，须人工复核语境
+消费返利骗局	review	批量扩充·核心词，须人工复核语境
+高息揽储	review	批量扩充·核心词，须人工复核语境
+老鼠会	review	批量扩充·核心词，须人工复核语境
+炒币	review	批量扩充·核心词，须人工复核语境
+虚拟货币交易	review	批量扩充·核心词，须人工复核语境
+代币发行	review	批量扩充·核心词，须人工复核语境
+非法外汇	review	批量扩充·核心词，须人工复核语境
+刷卡套现	review	批量扩充·核心词，须人工复核语境
+阴阳合同	review	批量扩充·核心词，须人工复核语境
+虚假注册资本	review	批量扩充·核心词，须人工复核语境
+虚假年报	review	批量扩充·核心词，须人工复核语境
+挂靠资质	review	批量扩充·核心词，须人工复核语境
+出借资质	review	批量扩充·核心词，须人工复核语境
+无证经营	review	批量扩充·核心词，须人工复核语境
+超范围经营	review	批量扩充·核心词，须人工复核语境
+虚假招商	review	批量扩充·核心词，须人工复核语境
+虚假加盟	review	批量扩充·核心词，须人工复核语境
+虚假预付卡	review	批量扩充·核心词，须人工复核语境
+虚假返利	review	批量扩充·核心词，须人工复核语境
+虚假集资	review	批量扩充·核心词，须人工复核语境
+虚假融资	review	批量扩充·核心词，须人工复核语境
+虚假发票	review	批量扩充·核心词，须人工复核语境
+虚假合同	review	批量扩充·核心词，须人工复核语境
+虚假资质	review	批量扩充·核心词，须人工复核语境
+虚假经营许可	review	批量扩充·核心词，须人工复核语境
+虚假招标文件	review	批量扩充·核心词，须人工复核语境
+违法宣传	review	批量扩充·核心词，须人工复核语境
+违法招商	review	批量扩充·核心词，须人工复核语境
+违法加盟	review	批量扩充·核心词，须人工复核语境
+违法预付卡	review	批量扩充·核心词，须人工复核语境
+违法返利	review	批量扩充·核心词，须人工复核语境
+违法集资	review	批量扩充·核心词，须人工复核语境
+违法融资	review	批量扩充·核心词，须人工复核语境
+违法发票	review	批量扩充·核心词，须人工复核语境
+违法合同	review	批量扩充·核心词，须人工复核语境
+违法年报	review	批量扩充·核心词，须人工复核语境
+违法资质	review	批量扩充·核心词，须人工复核语境
+违法注册资本	review	批量扩充·核心词，须人工复核语境
+违法经营许可	review	批量扩充·核心词，须人工复核语境
+违法招标文件	review	批量扩充·核心词，须人工复核语境
+非法广告	review	批量扩充·核心词，须人工复核语境
+非法宣传	review	批量扩充·核心词，须人工复核语境
+非法招商	review	批量扩充·核心词，须人工复核语境
+非法加盟	review	批量扩充·核心词，须人工复核语境
+非法预付卡	review	批量扩充·核心词，须人工复核语境
+非法返利	review	批量扩充·核心词，须人工复核语境
+非法融资	review	批量扩充·核心词，须人工复核语境
+非法发票	review	批量扩充·核心词，须人工复核语境
+非法合同	review	批量扩充·核心词，须人工复核语境
+非法年报	review	批量扩充·核心词，须人工复核语境
+非法资质	review	批量扩充·核心词，须人工复核语境
+非法注册资本	review	批量扩充·核心词，须人工复核语境
+非法经营许可	review	批量扩充·核心词，须人工复核语境
+非法招标文件	review	批量扩充·核心词，须人工复核语境
+违规广告	review	批量扩充·核心词，须人工复核语境
+违规宣传	review	批量扩充·核心词，须人工复核语境
+违规招商	review	批量扩充·核心词，须人工复核语境
+违规加盟	review	批量扩充·核心词，须人工复核语境
+违规预付卡	review	批量扩充·核心词，须人工复核语境
+违规返利	review	批量扩充·核心词，须人工复核语境
+违规集资	review	批量扩充·核心词，须人工复核语境
+违规融资	review	批量扩充·核心词，须人工复核语境
+违规发票	review	批量扩充·核心词，须人工复核语境
+违规合同	review	批量扩充·核心词，须人工复核语境
+违规年报	review	批量扩充·核心词，须人工复核语境
+违规资质	review	批量扩充·核心词，须人工复核语境
+违规注册资本	review	批量扩充·核心词，须人工复核语境
+违规经营许可	review	批量扩充·核心词，须人工复核语境
+违规招标文件	review	批量扩充·核心词，须人工复核语境
+抽逃广告	review	批量扩充·核心词，须人工复核语境
+抽逃宣传	review	批量扩充·核心词，须人工复核语境
+抽逃招商	review	批量扩充·核心词，须人工复核语境
+抽逃加盟	review	批量扩充·核心词，须人工复核语境
+抽逃预付卡	review	批量扩充·核心词，须人工复核语境
+抽逃返利	review	批量扩充·核心词，须人工复核语境
+抽逃集资	review	批量扩充·核心词，须人工复核语境
+抽逃融资	review	批量扩充·核心词，须人工复核语境
+抽逃发票	review	批量扩充·核心词，须人工复核语境
+抽逃合同	review	批量扩充·核心词，须人工复核语境
+抽逃年报	review	批量扩充·核心词，须人工复核语境
+抽逃资质	review	批量扩充·核心词，须人工复核语境
+抽逃注册资本	review	批量扩充·核心词，须人工复核语境
+抽逃经营许可	review	批量扩充·核心词，须人工复核语境
+抽逃招标文件	review	批量扩充·核心词，须人工复核语境
+挂靠广告	review	批量扩充·核心词，须人工复核语境
+挂靠宣传	review	批量扩充·核心词，须人工复核语境
+挂靠招商	review	批量扩充·核心词，须人工复核语境
+挂靠加盟	review	批量扩充·核心词，须人工复核语境
+挂靠预付卡	review	批量扩充·核心词，须人工复核语境
+挂靠返利	review	批量扩充·核心词，须人工复核语境
+挂靠集资	review	批量扩充·核心词，须人工复核语境
+挂靠融资	review	批量扩充·核心词，须人工复核语境
+挂靠发票	review	批量扩充·核心词，须人工复核语境
+挂靠合同	review	批量扩充·核心词，须人工复核语境
+挂靠年报	review	批量扩充·核心词，须人工复核语境
+挂靠注册资本	review	批量扩充·核心词，须人工复核语境
+挂靠经营许可	review	批量扩充·核心词，须人工复核语境
+挂靠招标文件	review	批量扩充·核心词，须人工复核语境
+出借广告	review	批量扩充·核心词，须人工复核语境
+出借宣传	review	批量扩充·核心词，须人工复核语境
+出借招商	review	批量扩充·核心词，须人工复核语境
+出借加盟	review	批量扩充·核心词，须人工复核语境
+出借预付卡	review	批量扩充·核心词，须人工复核语境
+出借返利	review	批量扩充·核心词，须人工复核语境
+出借集资	review	批量扩充·核心词，须人工复核语境
+出借融资	review	批量扩充·核心词，须人工复核语境
+出借发票	review	批量扩充·核心词，须人工复核语境
+出借合同	review	批量扩充·核心词，须人工复核语境
+出借年报	review	批量扩充·核心词，须人工复核语境
+出借注册资本	review	批量扩充·核心词，须人工复核语境
+出借经营许可	review	批量扩充·核心词，须人工复核语境
+出借招标文件	review	批量扩充·核心词，须人工复核语境
+虚构广告	review	批量扩充·核心词，须人工复核语境
+虚构宣传	review	批量扩充·核心词，须人工复核语境
+虚构招商	review	批量扩充·核心词，须人工复核语境
+虚构加盟	review	批量扩充·核心词，须人工复核语境
+虚构预付卡	review	批量扩充·核心词，须人工复核语境
+虚构返利	review	批量扩充·核心词，须人工复核语境
+虚构集资	review	批量扩充·核心词，须人工复核语境
+虚构融资	review	批量扩充·核心词，须人工复核语境
+虚构发票	review	批量扩充·核心词，须人工复核语境
+虚构合同	review	批量扩充·核心词，须人工复核语境
+虚构年报	review	批量扩充·核心词，须人工复核语境
+虚构资质	review	批量扩充·核心词，须人工复核语境
+虚构注册资本	review	批量扩充·核心词，须人工复核语境
+虚构经营许可	review	批量扩充·核心词，须人工复核语境
+虚构招标文件	review	批量扩充·核心词，须人工复核语境
+伪造广告	review	批量扩充·核心词，须人工复核语境
+伪造宣传	review	批量扩充·核心词，须人工复核语境
+伪造招商	review	批量扩充·核心词，须人工复核语境
+伪造加盟	review	批量扩充·核心词，须人工复核语境
+伪造预付卡	review	批量扩充·核心词，须人工复核语境
+伪造返利	review	批量扩充·核心词，须人工复核语境
+伪造集资	review	批量扩充·核心词，须人工复核语境
+伪造融资	review	批量扩充·核心词，须人工复核语境
+伪造发票	review	批量扩充·核心词，须人工复核语境
+伪造合同	review	批量扩充·核心词，须人工复核语境
+伪造年报	review	批量扩充·核心词，须人工复核语境
+伪造资质	review	批量扩充·核心词，须人工复核语境
+伪造注册资本	review	批量扩充·核心词，须人工复核语境
+伪造经营许可	review	批量扩充·核心词，须人工复核语境
+伪造招标文件	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取广告	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取招商	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取返利	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取集资	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取融资	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取发票	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取合同	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取年报	review	批量扩充·核心词，须人工复核语境
+虚假方式骗取资质	review	批量扩充·核心词，须人工复核语境
+违法方式骗取广告	review	批量扩充·核心词，须人工复核语境
+违法方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+违法方式骗取招商	review	批量扩充·核心词，须人工复核语境
+违法方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+违法方式骗取返利	review	批量扩充·核心词，须人工复核语境
+违法方式骗取集资	review	批量扩充·核心词，须人工复核语境
+违法方式骗取融资	review	批量扩充·核心词，须人工复核语境
+违法方式骗取发票	review	批量扩充·核心词，须人工复核语境
+违法方式骗取合同	review	批量扩充·核心词，须人工复核语境
+违法方式骗取年报	review	批量扩充·核心词，须人工复核语境
+违法方式骗取资质	review	批量扩充·核心词，须人工复核语境
+非法方式骗取广告	review	批量扩充·核心词，须人工复核语境
+非法方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+非法方式骗取招商	review	批量扩充·核心词，须人工复核语境
+非法方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+非法方式骗取返利	review	批量扩充·核心词，须人工复核语境
+非法方式骗取集资	review	批量扩充·核心词，须人工复核语境
+非法方式骗取融资	review	批量扩充·核心词，须人工复核语境
+非法方式骗取发票	review	批量扩充·核心词，须人工复核语境
+非法方式骗取合同	review	批量扩充·核心词，须人工复核语境
+非法方式骗取年报	review	批量扩充·核心词，须人工复核语境
+非法方式骗取资质	review	批量扩充·核心词，须人工复核语境
+违规方式骗取广告	review	批量扩充·核心词，须人工复核语境
+违规方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+违规方式骗取招商	review	批量扩充·核心词，须人工复核语境
+违规方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+违规方式骗取返利	review	批量扩充·核心词，须人工复核语境
+违规方式骗取集资	review	批量扩充·核心词，须人工复核语境
+违规方式骗取融资	review	批量扩充·核心词，须人工复核语境
+违规方式骗取发票	review	批量扩充·核心词，须人工复核语境
+违规方式骗取合同	review	批量扩充·核心词，须人工复核语境
+违规方式骗取年报	review	批量扩充·核心词，须人工复核语境
+违规方式骗取资质	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取广告	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取招商	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取返利	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取集资	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取融资	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取发票	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取合同	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取年报	review	批量扩充·核心词，须人工复核语境
+抽逃方式骗取资质	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取广告	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取招商	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取返利	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取集资	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取融资	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取发票	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取合同	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取年报	review	批量扩充·核心词，须人工复核语境
+挂靠方式骗取资质	review	批量扩充·核心词，须人工复核语境
+出借方式骗取广告	review	批量扩充·核心词，须人工复核语境
+出借方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+出借方式骗取招商	review	批量扩充·核心词，须人工复核语境
+出借方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+出借方式骗取返利	review	批量扩充·核心词，须人工复核语境
+出借方式骗取集资	review	批量扩充·核心词，须人工复核语境
+出借方式骗取融资	review	批量扩充·核心词，须人工复核语境
+出借方式骗取发票	review	批量扩充·核心词，须人工复核语境
+出借方式骗取合同	review	批量扩充·核心词，须人工复核语境
+出借方式骗取年报	review	批量扩充·核心词，须人工复核语境
+出借方式骗取资质	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取广告	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取招商	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取返利	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取集资	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取融资	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取发票	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取合同	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取年报	review	批量扩充·核心词，须人工复核语境
+虚构方式骗取资质	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取广告	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取宣传	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取招商	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取加盟	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取返利	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取集资	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取融资	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取发票	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取合同	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取年报	review	批量扩充·核心词，须人工复核语境
+伪造方式骗取资质	review	批量扩充·核心词，须人工复核语境
+
+# -------- 规避变体（符号穿插/简繁，误伤率高，一律 review）--------
+伪 造 集 资	review	批量扩充·变体词，须人工复核语境
+伪*造*集*资	review	批量扩充·变体词，须人工复核语境
+伪+造+集+资	review	批量扩充·变体词，须人工复核语境
+伪-造-集-资	review	批量扩充·变体词，须人工复核语境
+伪.造.集.资	review	批量扩充·变体词，须人工复核语境
+伪/造/集/资	review	批量扩充·变体词，须人工复核语境
+伪·造·集·资	review	批量扩充·变体词，须人工复核语境
+伪造*集资	review	批量扩充·变体词，须人工复核语境
+伪造-集资	review	批量扩充·变体词，须人工复核语境
+伪造.集资	review	批量扩充·变体词，须人工复核语境
+虚 构 融 资	review	批量扩充·变体词，须人工复核语境
+虚*构*融*资	review	批量扩充·变体词，须人工复核语境
+虚+构+融+资	review	批量扩充·变体词，须人工复核语境
+虚-构-融-资	review	批量扩充·变体词，须人工复核语境
+虚.构.融.资	review	批量扩充·变体词，须人工复核语境
+虚/构/融/资	review	批量扩充·变体词，须人工复核语境
+虚·构·融·资	review	批量扩充·变体词，须人工复核语境
+虚构*融资	review	批量扩充·变体词，须人工复核语境
+虚构-融资	review	批量扩充·变体词，须人工复核语境
+虚构.融资	review	批量扩充·变体词，须人工复核语境
+出 借 融 资	review	批量扩充·变体词，须人工复核语境
+出*借*融*资	review	批量扩充·变体词，须人工复核语境
+出+借+融+资	review	批量扩充·变体词，须人工复核语境
+出-借-融-资	review	批量扩充·变体词，须人工复核语境
+出.借.融.资	review	批量扩充·变体词，须人工复核语境
+出/借/融/资	review	批量扩充·变体词，须人工复核语境
+出·借·融·资	review	批量扩充·变体词，须人工复核语境
+出借*融资	review	批量扩充·变体词，须人工复核语境
+出借-融资	review	批量扩充·变体词，须人工复核语境
+出借.融资	review	批量扩充·变体词，须人工复核语境
+虚 假 返 利	review	批量扩充·变体词，须人工复核语境
+虚*假*返*利	review	批量扩充·变体词，须人工复核语境
+虚+假+返+利	review	批量扩充·变体词，须人工复核语境
+虚-假-返-利	review	批量扩充·变体词，须人工复核语境
+虚.假.返.利	review	批量扩充·变体词，须人工复核语境
+虚/假/返/利	review	批量扩充·变体词，须人工复核语境
+虚·假·返·利	review	批量扩充·变体词，须人工复核语境
+虚假*返利	review	批量扩充·变体词，须人工复核语境
+虚假-返利	review	批量扩充·变体词，须人工复核语境
+虚假.返利	review	批量扩充·变体词，须人工复核语境
+出 借 宣 传	review	批量扩充·变体词，须人工复核语境
+出*借*宣*传	review	批量扩充·变体词，须人工复核语境
+出+借+宣+传	review	批量扩充·变体词，须人工复核语境
+出-借-宣-传	review	批量扩充·变体词，须人工复核语境
+出.借.宣.传	review	批量扩充·变体词，须人工复核语境
+出/借/宣/传	review	批量扩充·变体词，须人工复核语境
+出·借·宣·传	review	批量扩充·变体词，须人工复核语境
+出借*宣传	review	批量扩充·变体词，须人工复核语境
+出借-宣传	review	批量扩充·变体词，须人工复核语境
+出借.宣传	review	批量扩充·变体词，须人工复核语境
+伪 造 发 票	review	批量扩充·变体词，须人工复核语境
+伪*造*发*票	review	批量扩充·变体词，须人工复核语境
+伪+造+发+票	review	批量扩充·变体词，须人工复核语境
+伪-造-发-票	review	批量扩充·变体词，须人工复核语境
+伪.造.发.票	review	批量扩充·变体词，须人工复核语境
+伪/造/发/票	review	批量扩充·变体词，须人工复核语境
+伪·造·发·票	review	批量扩充·变体词，须人工复核语境
+伪造*发票	review	批量扩充·变体词，须人工复核语境
+伪造-发票	review	批量扩充·变体词，须人工复核语境
+伪造.发票	review	批量扩充·变体词，须人工复核语境
+非 法 返 利	review	批量扩充·变体词，须人工复核语境
+非*法*返*利	review	批量扩充·变体词，须人工复核语境
+非+法+返+利	review	批量扩充·变体词，须人工复核语境
+非-法-返-利	review	批量扩充·变体词，须人工复核语境
+非.法.返.利	review	批量扩充·变体词，须人工复核语境
+非/法/返/利	review	批量扩充·变体词，须人工复核语境
+非·法·返·利	review	批量扩充·变体词，须人工复核语境
+非法*返利	review	批量扩充·变体词，须人工复核语境
+非法-返利	review	批量扩充·变体词，须人工复核语境
+非法.返利	review	批量扩充·变体词，须人工复核语境
+挂 靠 发 票	review	批量扩充·变体词，须人工复核语境
+挂*靠*发*票	review	批量扩充·变体词，须人工复核语境
+挂+靠+发+票	review	批量扩充·变体词，须人工复核语境
+挂-靠-发-票	review	批量扩充·变体词，须人工复核语境
+挂.靠.发.票	review	批量扩充·变体词，须人工复核语境
+挂/靠/发/票	review	批量扩充·变体词，须人工复核语境
+挂·靠·发·票	review	批量扩充·变体词，须人工复核语境
+挂靠*发票	review	批量扩充·变体词，须人工复核语境
+挂靠-发票	review	批量扩充·变体词，须人工复核语境
+挂靠.发票	review	批量扩充·变体词，须人工复核语境
+违 法 招 商	review	批量扩充·变体词，须人工复核语境
+违*法*招*商	review	批量扩充·变体词，须人工复核语境
+违+法+招+商	review	批量扩充·变体词，须人工复核语境
+违-法-招-商	review	批量扩充·变体词，须人工复核语境
+违.法.招.商	review	批量扩充·变体词，须人工复核语境
+违/法/招/商	review	批量扩充·变体词，须人工复核语境
+违·法·招·商	review	批量扩充·变体词，须人工复核语境
+违法*招商	review	批量扩充·变体词，须人工复核语境
+违法-招商	review	批量扩充·变体词，须人工复核语境
+违法.招商	review	批量扩充·变体词，须人工复核语境
+虚 构 宣 传	review	批量扩充·变体词，须人工复核语境
+虚*构*宣*传	review	批量扩充·变体词，须人工复核语境
+虚+构+宣+传	review	批量扩充·变体词，须人工复核语境
+虚-构-宣-传	review	批量扩充·变体词，须人工复核语境
+虚.构.宣.传	review	批量扩充·变体词，须人工复核语境
+虚/构/宣/传	review	批量扩充·变体词，须人工复核语境
+虚·构·宣·传	review	批量扩充·变体词，须人工复核语境
+虚构*宣传	review	批量扩充·变体词，须人工复核语境
+虚构-宣传	review	批量扩充·变体词，须人工复核语境
+虚构.宣传	review	批量扩充·变体词，须人工复核语境
+违 规 招 商	review	批量扩充·变体词，须人工复核语境
+违*规*招*商	review	批量扩充·变体词，须人工复核语境
+违+规+招+商	review	批量扩充·变体词，须人工复核语境
+违-规-招-商	review	批量扩充·变体词，须人工复核语境
+违.规.招.商	review	批量扩充·变体词，须人工复核语境
+违/规/招/商	review	批量扩充·变体词，须人工复核语境
+违·规·招·商	review	批量扩充·变体词，须人工复核语境
+违规*招商	review	批量扩充·变体词，须人工复核语境
+违规-招商	review	批量扩充·变体词，须人工复核语境
+违规.招商	review	批量扩充·变体词，须人工复核语境
+抽 逃 预 付 卡	review	批量扩充·变体词，须人工复核语境
+抽*逃*预*付*卡	review	批量扩充·变体词，须人工复核语境
+抽+逃+预+付+卡	review	批量扩充·变体词，须人工复核语境
+抽-逃-预-付-卡	review	批量扩充·变体词，须人工复核语境
+抽.逃.预.付.卡	review	批量扩充·变体词，须人工复核语境
+抽/逃/预/付/卡	review	批量扩充·变体词，须人工复核语境
+抽·逃·预·付·卡	review	批量扩充·变体词，须人工复核语境
+抽逃*预付卡	review	批量扩充·变体词，须人工复核语境
+抽逃-预付卡	review	批量扩充·变体词，须人工复核语境
+抽逃.预付卡	review	批量扩充·变体词，须人工复核语境
+违 法 资 质	review	批量扩充·变体词，须人工复核语境
+违*法*资*质	review	批量扩充·变体词，须人工复核语境
+违+法+资+质	review	批量扩充·变体词，须人工复核语境
+违-法-资-质	review	批量扩充·变体词，须人工复核语境
+违.法.资.质	review	批量扩充·变体词，须人工复核语境
+违/法/资/质	review	批量扩充·变体词，须人工复核语境
+违·法·资·质	review	批量扩充·变体词，须人工复核语境
+违法*资质	review	批量扩充·变体词，须人工复核语境
+违法-资质	review	批量扩充·变体词，须人工复核语境
+违法.资质	review	批量扩充·变体词，须人工复核语境
+出 借 资 质	review	批量扩充·变体词，须人工复核语境
+出*借*资*质	review	批量扩充·变体词，须人工复核语境
+出+借+资+质	review	批量扩充·变体词，须人工复核语境
+出-借-资-质	review	批量扩充·变体词，须人工复核语境
+出.借.资.质	review	批量扩充·变体词，须人工复核语境
+出/借/资/质	review	批量扩充·变体词，须人工复核语境
+出·借·资·质	review	批量扩充·变体词，须人工复核语境
+出借*资质	review	批量扩充·变体词，须人工复核语境
+出借-资质	review	批量扩充·变体词，须人工复核语境
+出借.资质	review	批量扩充·变体词，须人工复核语境
+刷 卡 套 现	review	批量扩充·变体词，须人工复核语境
+刷*卡*套*现	review	批量扩充·变体词，须人工复核语境
+刷+卡+套+现	review	批量扩充·变体词，须人工复核语境
+刷-卡-套-现	review	批量扩充·变体词，须人工复核语境
+刷.卡.套.现	review	批量扩充·变体词，须人工复核语境
+刷/卡/套/现	review	批量扩充·变体词，须人工复核语境
+刷·卡·套·现	review	批量扩充·变体词，须人工复核语境
+刷卡*套现	review	批量扩充·变体词，须人工复核语境
+刷卡-套现	review	批量扩充·变体词，须人工复核语境
+刷卡.套现	review	批量扩充·变体词，须人工复核语境
+荐 股	review	批量扩充·变体词，须人工复核语境
+荐*股	review	批量扩充·变体词，须人工复核语境
+荐+股	review	批量扩充·变体词，须人工复核语境
+荐-股	review	批量扩充·变体词，须人工复核语境
+荐.股	review	批量扩充·变体词，须人工复核语境
+荐/股	review	批量扩充·变体词，须人工复核语境
+荐·股	review	批量扩充·变体词，须人工复核语境
+违 法 年 报	review	批量扩充·变体词，须人工复核语境
+违*法*年*报	review	批量扩充·变体词，须人工复核语境
+违+法+年+报	review	批量扩充·变体词，须人工复核语境
+违-法-年-报	review	批量扩充·变体词，须人工复核语境
+违.法.年.报	review	批量扩充·变体词，须人工复核语境
+违/法/年/报	review	批量扩充·变体词，须人工复核语境
+违·法·年·报	review	批量扩充·变体词，须人工复核语境
+违法*年报	review	批量扩充·变体词，须人工复核语境
+违法-年报	review	批量扩充·变体词，须人工复核语境
+违法.年报	review	批量扩充·变体词，须人工复核语境
+无 照 经 营	review	批量扩充·变体词，须人工复核语境
+无*照*经*营	review	批量扩充·变体词，须人工复核语境
+无+照+经+营	review	批量扩充·变体词，须人工复核语境
+无-照-经-营	review	批量扩充·变体词，须人工复核语境
+无.照.经.营	review	批量扩充·变体词，须人工复核语境
+无/照/经/营	review	批量扩充·变体词，须人工复核语境
+无·照·经·营	review	批量扩充·变体词，须人工复核语境
+无照*经营	review	批量扩充·变体词，须人工复核语境
+无照-经营	review	批量扩充·变体词，须人工复核语境
+无照.经营	review	批量扩充·变体词，须人工复核语境
+层 级 返 利	review	批量扩充·变体词，须人工复核语境
+层*级*返*利	review	批量扩充·变体词，须人工复核语境
+层+级+返+利	review	批量扩充·变体词，须人工复核语境
+层-级-返-利	review	批量扩充·变体词，须人工复核语境
+层.级.返.利	review	批量扩充·变体词，须人工复核语境
+层/级/返/利	review	批量扩充·变体词，须人工复核语境
+层·级·返·利	review	批量扩充·变体词，须人工复核语境
+层级*返利	review	批量扩充·变体词，须人工复核语境
+层级-返利	review	批量扩充·变体词，须人工复核语境
+层级.返利	review	批量扩充·变体词，须人工复核语境
+保 本 保 息	review	批量扩充·变体词，须人工复核语境
+保*本*保*息	review	批量扩充·变体词，须人工复核语境
+保+本+保+息	review	批量扩充·变体词，须人工复核语境
+保-本-保-息	review	批量扩充·变体词，须人工复核语境
+保.本.保.息	review	批量扩充·变体词，须人工复核语境
+保/本/保/息	review	批量扩充·变体词，须人工复核语境
+保·本·保·息	review	批量扩充·变体词，须人工复核语境
+保本*保息	review	批量扩充·变体词，须人工复核语境
+保本-保息	review	批量扩充·变体词，须人工复核语境
+保本.保息	review	批量扩充·变体词，须人工复核语境
+违 规 宣 传	review	批量扩充·变体词，须人工复核语境
+违*规*宣*传	review	批量扩充·变体词，须人工复核语境
+违+规+宣+传	review	批量扩充·变体词，须人工复核语境
+违-规-宣-传	review	批量扩充·变体词，须人工复核语境
+违.规.宣.传	review	批量扩充·变体词，须人工复核语境
+违/规/宣/传	review	批量扩充·变体词，须人工复核语境
+违·规·宣·传	review	批量扩充·变体词，须人工复核语境
+违规*宣传	review	批量扩充·变体词，须人工复核语境
+违规-宣传	review	批量扩充·变体词，须人工复核语境
+违规.宣传	review	批量扩充·变体词，须人工复核语境
+抽 逃 加 盟	review	批量扩充·变体词，须人工复核语境
+抽*逃*加*盟	review	批量扩充·变体词，须人工复核语境
+抽+逃+加+盟	review	批量扩充·变体词，须人工复核语境
+抽-逃-加-盟	review	批量扩充·变体词，须人工复核语境
+抽.逃.加.盟	review	批量扩充·变体词，须人工复核语境
+抽/逃/加/盟	review	批量扩充·变体词，须人工复核语境
+抽·逃·加·盟	review	批量扩充·变体词，须人工复核语境
+抽逃*加盟	review	批量扩充·变体词，须人工复核语境
+抽逃-加盟	review	批量扩充·变体词，须人工复核语境
+抽逃.加盟	review	批量扩充·变体词，须人工复核语境
+虚 构 发 票	review	批量扩充·变体词，须人工复核语境
+虚*构*发*票	review	批量扩充·变体词，须人工复核语境
+虚+构+发+票	review	批量扩充·变体词，须人工复核语境
+虚-构-发-票	review	批量扩充·变体词，须人工复核语境
+虚.构.发.票	review	批量扩充·变体词，须人工复核语境
+虚/构/发/票	review	批量扩充·变体词，须人工复核语境
+虚·构·发·票	review	批量扩充·变体词，须人工复核语境
+虚构*发票	review	批量扩充·变体词，须人工复核语境
+虚构-发票	review	批量扩充·变体词，须人工复核语境
+虚构.发票	review	批量扩充·变体词，须人工复核语境
+预 付 卡 跑 路	review	批量扩充·变体词，须人工复核语境
+预*付*卡*跑*路	review	批量扩充·变体词，须人工复核语境
+预+付+卡+跑+路	review	批量扩充·变体词，须人工复核语境
+预-付-卡-跑-路	review	批量扩充·变体词，须人工复核语境
+预.付.卡.跑.路	review	批量扩充·变体词，须人工复核语境
+预/付/卡/跑/路	review	批量扩充·变体词，须人工复核语境
+预·付·卡·跑·路	review	批量扩充·变体词，须人工复核语境
+预付*卡跑路	review	批量扩充·变体词，须人工复核语境
+预付-卡跑路	review	批量扩充·变体词，须人工复核语境
+预付.卡跑路	review	批量扩充·变体词，须人工复核语境
+非 法 招 标 文 件	review	批量扩充·变体词，须人工复核语境
+非*法*招*标*文*件	review	批量扩充·变体词，须人工复核语境
+非+法+招+标+文+件	review	批量扩充·变体词，须人工复核语境
+非-法-招-标-文-件	review	批量扩充·变体词，须人工复核语境
+非.法.招.标.文.件	review	批量扩充·变体词，须人工复核语境
+非/法/招/标/文/件	review	批量扩充·变体词，须人工复核语境
+非·法·招·标·文·件	review	批量扩充·变体词，须人工复核语境
+非法招*标文件	review	批量扩充·变体词，须人工复核语境
+非法招-标文件	review	批量扩充·变体词，须人工复核语境
+非法招.标文件	review	批量扩充·变体词，须人工复核语境
+出 借 集 资	review	批量扩充·变体词，须人工复核语境
+出*借*集*资	review	批量扩充·变体词，须人工复核语境
+出+借+集+资	review	批量扩充·变体词，须人工复核语境
+出-借-集-资	review	批量扩充·变体词，须人工复核语境
+出.借.集.资	review	批量扩充·变体词，须人工复核语境
+出/借/集/资	review	批量扩充·变体词，须人工复核语境
+出·借·集·资	review	批量扩充·变体词，须人工复核语境
+出借*集资	review	批量扩充·变体词，须人工复核语境
+出借-集资	review	批量扩充·变体词，须人工复核语境
+出借.集资	review	批量扩充·变体词，须人工复核语境
+虚 构 注 册 资 本	review	批量扩充·变体词，须人工复核语境
+虚*构*注*册*资*本	review	批量扩充·变体词，须人工复核语境
+虚+构+注+册+资+本	review	批量扩充·变体词，须人工复核语境
+虚-构-注-册-资-本	review	批量扩充·变体词，须人工复核语境
+虚.构.注.册.资.本	review	批量扩充·变体词，须人工复核语境
+虚/构/注/册/资/本	review	批量扩充·变体词，须人工复核语境
+虚·构·注·册·资·本	review	批量扩充·变体词，须人工复核语境
+虚构注*册资本	review	批量扩充·变体词，须人工复核语境
+虚构注-册资本	review	批量扩充·变体词，须人工复核语境
+虚构注.册资本	review	批量扩充·变体词，须人工复核语境
+违 规 合 同	review	批量扩充·变体词，须人工复核语境
+违*规*合*同	review	批量扩充·变体词，须人工复核语境
+违+规+合+同	review	批量扩充·变体词，须人工复核语境
+违-规-合-同	review	批量扩充·变体词，须人工复核语境
+违.规.合.同	review	批量扩充·变体词，须人工复核语境
+违/规/合/同	review	批量扩充·变体词，须人工复核语境
+违·规·合·同	review	批量扩充·变体词，须人工复核语境
+违规*合同	review	批量扩充·变体词，须人工复核语境
+违规-合同	review	批量扩充·变体词，须人工复核语境
+违规.合同	review	批量扩充·变体词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+daibifaxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaojiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaofapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaohetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaonianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaozhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaorongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaozizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaofanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weizaojizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baobenbaoxi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zuojiazhang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+toushuiloushui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+neimugu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+neibugu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiejiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiefapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiehetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiexuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujienianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujieguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiezhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujierongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiezizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiefanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chujiejizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuakataoxian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gejiucai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+juankuanpaolu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yuanshigu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fazhanxiaxian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cengjifanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dainizhuanqian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pangshipianju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+touziqun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaojiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaofapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaohetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaonianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaozhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaorongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaozizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaofanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+choutaojizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+larentou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaojiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaofapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaohetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaonianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaozhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaorongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaozizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaofanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guakaojizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+caozonggujia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuzhaojingying	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuzhengjingying	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shazhupan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chaobi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wenzhuanbupei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+laoshuhui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gupiaoqun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiangu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiajiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiafapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiahetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujianianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiazhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiarongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiazizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiafanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiajizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugoujiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugoufapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugouhetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugouxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugounianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugouguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugouzhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugourongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugouzizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugoufanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xugoujizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+caiwuzaojia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zijinpan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifajiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifafapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifahetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifaxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifanianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifazhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifarongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifazizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifafanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weifajizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguijiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguifapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguihetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguixuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguinianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguiguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguizhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguirongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguizizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguifanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiguijizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yinyanghetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jizizhapian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifajiameng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifafapiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifahetong	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifawaihui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifaxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifanianbao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifaguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifazhaoshang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifarongzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifazizhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifafanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gaoxilanchu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gaoehuibao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+chuanxiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feifajizi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

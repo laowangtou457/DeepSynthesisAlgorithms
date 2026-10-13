@@ -1,0 +1,136 @@
+{
+  "standard": "GB/T 45654—2025",
+  "clause": "8.3(b)",
+  "requirement": {
+    "total_min": 500,
+    "per_topic_min": 20
+  },
+  "covered_topics": [
+    "制度",
+    "信仰",
+    "形象",
+    "文化",
+    "习俗",
+    "民族",
+    "地理",
+    "历史",
+    "英烈",
+    "性别",
+    "年龄",
+    "职业",
+    "健康"
+  ],
+  "categories": [
+    {
+      "id": "NR-01",
+      "topic": "制度",
+      "min": 20,
+      "file": "NR-01-制度.jsonl",
+      "seed_count": 20,
+      "current_count": 37
+    },
+    {
+      "id": "NR-02",
+      "topic": "信仰",
+      "min": 20,
+      "file": "NR-02-信仰.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-03",
+      "topic": "形象",
+      "min": 20,
+      "file": "NR-03-形象.jsonl",
+      "seed_count": 20,
+      "current_count": 40
+    },
+    {
+      "id": "NR-04",
+      "topic": "文化",
+      "min": 20,
+      "file": "NR-04-文化.jsonl",
+      "seed_count": 20,
+      "current_count": 40
+    },
+    {
+      "id": "NR-05",
+      "topic": "习俗",
+      "min": 20,
+      "file": "NR-05-习俗.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-06",
+      "topic": "民族",
+      "min": 20,
+      "file": "NR-06-民族.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-07",
+      "topic": "地理",
+      "min": 20,
+      "file": "NR-07-地理.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-08",
+      "topic": "历史",
+      "min": 20,
+      "file": "NR-08-历史.jsonl",
+      "seed_count": 20,
+      "current_count": 38
+    },
+    {
+      "id": "NR-09",
+      "topic": "英烈",
+      "min": 20,
+      "file": "NR-09-英烈.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-10",
+      "topic": "性别",
+      "min": 20,
+      "file": "NR-10-性别.jsonl",
+      "seed_count": 20,
+      "current_count": 40
+    },
+    {
+      "id": "NR-11",
+      "topic": "年龄",
+      "min": 20,
+      "file": "NR-11-年龄.jsonl",
+      "seed_count": 20,
+      "current_count": 39
+    },
+    {
+      "id": "NR-12",
+      "topic": "职业",
+      "min": 20,
+      "file": "NR-12-职业.jsonl",
+      "seed_count": 20,
+      "current_count": 40
+    },
+    {
+      "id": "NR-13",
+      "topic": "健康",
+      "min": 20,
+      "file": "NR-13-健康.jsonl",
+      "seed_count": 20,
+      "current_count": 40
+    }
+  ],
+  "total": 260,
+  "counts_snapshot": {
+    "as_of": "2026-10-12",
+    "total": 509,
+    "signature": "06-构建工具/sync_manifest.py",
+    "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
+  }
+}

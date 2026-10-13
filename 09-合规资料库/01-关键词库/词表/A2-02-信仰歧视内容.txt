@@ -1,0 +1,244 @@
+# =============================================================================
+# 关键词库词表：A2-02 信仰歧视内容
+# 组别：A.2   单类配额：>= 100 个
+# 本项目相关度：★高
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+# 本项目特别关注：《蛊》涉巫祝、秘法，须防止对信仰群体的贬损。
+邪教徒	review	
+愚昧信仰	review	
+迷信落后	review	
+信仰低劣	review	
+拜鬼	review	
+
+# ===== 信仰歧视·贬损表述 =====
+邪教	block
+邪门	block
+异端	block
+异教徒	block
+愚民	block
+迷信害人	block
+神棍骗人	block
+
+# ===== 宗教仪式与符号的贬用（项目相关） =====
+装神弄鬼	review
+跳大神	review
+巫婆	review
+巫师	review
+神婆	review
+神汉	review
+求神拜佛	review
+拜神	review
+符水	review
+做法	review
+法事	review
+超度	review
+招魂	review
+通灵	review
+驱邪	review
+
+# ===== 术数类（项目相关，创作语境须审） =====
+算命	review
+看相	review
+卜卦	review
+求签	review
+风水	review
+看风水	review
+开光	review
+符咒	review
+咒语	review
+巫术	review
+蛊术	review
+巫祝	review
+秘法	review
+
+# ===== 信仰相关中性词（防误伤） =====
+迷信	review
+封建迷信	review
+信仰	review
+宗教	review
+庙宇	review
+香火	review
+
+# 词条数（不含注释）：46 / 100
+
+# -------- 核心词（动作 × 对象 合成）--------
+信仰歧视	review	批量扩充·核心词，须人工复核语境
+宗教歧视	review	批量扩充·核心词，须人工复核语境
+贬低信仰	review	批量扩充·核心词，须人工复核语境
+侮辱宗教	review	批量扩充·核心词，须人工复核语境
+宗教偏见	review	批量扩充·核心词，须人工复核语境
+信仰攻击	review	批量扩充·核心词，须人工复核语境
+信仰污名化	review	批量扩充·核心词，须人工复核语境
+诋毁宗教信仰	review	批量扩充·核心词，须人工复核语境
+挑拨宗教关系	review	批量扩充·核心词，须人工复核语境
+煽动宗教对立	review	批量扩充·核心词，须人工复核语境
+宗教仇视	review	批量扩充·核心词，须人工复核语境
+信仰优越论	review	批量扩充·核心词，须人工复核语境
+亵渎宗教	review	批量扩充·核心词，须人工复核语境
+嘲笑信教群众	review	批量扩充·核心词，须人工复核语境
+排斥信教群众	review	批量扩充·核心词，须人工复核语境
+信仰标签化	review	批量扩充·核心词，须人工复核语境
+宗教刻板印象	review	批量扩充·核心词，须人工复核语境
+信仰歧视言论	review	批量扩充·核心词，须人工复核语境
+宗教对立言论	review	批量扩充·核心词，须人工复核语境
+信仰攻击言论	review	批量扩充·核心词，须人工复核语境
+歧视宗教信仰	review	批量扩充·核心词，须人工复核语境
+歧视信仰群体	review	批量扩充·核心词，须人工复核语境
+歧视信教群众	review	批量扩充·核心词，须人工复核语境
+歧视宗教习俗	review	批量扩充·核心词，须人工复核语境
+歧视宗教场所	review	批量扩充·核心词，须人工复核语境
+歧视宗教仪式	review	批量扩充·核心词，须人工复核语境
+歧视不同信仰	review	批量扩充·核心词，须人工复核语境
+歧视无神论者	review	批量扩充·核心词，须人工复核语境
+歧视宗教团体	review	批量扩充·核心词，须人工复核语境
+歧视宗教文化	review	批量扩充·核心词，须人工复核语境
+歧视宗教节庆	review	批量扩充·核心词，须人工复核语境
+歧视信仰自由	review	批量扩充·核心词，须人工复核语境
+贬低宗教信仰	review	批量扩充·核心词，须人工复核语境
+贬低信仰群体	review	批量扩充·核心词，须人工复核语境
+贬低信教群众	review	批量扩充·核心词，须人工复核语境
+贬低宗教习俗	review	批量扩充·核心词，须人工复核语境
+贬低宗教场所	review	批量扩充·核心词，须人工复核语境
+贬低宗教仪式	review	批量扩充·核心词，须人工复核语境
+贬低不同信仰	review	批量扩充·核心词，须人工复核语境
+贬低无神论者	review	批量扩充·核心词，须人工复核语境
+贬低宗教团体	review	批量扩充·核心词，须人工复核语境
+贬低宗教文化	review	批量扩充·核心词，须人工复核语境
+贬低宗教节庆	review	批量扩充·核心词，须人工复核语境
+贬低信仰自由	review	批量扩充·核心词，须人工复核语境
+侮辱宗教信仰	review	批量扩充·核心词，须人工复核语境
+侮辱信仰群体	review	批量扩充·核心词，须人工复核语境
+侮辱信教群众	review	批量扩充·核心词，须人工复核语境
+侮辱宗教习俗	review	批量扩充·核心词，须人工复核语境
+侮辱宗教场所	review	批量扩充·核心词，须人工复核语境
+侮辱宗教仪式	review	批量扩充·核心词，须人工复核语境
+侮辱不同信仰	review	批量扩充·核心词，须人工复核语境
+侮辱无神论者	review	批量扩充·核心词，须人工复核语境
+侮辱宗教团体	review	批量扩充·核心词，须人工复核语境
+侮辱宗教文化	review	批量扩充·核心词，须人工复核语境
+侮辱宗教节庆	review	批量扩充·核心词，须人工复核语境
+侮辱信仰自由	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教信仰	review	批量扩充·核心词，须人工复核语境
+嘲讽信仰群体	review	批量扩充·核心词，须人工复核语境
+嘲讽信教群众	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教习俗	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教场所	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教仪式	review	批量扩充·核心词，须人工复核语境
+嘲讽不同信仰	review	批量扩充·核心词，须人工复核语境
+嘲讽无神论者	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教团体	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教文化	review	批量扩充·核心词，须人工复核语境
+嘲讽宗教节庆	review	批量扩充·核心词，须人工复核语境
+嘲讽信仰自由	review	批量扩充·核心词，须人工复核语境
+诋毁信仰群体	review	批量扩充·核心词，须人工复核语境
+诋毁信教群众	review	批量扩充·核心词，须人工复核语境
+诋毁宗教习俗	review	批量扩充·核心词，须人工复核语境
+诋毁宗教场所	review	批量扩充·核心词，须人工复核语境
+诋毁宗教仪式	review	批量扩充·核心词，须人工复核语境
+诋毁不同信仰	review	批量扩充·核心词，须人工复核语境
+诋毁无神论者	review	批量扩充·核心词，须人工复核语境
+诋毁宗教团体	review	批量扩充·核心词，须人工复核语境
+诋毁宗教文化	review	批量扩充·核心词，须人工复核语境
+诋毁宗教节庆	review	批量扩充·核心词，须人工复核语境
+诋毁信仰自由	review	批量扩充·核心词，须人工复核语境
+污名化宗教信仰	review	批量扩充·核心词，须人工复核语境
+污名化信仰群体	review	批量扩充·核心词，须人工复核语境
+污名化信教群众	review	批量扩充·核心词，须人工复核语境
+污名化宗教习俗	review	批量扩充·核心词，须人工复核语境
+污名化宗教场所	review	批量扩充·核心词，须人工复核语境
+污名化宗教仪式	review	批量扩充·核心词，须人工复核语境
+污名化不同信仰	review	批量扩充·核心词，须人工复核语境
+污名化无神论者	review	批量扩充·核心词，须人工复核语境
+污名化宗教团体	review	批量扩充·核心词，须人工复核语境
+污名化宗教文化	review	批量扩充·核心词，须人工复核语境
+污名化宗教节庆	review	批量扩充·核心词，须人工复核语境
+污名化信仰自由	review	批量扩充·核心词，须人工复核语境
+攻击宗教信仰	review	批量扩充·核心词，须人工复核语境
+攻击信仰群体	review	批量扩充·核心词，须人工复核语境
+攻击信教群众	review	批量扩充·核心词，须人工复核语境
+攻击宗教习俗	review	批量扩充·核心词，须人工复核语境
+攻击宗教场所	review	批量扩充·核心词，须人工复核语境
+攻击宗教仪式	review	批量扩充·核心词，须人工复核语境
+攻击不同信仰	review	批量扩充·核心词，须人工复核语境
+攻击无神论者	review	批量扩充·核心词，须人工复核语境
+攻击宗教团体	review	批量扩充·核心词，须人工复核语境
+攻击宗教文化	review	批量扩充·核心词，须人工复核语境
+攻击宗教节庆	review	批量扩充·核心词，须人工复核语境
+攻击信仰自由	review	批量扩充·核心词，须人工复核语境
+排斥宗教信仰	review	批量扩充·核心词，须人工复核语境
+排斥信仰群体	review	批量扩充·核心词，须人工复核语境
+排斥宗教习俗	review	批量扩充·核心词，须人工复核语境
+排斥宗教场所	review	批量扩充·核心词，须人工复核语境
+排斥宗教仪式	review	批量扩充·核心词，须人工复核语境
+排斥不同信仰	review	批量扩充·核心词，须人工复核语境
+排斥无神论者	review	批量扩充·核心词，须人工复核语境
+排斥宗教团体	review	批量扩充·核心词，须人工复核语境
+排斥宗教文化	review	批量扩充·核心词，须人工复核语境
+排斥宗教节庆	review	批量扩充·核心词，须人工复核语境
+排斥信仰自由	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教信仰	review	批量扩充·核心词，须人工复核语境
+妖魔化信仰群体	review	批量扩充·核心词，须人工复核语境
+妖魔化信教群众	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教习俗	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教场所	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教仪式	review	批量扩充·核心词，须人工复核语境
+妖魔化不同信仰	review	批量扩充·核心词，须人工复核语境
+妖魔化无神论者	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教团体	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教文化	review	批量扩充·核心词，须人工复核语境
+妖魔化宗教节庆	review	批量扩充·核心词，须人工复核语境
+妖魔化信仰自由	review	批量扩充·核心词，须人工复核语境
+抹黑宗教信仰	review	批量扩充·核心词，须人工复核语境
+抹黑信仰群体	review	批量扩充·核心词，须人工复核语境
+抹黑信教群众	review	批量扩充·核心词，须人工复核语境
+抹黑宗教习俗	review	批量扩充·核心词，须人工复核语境
+抹黑宗教场所	review	批量扩充·核心词，须人工复核语境
+抹黑宗教仪式	review	批量扩充·核心词，须人工复核语境
+抹黑不同信仰	review	批量扩充·核心词，须人工复核语境
+抹黑无神论者	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+xieduzongjiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuruzongjiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xinyangdilie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xinyanggongji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xinyangqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zuofa	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bugua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zongjiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zongjiaochoushi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zongjiaopianjian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zongjiaoqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fengjianmixin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wuzhu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+miaoyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kaiguang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yijiaotu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yiduan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yumeixinyang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhaohun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baishen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiushenbaifo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiuqian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kanxiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kanfengshui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shengunpianren	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+suanming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gushu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+biandixinyang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chaodu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tiaodashen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mixin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mixinhairen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+mixinluohou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiejiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiejiaotu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiemen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fengshui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xianghuo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

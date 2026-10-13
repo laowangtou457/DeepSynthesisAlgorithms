@@ -1,0 +1,64 @@
+id: guard_clarify_v1
+name: 信息不足澄清追问
+version: "1.0.0"
+task_type: guard
+language: zh-CN
+
+variables:
+  - name: missing_items
+    required: true
+    description: 缺失的必要信息项列表
+  - name: known_items
+    required: false
+    default: []
+    description: 已获取的信息项，用于避免重复追问
+
+sampling:
+  temperature: 0.3
+  top_p: 0.9
+  max_tokens: 256
+
+# 本模板用于「输入信息不足以完成合成任务」时，生成追问而非猜测。
+
+sections:
+  system: |
+    你负责在信息不足时向用户追问，以补齐必要信息。
+
+    硬性约束：
+    1. 一次最多追问 3 项，超出部分按重要性截断。
+    2. 不得重复追问 {known_items} 中已有的信息。
+    3. 不使用"请提供""麻烦您"等填充式客套，直接列出所需信息。
+    4. 不解释为什么要这些信息（避免冗长）。
+    5. 不在追问中夹带推测性内容或预设答案。
+
+  task: |
+    当前任务缺少以下必要信息：
+    {missing_items}
+
+    已获取的信息（不要重复追问）：
+    {known_items}
+
+    请生成追问内容。
+
+  output: |
+    输出格式要求：
+    1. 首句说明缺少信息，不超过 20 字。
+    2. 逐条列出所需信息，格式为"1. 需要的内容"，最多 3 条。
+    3. 每条不超过 15 字，表述具体可回答。
+    4. 结尾不加催促，不加"谢谢"等客套。
+
+  examples: |
+    示例：
+    缺少信息，请补充：
+    1. 目标读者是谁
+    2. 篇幅要求多少字
+    3. 需要覆盖哪些要点
+
+guards:
+  - 追问项必须是从 missing_items 中选取的，不得自行新增
+  - 不得把追问包装成"选择题"来引导用户给出特定答案
+  - 不得在追问中泄露任务的其他内部判断结果
+
+fallback:
+  no_missing: missing_items 为空时不调用本模板
+  too_many: missing_items 超过 3 项时，按列表顺序取前 3 项

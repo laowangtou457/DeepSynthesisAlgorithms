@@ -1,0 +1,162 @@
+{
+  "standard": "GB/T 45654—2025",
+  "clause": "8.3(a)",
+  "requirement": {
+    "total_min": 500,
+    "covered_class_count": 17,
+    "per_min": 20
+  },
+  "categories": [
+    {
+      "id": "A1-01",
+      "name": "煽动颠覆国家政权、推翻社会主义制度",
+      "min": 20,
+      "file": "A1-01.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-02",
+      "name": "危害国家安全和利益、损害国家形象",
+      "min": 20,
+      "file": "A1-02.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-03",
+      "name": "煽动分裂国家、破坏国家统一和社会稳定",
+      "min": 20,
+      "file": "A1-03.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-04",
+      "name": "宣扬恐怖主义、极端主义",
+      "min": 20,
+      "file": "A1-04.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A1-05",
+      "name": "宣扬民族仇恨",
+      "min": 20,
+      "file": "A1-05.jsonl",
+      "seed_count": 1,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-06",
+      "name": "宣扬暴力、淫秽色情",
+      "min": 20,
+      "file": "A1-06.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A1-07",
+      "name": "传播虚假有害信息",
+      "min": 20,
+      "file": "A1-07.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A1-08",
+      "name": "其他法律、行政法规禁止的内容",
+      "min": 20,
+      "file": "A1-08.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-01",
+      "name": "民族歧视内容",
+      "min": 20,
+      "file": "A2-01.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-02",
+      "name": "信仰歧视内容",
+      "min": 20,
+      "file": "A2-02.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-03",
+      "name": "国别歧视内容",
+      "min": 20,
+      "file": "A2-03.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-04",
+      "name": "地域歧视内容",
+      "min": 20,
+      "file": "A2-04.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-05",
+      "name": "性别歧视内容",
+      "min": 20,
+      "file": "A2-05.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-06",
+      "name": "年龄歧视内容",
+      "min": 20,
+      "file": "A2-06.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-07",
+      "name": "职业歧视内容",
+      "min": 20,
+      "file": "A2-07.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-08",
+      "name": "健康歧视内容",
+      "min": 20,
+      "file": "A2-08.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    },
+    {
+      "id": "A2-09",
+      "name": "其他方面歧视内容",
+      "min": 20,
+      "file": "A2-09.jsonl",
+      "seed_count": 2,
+      "current_count": 45
+    }
+  ],
+  "total": 30,
+  "counts_snapshot": {
+    "as_of": "2026-10-12",
+    "total": 585,
+    "signature": "06-构建工具/sync_manifest.py",
+    "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
+  }
+}

@@ -1,0 +1,85 @@
+id: gen_article_v1
+name: 长文内容生成
+version: "1.0.0"
+task_type: generate
+language: zh-CN
+
+variables:
+  - name: topic
+    required: true
+    description: 文章主题
+  - name: audience
+    required: true
+    description: 目标读者（如"企业采购决策者""技术开发者"）
+  - name: tone
+    required: false
+    default: 专业客观
+    description: 语气风格
+  - name: length
+    required: false
+    default: 800-1200字
+    description: 篇幅要求
+  - name: key_points
+    required: true
+    description: 必须覆盖的要点列表
+  - name: must_avoid
+    required: false
+    default: []
+    description: 禁用表述或需回避的内容
+
+sampling:
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.05
+  max_tokens: 2048
+
+sections:
+  system: |
+    你是一名专业的{audience}领域内容编辑。
+    你的职责是依据给定要点组织成文，而不是创造新的事实。
+
+    硬性约束：
+    1. 只使用 {key_points} 中提供的信息，不得补充未经提供的事实、数据、案例或引用。
+    2. 不使用绝对化表述：禁止"最佳""第一""唯一""保证""100%"等。
+    3. 不做出承诺性表述，不预测未发生的事件结果。
+    4. 全文使用简体中文，专业术语除外。
+    5. 保持{tone}的语气，避免口语化与情绪化表达。
+
+  task: |
+    请围绕主题「{topic}」撰写一篇面向{audience}的文章。
+    篇幅要求：{length}。
+
+    必须涵盖以下要点：
+    {key_points}
+
+  context: |
+    补充要求：
+    {must_avoid?无}
+
+  output: |
+    输出格式要求：
+    1. 使用 Markdown，包含标题与 2-4 级小标题。
+    2. 首段概括核心结论，不写"本文将介绍"之类的引导语。
+    3. 每个要点展开为一个段落或小节，不遗漏、不重复。
+    4. 结尾给出 3 条以内的要点回顾，不添加行动号召。
+    5. 直接输出正文，不要出现"好的""以下是"等应答性文字。
+
+  examples: |
+    示例（要点覆盖方式）：
+    给定要点：["响应速度提升 40%", "支持私有化部署"]
+    输出片段：
+    ## 性能表现
+    在标准测试环境下，响应速度较上一版本提升 40%。
+    ## 部署方式
+    支持私有化部署，数据不出企业内网。
+    —— 每个要点独立成节，不臆造具体测试数据。
+
+guards:
+  - 输出中若出现具体数值，必须可回溯到 key_points，否则删除
+  - 若 key_points 过少不足以支撑 {length}，主动缩减篇幅而非填充内容
+  - 不得输出任何推广性行动号召（如"立即联系""扫码咨询"）
+
+fallback:
+  insufficient_input: 要点不足时，输出已覆盖部分并标注「以下内容仅基于给定要点」
+  refusal: 主题涉及敏感领域时，不生成，改由 guard_refuse_v1 处理

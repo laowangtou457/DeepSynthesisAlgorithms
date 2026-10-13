@@ -1,0 +1,472 @@
+# ============================================================
+# 镜头词表（shot vocabulary）
+# 规范依据：NORM-DELIVERY-001 v1.1 §3.7 / 附录 C
+# 用途：提示词包字段取值枚举 + 各下游模型适配时的稳定映射源
+#
+# ★ v1.1 变化（依导演视角评审 D-15 / D-20）：
+#   1. camera_move 对齐 MiniMax H3 官方 20 类运镜（本项目唯一可程序化校验的规范集）；
+#   2. camera_move 显式声明为「内部语义标签」——非任何模型的语法，交付文本中不得直接出现；
+#   3. 弃用别名 follow / handheld / crane_up / crane_down / orbit 保留在 deprecated_alias 下，
+#      仅用于兼容历史配置，正式交付不得使用；
+#   4. 新增 camera_amplitude / camera_height / camera_roll / camera_optics；
+#   5. camera_angle 已废止，拆为 camera_height + camera_roll（两者正交，可同时表达「低角度 + 荷兰角」）；
+#   6. transition 增加 fade_out 与跨模型映射表 model_map；
+#   7. 每个枚举项带 model_map，构成「内部标签 ↔ 中文字面 ↔ 英文句法」三向映射（规范 §3.7.7）。
+#
+# 规则：新增取值必须在本文件登记，不得在代码或模板中硬编码
+# ============================================================
+
+schema_version: "1.1.0"
+updated_at: "2026-10-12"
+
+# ────────────────────────────────────────────────────────────
+# 景别
+# ────────────────────────────────────────────────────────────
+shot_size:
+  - code: extreme_wide
+    zh: 大远景
+    en: extreme long shot
+    desc: 环境为主，人物极小，交代空间与氛围
+    model_map:
+      minimax_h3: extreme long shot
+      seedance: extreme long shot / establishing shot
+      kling: 大远景
+      dreamina: 大远景
+  - code: wide
+    zh: 远景
+    en: wide shot
+    desc: 人物全身 + 大量环境
+    model_map:
+      minimax_h3: long shot
+      seedance: long shot / wide shot
+      kling: 远景
+      dreamina: 远景
+  - code: full
+    zh: 全景
+    en: full shot
+    desc: 人物全身充满画面
+    model_map:
+      minimax_h3: full shot
+      seedance: full shot
+      kling: 全景
+      dreamina: 全景
+  - code: medium
+    zh: 中景
+    en: medium shot
+    desc: 人物半身（腰部以上）
+    model_map:
+      minimax_h3: medium shot
+      seedance: medium shot
+      kling: 中景
+      dreamina: 中景
+  - code: close_up
+    zh: 近景/特写
+    en: close-up
+    desc: 面部或关键物件
+    model_map:
+      minimax_h3: close-up
+      seedance: close-up / close shot
+      kling: 近景
+      dreamina: 镜头特写
+  - code: extreme_close_up
+    zh: 大特写
+    en: extreme close-up
+    desc: 局部细节（眼神、手部、道具纹理）
+    model_map:
+      minimax_h3: extreme close-up
+      seedance: extreme close-up / macro shot
+      kling: 大特写
+      dreamina: 镜头特写（强调局部）
+
+# ────────────────────────────────────────────────────────────
+# 运镜（内部语义标签 —— 对齐 H3 官方 20 类）
+# ★ 非模型语法：交付文本中不得直接出现内部 code
+# ────────────────────────────────────────────────────────────
+camera_move_note: "camera_move 为内部语义标签，对齐 MiniMax H3 官方 20 类运镜；由 model_map 投影为各模型字面。交付文本中不得直接出现内部 code（规范 §3.7.2）。"
+
+camera_move:
+  - code: static
+    zh: 固定机位
+    en: static shot
+    no_amplitude_no_speed: true
+    model_map:
+      minimax_h3: "The camera holds a static shot."
+      seedance: static locked-off / no camera movement
+      kling: 固定（六轴全 0）
+      dreamina: 固定镜头
+      fallback: 固定机位
+  - code: push_in
+    zh: 前推
+    en: push in
+    model_map:
+      minimax_h3: "The camera pushes in with small amplitude at slow speed."
+      seedance: slow push-in / dolly-in
+      kling: slow push-in on subject
+      dreamina: 镜头拉近
+      fallback: 镜头缓慢推进
+  - code: pull_out
+    zh: 后拉
+    en: pull out
+    model_map:
+      minimax_h3: "The camera pulls out with small amplitude at slow speed."
+      seedance: pull back / dolly-out
+      kling: pull back to reveal environment
+      dreamina: 镜头拉远
+      fallback: 镜头缓慢拉远
+  - code: zoom_in
+    zh: 变焦推近
+    en: zoom in
+    desc: 与 push_in 不同，焦距变化但相机不动
+    model_map:
+      minimax_h3: "The camera zooms in with small amplitude at slow speed."
+      seedance: zoom toward
+      kling: 六轴变焦负值（-10~0）
+      dreamina: 镜头拉近（注明变焦）
+      fallback: 焦距推近
+  - code: zoom_out
+    zh: 变焦拉远
+    en: zoom out
+    model_map:
+      minimax_h3: "The camera zooms out with small amplitude at slow speed."
+      seedance: zoom away
+      kling: 六轴变焦正值（0~10）
+      dreamina: 镜头拉远（注明变焦）
+      fallback: 焦距拉远
+  - code: pan_left
+    zh: 左摇
+    en: pan left
+    model_map:
+      minimax_h3: "The camera pans left with small amplitude at slow speed."
+      seedance: pan left
+      kling: 六轴水平摇负值
+      dreamina: 镜头向左移动
+      fallback: 镜头向左摇
+  - code: pan_right
+    zh: 右摇
+    en: pan right
+    model_map:
+      minimax_h3: "The camera pans right with small amplitude at slow speed."
+      seedance: pan right
+      kling: 六轴水平摇正值
+      dreamina: 镜头向右移动
+      fallback: 镜头向右摇
+  - code: truck_left
+    zh: 左移
+    en: truck left
+    model_map:
+      minimax_h3: "The camera trucks left with small amplitude at slow speed."
+      seedance: track left
+      kling: 六轴水平负值
+      dreamina: 镜头向左移动
+      fallback: 镜头左移
+  - code: truck_right
+    zh: 右移
+    en: truck right
+    model_map:
+      minimax_h3: "The camera trucks right with small amplitude at slow speed."
+      seedance: track right
+      kling: 六轴水平正值
+      dreamina: 镜头向右移动
+      fallback: 镜头右移
+  - code: tilt_up
+    zh: 上摇
+    en: tilt up
+    model_map:
+      minimax_h3: "The camera tilts up with small amplitude at slow speed."
+      seedance: tilt up / crane up
+      kling: 六轴俯仰正值
+      dreamina: 镜头向上移动
+      fallback: 上摇
+  - code: tilt_down
+    zh: 下摇
+    en: tilt down
+    model_map:
+      minimax_h3: "The camera tilts down with small amplitude at slow speed."
+      seedance: tilt down
+      kling: 六轴俯仰负值
+      dreamina: 镜头向下移动
+      fallback: 下摇
+  - code: pedestal_up
+    zh: 升
+    en: pedestal up
+    model_map:
+      minimax_h3: "The camera pedestals up with small amplitude at slow speed."
+      seedance: crane up
+      kling: 六轴垂直正值
+      dreamina: 镜头向上移动
+      fallback: 镜头升起
+  - code: pedestal_down
+    zh: 降
+    en: pedestal down
+    model_map:
+      minimax_h3: "The camera pedestals down with small amplitude at slow speed."
+      seedance: crane down
+      kling: 六轴垂直负值
+      dreamina: 镜头向下移动
+      fallback: 镜头下降
+  - code: arc
+    zh: 弧形环绕
+    en: arc shot
+    model_map:
+      minimax_h3: "The camera arcs around the subject with small amplitude at slow speed."
+      seedance: arc around / orbit left-right
+      kling: 360-degree camera orbit
+      dreamina: 镜头环绕
+      fallback: 环绕拍摄
+  - code: tracking
+    zh: 跟拍
+    en: tracking shot
+    model_map:
+      minimax_h3: "The camera tracks the moving subject with small amplitude at slow speed."
+      seedance: tracking shot / follow
+      kling: push-in tracking shot
+      dreamina: 镜头跟随
+      fallback: 镜头跟拍
+  - code: shake_slight
+    zh: 轻微晃动
+    en: shake slightly
+    desc: 纪实感；对应已弃用的 handheld
+    model_map:
+      minimax_h3: "The camera shakes slightly."
+      seedance: slight handheld movement / subtle camera drift
+      kling: 手持（六轴微扰）
+      dreamina: 镜头晃动
+      fallback: 轻微手持
+  - code: shake_strong
+    zh: 剧烈晃动
+    en: shake strongly
+    model_map:
+      minimax_h3: "The camera shakes strongly."
+      seedance: strong handheld shake
+      kling: 手持（幅度放大）
+      dreamina: 镜头抖动
+      fallback: 强烈手持
+  - code: pov
+    zh: 主观视角
+    en: POV
+    no_amplitude_no_speed: true
+    model_map:
+      minimax_h3: "The camera holds the subject's point of view."
+      seedance: POV / first-person view
+      kling: 主观镜头
+      dreamina: POV 视角
+      fallback: 主观视角
+  - code: roll_cw
+    zh: 顺时针滚转
+    en: roll clockwise
+    model_map:
+      minimax_h3: "The camera rolls clockwise."
+      seedance: barrel roll clockwise
+      kling: 六轴滚转正值
+      dreamina: 镜头360度旋转（顺时针）
+      fallback: 顺时针旋转
+  - code: roll_ccw
+    zh: 逆时针滚转
+    en: roll counterclockwise
+    model_map:
+      minimax_h3: "The camera rolls counterclockwise."
+      seedance: barrel roll counterclockwise
+      kling: 六轴滚转负值
+      dreamina: 镜头360度旋转（逆时针）
+      fallback: 逆时针旋转
+
+# 弃用别名（仅用于兼容历史配置；正式交付不得使用）—— 规范 §3.7.2
+deprecated_alias:
+  follow: tracking
+  handheld: shake_slight
+  crane_up: pedestal_up
+  crane_down: pedestal_down
+  orbit: arc
+
+camera_amplitude:
+  note: "运镜幅度；medium 通常省略（官方建议仅在需要强调时出现）。static / pov 不得填。"
+  values: [small, medium, large]
+
+camera_speed:
+  note: "运镜速度；normal 通常省略。static / pov 不得填。"
+  values: [slow, normal, fast]
+
+# ────────────────────────────────────────────────────────────
+# 机位高度角（v1.1 由 camera_angle 拆出）
+# ────────────────────────────────────────────────────────────
+camera_height_note: "机位高度角，决定权力关系与情绪倾向。与 camera_roll 正交，可同时使用（规范 §3.7.3）。"
+
+camera_height:
+  - code: eye_level
+    zh: 平视
+    en: eye level
+    model_map: { minimax_h3: eye level, seedance: eye level, kling: 平视, dreamina: 平视 }
+  - code: low
+    zh: 仰视（机位低）
+    en: low angle
+    model_map: { minimax_h3: low angle, seedance: low angle, kling: 低角度, dreamina: 仰视 }
+  - code: high
+    zh: 俯视（机位高）
+    en: high angle
+    model_map: { minimax_h3: high angle, seedance: high angle, kling: 高角度, dreamina: 俯视 }
+  - code: overhead
+    zh: 顶视/正俯
+    en: overhead / bird's-eye
+    model_map: { minimax_h3: overhead, seedance: top-down, kling: 俯拍, dreamina: 俯视（顶视） }
+  - code: ground
+    zh: 贴地机位
+    en: ground level
+    model_map: { minimax_h3: ground level, seedance: low ground-level, kling: 贴地角度, dreamina: 贴地仰拍 }
+
+# ────────────────────────────────────────────────────────────
+# 摄影机滚转（v1.1 由 camera_angle 拆出）
+# ★ 归并规则：roll_cw / roll_ccw 在 H3 是独立运镜类型；此时 camera_move 已占位，
+#   本字段不再重复填同名取值（规范 §3.7.3）
+# ────────────────────────────────────────────────────────────
+camera_roll_note: "摄影机滚转，与 camera_height 正交。dutch 表示画面倾斜但不旋转。roll_cw / roll_ccw 在 H3 是独立运镜类型，此时 camera_move 已占位，本字段不得重复填同名取值（规范 §3.7.3）。"
+
+camera_roll:
+  - code: level
+    zh: 正常（水平）
+    en: level
+    model_map: { minimax_h3: level, seedance: level horizon, kling: 水平, dreamina: 水平 }
+  - code: dutch
+    zh: 斜角（荷兰角）
+    en: dutch angle
+    desc: 画面倾斜，制造不安感
+    model_map: { minimax_h3: dutch angle, seedance: dutch angle, kling: 斜角, dreamina: 倾斜镜头 }
+  - code: roll_cw
+    zh: 顺时针滚转
+    en: roll clockwise
+    model_map: { minimax_h3: Roll Clockwise（作为运镜类型）, seedance: barrel roll clockwise, kling: 六轴滚转正值, dreamina: 镜头360度旋转 }
+  - code: roll_ccw
+    zh: 逆时针滚转
+    en: roll counterclockwise
+    model_map: { minimax_h3: Roll Counterclockwise（作为运镜类型）, seedance: barrel roll counterclockwise, kling: 六轴滚转负值, dreamina: 镜头360度旋转 }
+
+# ────────────────────────────────────────────────────────────
+# 光学（v1.1 新增 —— 八维之一，覆盖率门槛 ≥ 30%）
+# ────────────────────────────────────────────────────────────
+camera_optics_note: "焦段／景深／焦点。八维之一，质量门要求覆盖率 ≥ 30%（规范 §3.7.4、§4.2）。"
+
+camera_optics:
+  - code: deep_focus
+    zh: 大景深
+    en: deep focus
+    desc: 前后景均清晰，交代空间关系
+    model_map: { minimax_h3: deep focus / depth of field, seedance: deep focus, kling: 大景深, dreamina: 大景深 }
+  - code: shallow_focus
+    zh: 浅景深
+    en: shallow depth of field
+    desc: 背景虚化，隔离主体
+    model_map: { minimax_h3: shallow depth of field, seedance: shallow depth of field, kling: 浅景深, dreamina: 浅景深 }
+  - code: rack_focus
+    zh: 焦点转移
+    en: rack focus
+    desc: 焦点从 A 移到 B——等于剪了一刀但没切镜头
+    model_map: { minimax_h3: rack focus, seedance: rack focus, kling: 焦点转移, dreamina: 焦点变化 }
+  - code: long_lens_compression
+    zh: 长焦压缩
+    en: long lens compression
+    desc: 空间被压扁，人物被「贴」到背景上
+    model_map: { minimax_h3: telephoto / long lens, seedance: telephoto compression, kling: 长焦压缩, dreamina: 长焦 }
+  - code: wide_angle_distortion
+    zh: 广角畸变
+    en: wide-angle distortion
+    desc: 空间被拉伸，边缘变形，压迫感强
+    model_map: { minimax_h3: wide-angle lens, seedance: wide-angle lens, kling: 广角畸变, dreamina: 广角 }
+
+# ────────────────────────────────────────────────────────────
+# 光照（八维之一，覆盖率门槛 ≥ 40%）
+# ────────────────────────────────────────────────────────────
+lighting:
+  - { code: soft_key_light,  zh: 柔和主光,    en: soft key light }
+  - { code: hard_key_light,  zh: 硬主光,      en: hard key light }
+  - { code: rim_light,       zh: 轮廓光,      en: rim light }
+  - { code: backlight,       zh: 逆光,        en: backlight }
+  - { code: side_light,      zh: 侧光,        en: side light }
+  - { code: top_light,       zh: 顶光,        en: top light }
+  - { code: under_light,     zh: 底光,        en: under light }
+  - { code: practical_light, zh: 环境实景光,  en: practical light }
+  - { code: volumetric_light, zh: 体积光/丁达尔光, en: volumetric light }
+  - { code: golden_hour,     zh: 黄金时刻,    en: golden hour }
+  - { code: blue_hour,       zh: 蓝调时刻,    en: blue hour }
+  - { code: overcast,        zh: 阴天散射光,  en: overcast }
+  - { code: neon_night,      zh: 霓虹夜景,    en: neon night }
+  - { code: candlelight,     zh: 烛光,        en: candlelight }
+  - { code: moonlight,       zh: 月光,        en: moonlight }
+
+# ────────────────────────────────────────────────────────────
+# 转场（v1.1 增加 fade_out 与 model_map；H3 仅 5 条官方剪切短语）
+# ★ 单侧表达：相邻两镜的衔接由「后一镜的 transition_in」表达；
+#   transition_out 仅用于单元末镜（规范 §3.7.5）
+# ────────────────────────────────────────────────────────────
+transition:
+  minimax_h3_cut_phrases:
+    note: "H3 官方只有这 5 条，不得自造变体"
+    values:
+      - the camera cuts to
+      - the shot cuts to
+      - the shot transitions to
+      - the shot changes to
+      - the shot switches to
+  values:
+    - code: cut
+      zh: 切
+      model_map: { minimax_h3: "the camera cuts to", seedance: 时间区间分段, kling: 多镜头模式切分, dreamina: 镜头切换 }
+    - code: fade_in
+      zh: 淡入
+      model_map: { minimax_h3: "the shot transitions to（降级）", seedance: "fade in from black", kling: 自然语言「淡入」, dreamina: 自然语言「淡入」 }
+    - code: fade_out
+      zh: 淡出
+      model_map: { minimax_h3: "the shot transitions to（降级）", seedance: "fade to black", kling: 自然语言「淡出」, dreamina: 自然语言「淡出」 }
+    - code: dissolve
+      zh: 叠化
+      model_map: { minimax_h3: "the shot transitions to（降级）", seedance: natural dissolve, kling: 自然语言「叠化」, dreamina: 自然语言「叠化」 }
+    - code: wipe
+      zh: 划像
+      model_map: { minimax_h3: "the shot transitions to（降级）", seedance: "wipe（可点名方向）", kling: 自然语言「划像」, dreamina: 自然语言「划像」 }
+
+film_grain: [none, light, medium, heavy]
+
+# ────────────────────────────────────────────────────────────
+# 负向词三类组织（v1.1 新增 —— 依评审 D-16）
+# ★ 这是「负向意图容器」，不是「一定会被投喂的文本」：
+#   目标模型不支持负向字段时（如 H3 基础模式），必须转写为正向约束句且不得残留
+# ────────────────────────────────────────────────────────────
+negative_categories:
+  image_general: [lowres, blurry, watermark, text, extra fingers, deformed, extra limbs]
+  video_temporal: [flicker, temporal jitter, frame inconsistency]
+  video_morphing: [clipping, morphing, limb popping]
+  scene_specific:
+    desc: 逐片填写，与具体场景绑定（如「现代护栏与钢缆结构」「额外人物」）
+
+style_tags:
+  desc: 风格串可选标签（用于 style_bible.style_prompt_* 与 style_anchors 的书写参考，非枚举约束）
+  items:
+    - 日式动画电影质感
+    - 赛璐璐上色
+    - 三维渲染质感
+    - 水墨国风
+    - 写实电影质感
+    - 二维手绘
+    - 厚涂插画
+    - 低多边形
+  anchors_rule: "style_anchors 固定 3–5 条；prompt_* 中不得出现锚点清单之外的风格词（规范 §3.3）"
+
+aspect_ratio_supported: ["16:9", "9:16", "4:3", "3:4", "1:1", "21:9"]
+
+prompt_order:
+  desc: 提示词要素书写顺序（规范 §3.7.6），适配时保持一致
+  sequence: ["subject", "action", "environment", "lighting", "camera_language", "style"]
+  zh_sequence: ["主体", "动作", "环境", "光线", "镜头语言", "风格"]
+
+# ────────────────────────────────────────────────────────────
+# 八维 ↔ 字段 对应（规范 §4.1）
+# ────────────────────────────────────────────────────────────
+eight_dimensions_note: "字段承载之外，八维必须同时写进 prompt_zh / prompt_en 正文——模型读到的是文本，不是字段（规范 §4.1）。"
+
+eight_dimensions:
+  - { no: 1, dim: 景别,     field: "shot_size",                    gate: "覆盖 100%" }
+  - { no: 2, dim: 运镜,     field: "camera.move/amplitude/speed/from/to", gate: "覆盖 100%" }
+  - { no: 3, dim: 角度,     field: "camera.height (+camera.roll)", gate: "覆盖 ≥ 40%" }
+  - { no: 4, dim: 光学,     field: "camera.optics",                 gate: "覆盖 ≥ 30%" }
+  - { no: 5, dim: 构图,     field: "shot_language.composition",     gate: "覆盖 ≥ 50%" }
+  - { no: 6, dim: 轴线,     field: "shot_language.axis",            gate: "覆盖 ≥ 30%" }
+  - { no: 7, dim: 光线,     field: "lighting",                      gate: "覆盖 ≥ 40%" }
+  - { no: 8, dim: 画面结果, field: "shot_language.result",          gate: "覆盖 ≥ 60%" }

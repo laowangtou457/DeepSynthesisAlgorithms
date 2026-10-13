@@ -1,0 +1,830 @@
+# =============================================================================
+# 关键词库词表：A3-02 违反商业道德
+# 组别：A.3   单类配额：>= 300 个
+# 本项目相关度：低
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+虚假宣传	block	
+刷单	block	
+水军	review	
+恶意差评	review	
+刷量	review	
+
+# ===== 流量造假与水军 =====
+刷好评	block
+刷销量	block
+刷流量	block
+刷阅读	block
+买粉	block
+僵尸粉	block
+网络水军	block
+黑公关	block
+删帖	block
+压热搜	block
+
+# ===== 虚假宣传 =====
+虚假广告	block
+夸大宣传	block
+虚假功效	block
+疗效	block
+包治	block
+
+# ===== 广告法违禁极限词 =====
+国家级	review
+世界级	review
+顶级	review
+最好	review
+第一	review
+唯一	review
+首个	review
+王牌	review
+金牌	review
+冠军品牌	review
+史上最强	review
+
+# 词条数（不含注释）：31 / 300
+
+# -------- 核心词（动作 × 对象 合成）--------
+误导宣传	review	批量扩充·核心词，须人工复核语境
+商业诋毁	review	批量扩充·核心词，须人工复核语境
+刷单炒信	review	批量扩充·核心词，须人工复核语境
+删除差评	review	批量扩充·核心词，须人工复核语境
+虚假交易	review	批量扩充·核心词，须人工复核语境
+数据造假	review	批量扩充·核心词，须人工复核语境
+流量造假	review	批量扩充·核心词，须人工复核语境
+买赞	review	批量扩充·核心词，须人工复核语境
+数据注水	review	批量扩充·核心词，须人工复核语境
+先涨后降	review	批量扩充·核心词，须人工复核语境
+抢注商标	review	批量扩充·核心词，须人工复核语境
+恶意抢注	review	批量扩充·核心词，须人工复核语境
+挖角跳槽	review	批量扩充·核心词，须人工复核语境
+窃取客户名单	review	批量扩充·核心词，须人工复核语境
+串通投标	review	批量扩充·核心词，须人工复核语境
+围标串标	review	批量扩充·核心词，须人工复核语境
+账外返利	review	批量扩充·核心词，须人工复核语境
+虚假促销	review	批量扩充·核心词，须人工复核语境
+虚假原价	review	批量扩充·核心词，须人工复核语境
+虚假折扣	review	批量扩充·核心词，须人工复核语境
+刷单团队	review	批量扩充·核心词，须人工复核语境
+水军控评	review	批量扩充·核心词，须人工复核语境
+恶意投诉	review	批量扩充·核心词，须人工复核语境
+恶意举报同行	review	批量扩充·核心词，须人工复核语境
+虚假评价	review	批量扩充·核心词，须人工复核语境
+虚假销量	review	批量扩充·核心词，须人工复核语境
+虚假数据	review	批量扩充·核心词，须人工复核语境
+虚假排名	review	批量扩充·核心词，须人工复核语境
+虚假客户	review	批量扩充·核心词，须人工复核语境
+虚假竞品	review	批量扩充·核心词，须人工复核语境
+虚假对手	review	批量扩充·核心词，须人工复核语境
+虚假渠道	review	批量扩充·核心词，须人工复核语境
+虚假供应商	review	批量扩充·核心词，须人工复核语境
+虚假招标	review	批量扩充·核心词，须人工复核语境
+虚假同行	review	批量扩充·核心词，须人工复核语境
+虚假用户	review	批量扩充·核心词，须人工复核语境
+虚假口碑	review	批量扩充·核心词，须人工复核语境
+虚假评分	review	批量扩充·核心词，须人工复核语境
+误导广告	review	批量扩充·核心词，须人工复核语境
+误导评价	review	批量扩充·核心词，须人工复核语境
+误导销量	review	批量扩充·核心词，须人工复核语境
+误导数据	review	批量扩充·核心词，须人工复核语境
+误导排名	review	批量扩充·核心词，须人工复核语境
+误导客户	review	批量扩充·核心词，须人工复核语境
+误导竞品	review	批量扩充·核心词，须人工复核语境
+误导对手	review	批量扩充·核心词，须人工复核语境
+误导渠道	review	批量扩充·核心词，须人工复核语境
+误导供应商	review	批量扩充·核心词，须人工复核语境
+误导招标	review	批量扩充·核心词，须人工复核语境
+误导同行	review	批量扩充·核心词，须人工复核语境
+误导用户	review	批量扩充·核心词，须人工复核语境
+误导口碑	review	批量扩充·核心词，须人工复核语境
+误导评分	review	批量扩充·核心词，须人工复核语境
+欺骗宣传	review	批量扩充·核心词，须人工复核语境
+欺骗广告	review	批量扩充·核心词，须人工复核语境
+欺骗评价	review	批量扩充·核心词，须人工复核语境
+欺骗销量	review	批量扩充·核心词，须人工复核语境
+欺骗数据	review	批量扩充·核心词，须人工复核语境
+欺骗排名	review	批量扩充·核心词，须人工复核语境
+欺骗客户	review	批量扩充·核心词，须人工复核语境
+欺骗竞品	review	批量扩充·核心词，须人工复核语境
+欺骗对手	review	批量扩充·核心词，须人工复核语境
+欺骗渠道	review	批量扩充·核心词，须人工复核语境
+欺骗供应商	review	批量扩充·核心词，须人工复核语境
+欺骗招标	review	批量扩充·核心词，须人工复核语境
+欺骗同行	review	批量扩充·核心词，须人工复核语境
+欺骗用户	review	批量扩充·核心词，须人工复核语境
+欺骗口碑	review	批量扩充·核心词，须人工复核语境
+欺骗评分	review	批量扩充·核心词，须人工复核语境
+恶意宣传	review	批量扩充·核心词，须人工复核语境
+恶意广告	review	批量扩充·核心词，须人工复核语境
+恶意评价	review	批量扩充·核心词，须人工复核语境
+恶意销量	review	批量扩充·核心词，须人工复核语境
+恶意数据	review	批量扩充·核心词，须人工复核语境
+恶意排名	review	批量扩充·核心词，须人工复核语境
+恶意客户	review	批量扩充·核心词，须人工复核语境
+恶意竞品	review	批量扩充·核心词，须人工复核语境
+恶意对手	review	批量扩充·核心词，须人工复核语境
+恶意渠道	review	批量扩充·核心词，须人工复核语境
+恶意供应商	review	批量扩充·核心词，须人工复核语境
+恶意招标	review	批量扩充·核心词，须人工复核语境
+恶意同行	review	批量扩充·核心词，须人工复核语境
+恶意用户	review	批量扩充·核心词，须人工复核语境
+恶意口碑	review	批量扩充·核心词，须人工复核语境
+恶意评分	review	批量扩充·核心词，须人工复核语境
+不正当宣传	review	批量扩充·核心词，须人工复核语境
+不正当广告	review	批量扩充·核心词，须人工复核语境
+不正当评价	review	批量扩充·核心词，须人工复核语境
+不正当销量	review	批量扩充·核心词，须人工复核语境
+不正当数据	review	批量扩充·核心词，须人工复核语境
+不正当排名	review	批量扩充·核心词，须人工复核语境
+不正当客户	review	批量扩充·核心词，须人工复核语境
+不正当竞品	review	批量扩充·核心词，须人工复核语境
+不正当对手	review	批量扩充·核心词，须人工复核语境
+不正当渠道	review	批量扩充·核心词，须人工复核语境
+不正当供应商	review	批量扩充·核心词，须人工复核语境
+不正当招标	review	批量扩充·核心词，须人工复核语境
+不正当同行	review	批量扩充·核心词，须人工复核语境
+不正当用户	review	批量扩充·核心词，须人工复核语境
+不正当口碑	review	批量扩充·核心词，须人工复核语境
+不正当评分	review	批量扩充·核心词，须人工复核语境
+诋毁宣传	review	批量扩充·核心词，须人工复核语境
+诋毁广告	review	批量扩充·核心词，须人工复核语境
+诋毁评价	review	批量扩充·核心词，须人工复核语境
+诋毁销量	review	批量扩充·核心词，须人工复核语境
+诋毁数据	review	批量扩充·核心词，须人工复核语境
+诋毁排名	review	批量扩充·核心词，须人工复核语境
+诋毁客户	review	批量扩充·核心词，须人工复核语境
+诋毁竞品	review	批量扩充·核心词，须人工复核语境
+诋毁对手	review	批量扩充·核心词，须人工复核语境
+诋毁渠道	review	批量扩充·核心词，须人工复核语境
+诋毁供应商	review	批量扩充·核心词，须人工复核语境
+诋毁招标	review	批量扩充·核心词，须人工复核语境
+诋毁同行	review	批量扩充·核心词，须人工复核语境
+诋毁用户	review	批量扩充·核心词，须人工复核语境
+诋毁口碑	review	批量扩充·核心词，须人工复核语境
+诋毁评分	review	批量扩充·核心词，须人工复核语境
+抹黑宣传	review	批量扩充·核心词，须人工复核语境
+抹黑广告	review	批量扩充·核心词，须人工复核语境
+抹黑评价	review	批量扩充·核心词，须人工复核语境
+抹黑销量	review	批量扩充·核心词，须人工复核语境
+抹黑数据	review	批量扩充·核心词，须人工复核语境
+抹黑排名	review	批量扩充·核心词，须人工复核语境
+抹黑客户	review	批量扩充·核心词，须人工复核语境
+抹黑竞品	review	批量扩充·核心词，须人工复核语境
+抹黑对手	review	批量扩充·核心词，须人工复核语境
+抹黑渠道	review	批量扩充·核心词，须人工复核语境
+抹黑供应商	review	批量扩充·核心词，须人工复核语境
+抹黑招标	review	批量扩充·核心词，须人工复核语境
+抹黑同行	review	批量扩充·核心词，须人工复核语境
+抹黑用户	review	批量扩充·核心词，须人工复核语境
+抹黑口碑	review	批量扩充·核心词，须人工复核语境
+抹黑评分	review	批量扩充·核心词，须人工复核语境
+强买强卖宣传	review	批量扩充·核心词，须人工复核语境
+强买强卖广告	review	批量扩充·核心词，须人工复核语境
+强买强卖评价	review	批量扩充·核心词，须人工复核语境
+强买强卖销量	review	批量扩充·核心词，须人工复核语境
+强买强卖数据	review	批量扩充·核心词，须人工复核语境
+强买强卖排名	review	批量扩充·核心词，须人工复核语境
+强买强卖客户	review	批量扩充·核心词，须人工复核语境
+强买强卖竞品	review	批量扩充·核心词，须人工复核语境
+强买强卖对手	review	批量扩充·核心词，须人工复核语境
+强买强卖渠道	review	批量扩充·核心词，须人工复核语境
+强买强卖供应商	review	批量扩充·核心词，须人工复核语境
+强买强卖招标	review	批量扩充·核心词，须人工复核语境
+强买强卖同行	review	批量扩充·核心词，须人工复核语境
+强买强卖用户	review	批量扩充·核心词，须人工复核语境
+强买强卖口碑	review	批量扩充·核心词，须人工复核语境
+强买强卖评分	review	批量扩充·核心词，须人工复核语境
+搭售宣传	review	批量扩充·核心词，须人工复核语境
+搭售广告	review	批量扩充·核心词，须人工复核语境
+搭售评价	review	批量扩充·核心词，须人工复核语境
+搭售销量	review	批量扩充·核心词，须人工复核语境
+搭售数据	review	批量扩充·核心词，须人工复核语境
+搭售排名	review	批量扩充·核心词，须人工复核语境
+搭售客户	review	批量扩充·核心词，须人工复核语境
+搭售竞品	review	批量扩充·核心词，须人工复核语境
+搭售对手	review	批量扩充·核心词，须人工复核语境
+搭售渠道	review	批量扩充·核心词，须人工复核语境
+搭售供应商	review	批量扩充·核心词，须人工复核语境
+搭售招标	review	批量扩充·核心词，须人工复核语境
+搭售同行	review	批量扩充·核心词，须人工复核语境
+搭售用户	review	批量扩充·核心词，须人工复核语境
+搭售口碑	review	批量扩充·核心词，须人工复核语境
+搭售评分	review	批量扩充·核心词，须人工复核语境
+刷单宣传	review	批量扩充·核心词，须人工复核语境
+刷单广告	review	批量扩充·核心词，须人工复核语境
+刷单评价	review	批量扩充·核心词，须人工复核语境
+刷单销量	review	批量扩充·核心词，须人工复核语境
+刷单数据	review	批量扩充·核心词，须人工复核语境
+刷单排名	review	批量扩充·核心词，须人工复核语境
+刷单客户	review	批量扩充·核心词，须人工复核语境
+刷单竞品	review	批量扩充·核心词，须人工复核语境
+刷单对手	review	批量扩充·核心词，须人工复核语境
+刷单渠道	review	批量扩充·核心词，须人工复核语境
+刷单供应商	review	批量扩充·核心词，须人工复核语境
+刷单招标	review	批量扩充·核心词，须人工复核语境
+刷单同行	review	批量扩充·核心词，须人工复核语境
+刷单用户	review	批量扩充·核心词，须人工复核语境
+刷单口碑	review	批量扩充·核心词，须人工复核语境
+刷单评分	review	批量扩充·核心词，须人工复核语境
+刷评宣传	review	批量扩充·核心词，须人工复核语境
+刷评广告	review	批量扩充·核心词，须人工复核语境
+刷评评价	review	批量扩充·核心词，须人工复核语境
+刷评销量	review	批量扩充·核心词，须人工复核语境
+刷评数据	review	批量扩充·核心词，须人工复核语境
+刷评排名	review	批量扩充·核心词，须人工复核语境
+刷评客户	review	批量扩充·核心词，须人工复核语境
+刷评竞品	review	批量扩充·核心词，须人工复核语境
+刷评对手	review	批量扩充·核心词，须人工复核语境
+刷评渠道	review	批量扩充·核心词，须人工复核语境
+刷评供应商	review	批量扩充·核心词，须人工复核语境
+刷评招标	review	批量扩充·核心词，须人工复核语境
+刷评同行	review	批量扩充·核心词，须人工复核语境
+刷评用户	review	批量扩充·核心词，须人工复核语境
+刷评口碑	review	批量扩充·核心词，须人工复核语境
+刷评评分	review	批量扩充·核心词，须人工复核语境
+串通宣传	review	批量扩充·核心词，须人工复核语境
+串通广告	review	批量扩充·核心词，须人工复核语境
+串通评价	review	批量扩充·核心词，须人工复核语境
+串通销量	review	批量扩充·核心词，须人工复核语境
+串通数据	review	批量扩充·核心词，须人工复核语境
+串通排名	review	批量扩充·核心词，须人工复核语境
+串通客户	review	批量扩充·核心词，须人工复核语境
+串通竞品	review	批量扩充·核心词，须人工复核语境
+串通对手	review	批量扩充·核心词，须人工复核语境
+串通渠道	review	批量扩充·核心词，须人工复核语境
+串通供应商	review	批量扩充·核心词，须人工复核语境
+串通招标	review	批量扩充·核心词，须人工复核语境
+串通同行	review	批量扩充·核心词，须人工复核语境
+串通用户	review	批量扩充·核心词，须人工复核语境
+串通口碑	review	批量扩充·核心词，须人工复核语境
+串通评分	review	批量扩充·核心词，须人工复核语境
+围标宣传	review	批量扩充·核心词，须人工复核语境
+围标广告	review	批量扩充·核心词，须人工复核语境
+围标评价	review	批量扩充·核心词，须人工复核语境
+围标销量	review	批量扩充·核心词，须人工复核语境
+围标数据	review	批量扩充·核心词，须人工复核语境
+围标排名	review	批量扩充·核心词，须人工复核语境
+围标客户	review	批量扩充·核心词，须人工复核语境
+围标竞品	review	批量扩充·核心词，须人工复核语境
+围标对手	review	批量扩充·核心词，须人工复核语境
+围标渠道	review	批量扩充·核心词，须人工复核语境
+围标供应商	review	批量扩充·核心词，须人工复核语境
+围标招标	review	批量扩充·核心词，须人工复核语境
+围标同行	review	批量扩充·核心词，须人工复核语境
+围标用户	review	批量扩充·核心词，须人工复核语境
+围标口碑	review	批量扩充·核心词，须人工复核语境
+围标评分	review	批量扩充·核心词，须人工复核语境
+陪标宣传	review	批量扩充·核心词，须人工复核语境
+陪标广告	review	批量扩充·核心词，须人工复核语境
+陪标评价	review	批量扩充·核心词，须人工复核语境
+陪标销量	review	批量扩充·核心词，须人工复核语境
+陪标数据	review	批量扩充·核心词，须人工复核语境
+陪标排名	review	批量扩充·核心词，须人工复核语境
+陪标客户	review	批量扩充·核心词，须人工复核语境
+陪标竞品	review	批量扩充·核心词，须人工复核语境
+陪标对手	review	批量扩充·核心词，须人工复核语境
+陪标渠道	review	批量扩充·核心词，须人工复核语境
+陪标供应商	review	批量扩充·核心词，须人工复核语境
+陪标招标	review	批量扩充·核心词，须人工复核语境
+陪标同行	review	批量扩充·核心词，须人工复核语境
+陪标用户	review	批量扩充·核心词，须人工复核语境
+陪标口碑	review	批量扩充·核心词，须人工复核语境
+陪标评分	review	批量扩充·核心词，须人工复核语境
+挖角宣传	review	批量扩充·核心词，须人工复核语境
+挖角广告	review	批量扩充·核心词，须人工复核语境
+挖角评价	review	批量扩充·核心词，须人工复核语境
+挖角销量	review	批量扩充·核心词，须人工复核语境
+挖角数据	review	批量扩充·核心词，须人工复核语境
+挖角排名	review	批量扩充·核心词，须人工复核语境
+挖角客户	review	批量扩充·核心词，须人工复核语境
+挖角竞品	review	批量扩充·核心词，须人工复核语境
+挖角对手	review	批量扩充·核心词，须人工复核语境
+挖角渠道	review	批量扩充·核心词，须人工复核语境
+挖角供应商	review	批量扩充·核心词，须人工复核语境
+挖角招标	review	批量扩充·核心词，须人工复核语境
+挖角同行	review	批量扩充·核心词，须人工复核语境
+挖角用户	review	批量扩充·核心词，须人工复核语境
+挖角口碑	review	批量扩充·核心词，须人工复核语境
+挖角评分	review	批量扩充·核心词，须人工复核语境
+窃取宣传	review	批量扩充·核心词，须人工复核语境
+窃取广告	review	批量扩充·核心词，须人工复核语境
+窃取评价	review	批量扩充·核心词，须人工复核语境
+窃取销量	review	批量扩充·核心词，须人工复核语境
+窃取数据	review	批量扩充·核心词，须人工复核语境
+窃取排名	review	批量扩充·核心词，须人工复核语境
+窃取客户	review	批量扩充·核心词，须人工复核语境
+窃取竞品	review	批量扩充·核心词，须人工复核语境
+窃取对手	review	批量扩充·核心词，须人工复核语境
+窃取渠道	review	批量扩充·核心词，须人工复核语境
+窃取供应商	review	批量扩充·核心词，须人工复核语境
+窃取招标	review	批量扩充·核心词，须人工复核语境
+窃取同行	review	批量扩充·核心词，须人工复核语境
+窃取用户	review	批量扩充·核心词，须人工复核语境
+窃取口碑	review	批量扩充·核心词，须人工复核语境
+窃取评分	review	批量扩充·核心词，须人工复核语境
+虚假手段获取宣传	review	批量扩充·核心词，须人工复核语境
+虚假手段获取广告	review	批量扩充·核心词，须人工复核语境
+虚假手段获取评价	review	批量扩充·核心词，须人工复核语境
+虚假手段获取销量	review	批量扩充·核心词，须人工复核语境
+虚假手段获取数据	review	批量扩充·核心词，须人工复核语境
+虚假手段获取排名	review	批量扩充·核心词，须人工复核语境
+虚假手段获取客户	review	批量扩充·核心词，须人工复核语境
+虚假手段获取竞品	review	批量扩充·核心词，须人工复核语境
+虚假手段获取对手	review	批量扩充·核心词，须人工复核语境
+虚假手段获取渠道	review	批量扩充·核心词，须人工复核语境
+虚假手段获取招标	review	批量扩充·核心词，须人工复核语境
+虚假手段获取同行	review	批量扩充·核心词，须人工复核语境
+虚假手段获取用户	review	批量扩充·核心词，须人工复核语境
+虚假手段获取口碑	review	批量扩充·核心词，须人工复核语境
+虚假手段获取评分	review	批量扩充·核心词，须人工复核语境
+误导手段获取宣传	review	批量扩充·核心词，须人工复核语境
+误导手段获取广告	review	批量扩充·核心词，须人工复核语境
+误导手段获取评价	review	批量扩充·核心词，须人工复核语境
+误导手段获取销量	review	批量扩充·核心词，须人工复核语境
+误导手段获取数据	review	批量扩充·核心词，须人工复核语境
+误导手段获取排名	review	批量扩充·核心词，须人工复核语境
+误导手段获取客户	review	批量扩充·核心词，须人工复核语境
+误导手段获取竞品	review	批量扩充·核心词，须人工复核语境
+误导手段获取对手	review	批量扩充·核心词，须人工复核语境
+误导手段获取渠道	review	批量扩充·核心词，须人工复核语境
+误导手段获取招标	review	批量扩充·核心词，须人工复核语境
+误导手段获取同行	review	批量扩充·核心词，须人工复核语境
+误导手段获取用户	review	批量扩充·核心词，须人工复核语境
+误导手段获取口碑	review	批量扩充·核心词，须人工复核语境
+误导手段获取评分	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取宣传	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取广告	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取评价	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取销量	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取数据	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取排名	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取客户	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取竞品	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取对手	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取渠道	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取招标	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取同行	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取用户	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取口碑	review	批量扩充·核心词，须人工复核语境
+欺骗手段获取评分	review	批量扩充·核心词，须人工复核语境
+恶意手段获取宣传	review	批量扩充·核心词，须人工复核语境
+恶意手段获取广告	review	批量扩充·核心词，须人工复核语境
+恶意手段获取评价	review	批量扩充·核心词，须人工复核语境
+恶意手段获取销量	review	批量扩充·核心词，须人工复核语境
+恶意手段获取数据	review	批量扩充·核心词，须人工复核语境
+恶意手段获取排名	review	批量扩充·核心词，须人工复核语境
+恶意手段获取客户	review	批量扩充·核心词，须人工复核语境
+恶意手段获取竞品	review	批量扩充·核心词，须人工复核语境
+恶意手段获取对手	review	批量扩充·核心词，须人工复核语境
+恶意手段获取渠道	review	批量扩充·核心词，须人工复核语境
+恶意手段获取招标	review	批量扩充·核心词，须人工复核语境
+恶意手段获取同行	review	批量扩充·核心词，须人工复核语境
+恶意手段获取用户	review	批量扩充·核心词，须人工复核语境
+恶意手段获取口碑	review	批量扩充·核心词，须人工复核语境
+恶意手段获取评分	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取宣传	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取广告	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取评价	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取销量	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取数据	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取排名	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取客户	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取竞品	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取对手	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取渠道	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取招标	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取同行	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取用户	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取口碑	review	批量扩充·核心词，须人工复核语境
+诋毁手段获取评分	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取宣传	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取广告	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取评价	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取销量	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取数据	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取排名	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取客户	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取竞品	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取对手	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取渠道	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取招标	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取同行	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取用户	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取口碑	review	批量扩充·核心词，须人工复核语境
+抹黑手段获取评分	review	批量扩充·核心词，须人工复核语境
+搭售手段获取宣传	review	批量扩充·核心词，须人工复核语境
+搭售手段获取广告	review	批量扩充·核心词，须人工复核语境
+搭售手段获取评价	review	批量扩充·核心词，须人工复核语境
+搭售手段获取销量	review	批量扩充·核心词，须人工复核语境
+搭售手段获取数据	review	批量扩充·核心词，须人工复核语境
+搭售手段获取排名	review	批量扩充·核心词，须人工复核语境
+搭售手段获取客户	review	批量扩充·核心词，须人工复核语境
+搭售手段获取竞品	review	批量扩充·核心词，须人工复核语境
+搭售手段获取对手	review	批量扩充·核心词，须人工复核语境
+搭售手段获取渠道	review	批量扩充·核心词，须人工复核语境
+搭售手段获取招标	review	批量扩充·核心词，须人工复核语境
+搭售手段获取同行	review	批量扩充·核心词，须人工复核语境
+搭售手段获取用户	review	批量扩充·核心词，须人工复核语境
+搭售手段获取口碑	review	批量扩充·核心词，须人工复核语境
+搭售手段获取评分	review	批量扩充·核心词，须人工复核语境
+刷单手段获取宣传	review	批量扩充·核心词，须人工复核语境
+刷单手段获取广告	review	批量扩充·核心词，须人工复核语境
+刷单手段获取评价	review	批量扩充·核心词，须人工复核语境
+刷单手段获取销量	review	批量扩充·核心词，须人工复核语境
+刷单手段获取数据	review	批量扩充·核心词，须人工复核语境
+刷单手段获取排名	review	批量扩充·核心词，须人工复核语境
+刷单手段获取客户	review	批量扩充·核心词，须人工复核语境
+刷单手段获取竞品	review	批量扩充·核心词，须人工复核语境
+刷单手段获取对手	review	批量扩充·核心词，须人工复核语境
+刷单手段获取渠道	review	批量扩充·核心词，须人工复核语境
+刷单手段获取招标	review	批量扩充·核心词，须人工复核语境
+刷单手段获取同行	review	批量扩充·核心词，须人工复核语境
+刷单手段获取用户	review	批量扩充·核心词，须人工复核语境
+刷单手段获取口碑	review	批量扩充·核心词，须人工复核语境
+刷单手段获取评分	review	批量扩充·核心词，须人工复核语境
+刷评手段获取宣传	review	批量扩充·核心词，须人工复核语境
+刷评手段获取广告	review	批量扩充·核心词，须人工复核语境
+刷评手段获取评价	review	批量扩充·核心词，须人工复核语境
+刷评手段获取销量	review	批量扩充·核心词，须人工复核语境
+刷评手段获取数据	review	批量扩充·核心词，须人工复核语境
+刷评手段获取排名	review	批量扩充·核心词，须人工复核语境
+刷评手段获取客户	review	批量扩充·核心词，须人工复核语境
+刷评手段获取竞品	review	批量扩充·核心词，须人工复核语境
+刷评手段获取对手	review	批量扩充·核心词，须人工复核语境
+刷评手段获取渠道	review	批量扩充·核心词，须人工复核语境
+刷评手段获取招标	review	批量扩充·核心词，须人工复核语境
+刷评手段获取同行	review	批量扩充·核心词，须人工复核语境
+刷评手段获取用户	review	批量扩充·核心词，须人工复核语境
+刷评手段获取口碑	review	批量扩充·核心词，须人工复核语境
+刷评手段获取评分	review	批量扩充·核心词，须人工复核语境
+串通手段获取宣传	review	批量扩充·核心词，须人工复核语境
+串通手段获取广告	review	批量扩充·核心词，须人工复核语境
+串通手段获取评价	review	批量扩充·核心词，须人工复核语境
+串通手段获取销量	review	批量扩充·核心词，须人工复核语境
+串通手段获取数据	review	批量扩充·核心词，须人工复核语境
+串通手段获取排名	review	批量扩充·核心词，须人工复核语境
+串通手段获取客户	review	批量扩充·核心词，须人工复核语境
+串通手段获取竞品	review	批量扩充·核心词，须人工复核语境
+串通手段获取对手	review	批量扩充·核心词，须人工复核语境
+串通手段获取渠道	review	批量扩充·核心词，须人工复核语境
+串通手段获取招标	review	批量扩充·核心词，须人工复核语境
+串通手段获取同行	review	批量扩充·核心词，须人工复核语境
+串通手段获取用户	review	批量扩充·核心词，须人工复核语境
+串通手段获取口碑	review	批量扩充·核心词，须人工复核语境
+串通手段获取评分	review	批量扩充·核心词，须人工复核语境
+围标手段获取宣传	review	批量扩充·核心词，须人工复核语境
+围标手段获取广告	review	批量扩充·核心词，须人工复核语境
+围标手段获取评价	review	批量扩充·核心词，须人工复核语境
+围标手段获取销量	review	批量扩充·核心词，须人工复核语境
+围标手段获取数据	review	批量扩充·核心词，须人工复核语境
+围标手段获取排名	review	批量扩充·核心词，须人工复核语境
+围标手段获取客户	review	批量扩充·核心词，须人工复核语境
+围标手段获取竞品	review	批量扩充·核心词，须人工复核语境
+围标手段获取对手	review	批量扩充·核心词，须人工复核语境
+围标手段获取渠道	review	批量扩充·核心词，须人工复核语境
+围标手段获取招标	review	批量扩充·核心词，须人工复核语境
+围标手段获取同行	review	批量扩充·核心词，须人工复核语境
+围标手段获取用户	review	批量扩充·核心词，须人工复核语境
+围标手段获取口碑	review	批量扩充·核心词，须人工复核语境
+围标手段获取评分	review	批量扩充·核心词，须人工复核语境
+陪标手段获取宣传	review	批量扩充·核心词，须人工复核语境
+陪标手段获取广告	review	批量扩充·核心词，须人工复核语境
+陪标手段获取评价	review	批量扩充·核心词，须人工复核语境
+陪标手段获取销量	review	批量扩充·核心词，须人工复核语境
+陪标手段获取数据	review	批量扩充·核心词，须人工复核语境
+陪标手段获取排名	review	批量扩充·核心词，须人工复核语境
+陪标手段获取客户	review	批量扩充·核心词，须人工复核语境
+陪标手段获取竞品	review	批量扩充·核心词，须人工复核语境
+陪标手段获取对手	review	批量扩充·核心词，须人工复核语境
+陪标手段获取渠道	review	批量扩充·核心词，须人工复核语境
+陪标手段获取招标	review	批量扩充·核心词，须人工复核语境
+陪标手段获取同行	review	批量扩充·核心词，须人工复核语境
+陪标手段获取用户	review	批量扩充·核心词，须人工复核语境
+陪标手段获取口碑	review	批量扩充·核心词，须人工复核语境
+陪标手段获取评分	review	批量扩充·核心词，须人工复核语境
+挖角手段获取宣传	review	批量扩充·核心词，须人工复核语境
+挖角手段获取广告	review	批量扩充·核心词，须人工复核语境
+挖角手段获取评价	review	批量扩充·核心词，须人工复核语境
+挖角手段获取销量	review	批量扩充·核心词，须人工复核语境
+挖角手段获取数据	review	批量扩充·核心词，须人工复核语境
+挖角手段获取排名	review	批量扩充·核心词，须人工复核语境
+挖角手段获取客户	review	批量扩充·核心词，须人工复核语境
+挖角手段获取竞品	review	批量扩充·核心词，须人工复核语境
+挖角手段获取对手	review	批量扩充·核心词，须人工复核语境
+挖角手段获取渠道	review	批量扩充·核心词，须人工复核语境
+挖角手段获取招标	review	批量扩充·核心词，须人工复核语境
+挖角手段获取同行	review	批量扩充·核心词，须人工复核语境
+挖角手段获取用户	review	批量扩充·核心词，须人工复核语境
+挖角手段获取口碑	review	批量扩充·核心词，须人工复核语境
+挖角手段获取评分	review	批量扩充·核心词，须人工复核语境
+窃取手段获取宣传	review	批量扩充·核心词，须人工复核语境
+窃取手段获取广告	review	批量扩充·核心词，须人工复核语境
+窃取手段获取评价	review	批量扩充·核心词，须人工复核语境
+窃取手段获取销量	review	批量扩充·核心词，须人工复核语境
+窃取手段获取数据	review	批量扩充·核心词，须人工复核语境
+窃取手段获取排名	review	批量扩充·核心词，须人工复核语境
+窃取手段获取客户	review	批量扩充·核心词，须人工复核语境
+窃取手段获取竞品	review	批量扩充·核心词，须人工复核语境
+窃取手段获取对手	review	批量扩充·核心词，须人工复核语境
+窃取手段获取渠道	review	批量扩充·核心词，须人工复核语境
+窃取手段获取招标	review	批量扩充·核心词，须人工复核语境
+窃取手段获取同行	review	批量扩充·核心词，须人工复核语境
+窃取手段获取用户	review	批量扩充·核心词，须人工复核语境
+窃取手段获取口碑	review	批量扩充·核心词，须人工复核语境
+窃取手段获取评分	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵宣传	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵广告	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵评价	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵销量	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵数据	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵排名	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵客户	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵竞品	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵对手	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵渠道	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵招标	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵同行	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵用户	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵口碑	review	批量扩充·核心词，须人工复核语境
+虚假方式操纵评分	review	批量扩充·核心词，须人工复核语境
+误导方式操纵宣传	review	批量扩充·核心词，须人工复核语境
+误导方式操纵广告	review	批量扩充·核心词，须人工复核语境
+误导方式操纵评价	review	批量扩充·核心词，须人工复核语境
+误导方式操纵销量	review	批量扩充·核心词，须人工复核语境
+误导方式操纵数据	review	批量扩充·核心词，须人工复核语境
+误导方式操纵排名	review	批量扩充·核心词，须人工复核语境
+误导方式操纵客户	review	批量扩充·核心词，须人工复核语境
+误导方式操纵竞品	review	批量扩充·核心词，须人工复核语境
+误导方式操纵对手	review	批量扩充·核心词，须人工复核语境
+误导方式操纵渠道	review	批量扩充·核心词，须人工复核语境
+误导方式操纵招标	review	批量扩充·核心词，须人工复核语境
+误导方式操纵同行	review	批量扩充·核心词，须人工复核语境
+误导方式操纵用户	review	批量扩充·核心词，须人工复核语境
+误导方式操纵口碑	review	批量扩充·核心词，须人工复核语境
+误导方式操纵评分	review	批量扩充·核心词，须人工复核语境
+欺骗方式操纵宣传	review	批量扩充·核心词，须人工复核语境
+欺骗方式操纵广告	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+shijieji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongkoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongtongxing	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongkehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongtoubiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongpaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongjingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongpingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongpingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuantongxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+maizan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiangshifen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xianzhanghoujiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guanjunpinpai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shantie	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shanchuchaping	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadankoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadantonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadantuandui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadankehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanpaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanchaoxin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanjingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanpingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanpingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuadanxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuahaoping	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shualiuliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingkoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingtonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingkehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingpaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingjingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingpingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingpingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuapingxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuaxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuayuedu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yaresou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shishangzuiqiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weiyi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shangyedihui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaochuanbiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaokoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaotonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaokehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaozhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaopaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaojingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaopingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaopingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weibiaoxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guojiaji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kuadaxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyikoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyitonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyikehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyixuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyiduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyichaping	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyiguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyitousu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyiqiangzhu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyizhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyipaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyishuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyiqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyiyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyijingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyipingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyipingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+eyixiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangzhushangbiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheikoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheitonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheikehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheixuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheiduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheiguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheizhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheipaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheishuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheiqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheiyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheijingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheipingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheipingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+moheixiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaokoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaotonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaokehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaozhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaopaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaojingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaopingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaopingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaotiaocao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wajiaoxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoukoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoutonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoukehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoupaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoushuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoujingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoupingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashoupingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dashouxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shujuzhushui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shujuzaojia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zuihao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipiankoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipiantonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipiankehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianpaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianjingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianpingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianpingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qipianxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuijunkongping	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+liuliangzaojia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wangpai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+liaoxiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequkoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequtonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequkehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequzhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequpaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qieququdao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequjingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequpingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequpingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiequxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wangluoshuijun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiajiaoyi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiacuxiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiagongxiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiayuanjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiakoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiatonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiakehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiaxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiaduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiazhekou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiazhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiapaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiashuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiaqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiayonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiajingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiapingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiapingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiaxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuikoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuitonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuikehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuixuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuiduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuiguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuizhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuipaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuishuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuiqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuiyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuijingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuipingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuipingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dihuixiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaokoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaotonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaokehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaozhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaopaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaojingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaopingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaopingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wudaoxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhangwaifanli	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jinpai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaokoubei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaotonghang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaokehu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoxuanchuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoduishou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoguanggao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaozhaobiao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaopaiming	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoshuju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoqudao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoyonghu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaojingpin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaopingjia	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaopingfen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+peibiaoxiaoliang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shouge	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+heigongguan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+shuadan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shualiang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shuijun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

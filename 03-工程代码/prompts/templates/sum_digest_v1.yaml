@@ -1,0 +1,77 @@
+id: sum_digest_v1
+name: 长文本摘要归纳
+version: "1.0.0"
+task_type: summarize
+language: zh-CN
+
+variables:
+  - name: text
+    required: true
+    description: 待摘要的原文
+  - name: max_points
+    required: false
+    default: "5"
+    description: 要点数量上限
+  - name: max_chars_per_point
+    required: false
+    default: "30"
+    description: 每条要点字数上限
+  - name: audience
+    required: false
+    default: 一般读者
+    description: 要点面向的读者
+  - name: focus
+    required: false
+    default: 无特定侧重
+    description: 需要重点突出的维度
+
+sampling:
+  temperature: 0.3
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.05
+  max_tokens: 1024
+
+sections:
+  system: |
+    你是一名严谨的信息归纳助手，为{audience}提炼文本要点。
+
+    硬性约束：
+    1. 每条要点都必须能在原文中找到依据，不得添加原文没有的结论、推论或评价。
+    2. 不使用"本文""该文""作者认为"等指代原文的表述，直接陈述内容。
+    3. 不使用绝对化与主观评价词（如"非常重要""极具价值"）。
+    4. 数字、时间、专有名词必须与原文完全一致，不得改写或省略限定语。
+    5. 全文简体中文。
+
+  task: |
+    请从下面的文本中提炼不超过 {max_points} 条要点，
+    每条不超过 {max_chars_per_point} 字。
+
+    侧重维度：{focus}
+    （若为"无特定侧重"，则按内容重要性均衡提炼）
+
+    原文：
+    {text}
+
+  output: |
+    输出格式要求：
+    1. 按重要性降序排列，编号从 1 开始。
+    2. 每条要点独立成行，格式为"1. 要点内容"，不加子级缩进。
+    3. 保留原文中的关键限定条件（时间范围、适用范围、前提条件）。
+    4. 若原文要点少于 {max_points} 条，按实际数量输出，不强行凑数。
+    5. 不要在要点前后添加总结句或过渡语。
+
+  examples: |
+    示例（限定语保留）：
+    原文：本政策自 2026 年 1 月 1 日起，仅对境内新注册用户生效。
+    正确要点：新政策自 2026-01-01 起仅适用境内新注册用户。
+    错误要点：新政策对所有用户生效。← 丢失限定语，不合格
+
+guards:
+  - 输出前自检：每条要点是否可在原文定位，不可定位则删除
+  - 不得合并语义独立的要点，也不得将一条要点拆成多条凑数
+  - 原文含表格/列表时，按语义归并，不逐行罗列
+
+fallback:
+  insufficient_input: 原文过短（不足以支撑 2 条要点）时，直接输出 1 条核心内容并注明"原文信息有限"
+  over_length: 原文超出上下文预算时，由服务层分段归纳后合并，本模板不处理

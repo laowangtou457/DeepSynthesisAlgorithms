@@ -1,0 +1,123 @@
+{
+  "spec_version": "1.0.0",
+  "generated_at": "2026-10-12T16:33:08+08:00",
+  "generator": {
+    "tool": "gen_overlays.py",
+    "style": "dark_pill",
+    "style_desc": "深色半透明圆角胶囊底衬 + 白色文字（适配任意画面，推荐）",
+    "font_file": "C:/Windows/Fonts/msyhbd.ttc",
+    "font_name": "微软雅黑 Bold（系统字体，仅预览用）",
+    "font_is_licensed": false,
+    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §6.5、T-04）"
+  },
+  "compliance": {
+    "standard": "GB 45438—2025 §5.4",
+    "requirements": {
+      "text_contains": "「人工智能」或「AI」+「生成」和/或「合成」",
+      "location": "画面边或角；片头卡位于起始画面",
+      "height_ratio_min": 0.05,
+      "duration_sec_min": 2
+    },
+    "project_values": {
+      "height_ratio": 0.06,
+      "duration_ms": 3000,
+      "note": "本项目在法规下限之上留余量：字高 6%（≥5%）、时长 3s（≥2s）"
+    },
+    "check_result": "pass"
+  },
+  "usage": {
+    "step_1": "把 overlay_intro_* 置于成片起始画面，展示满 3 秒",
+    "step_2": "把 overlay_corner_* 叠加到画面边角（推荐右下角），建议全片保留",
+    "step_3": "不得缩小、裁切、模糊、遮挡或改变标识文字的可辨识度",
+    "step_4": "避免放在被平台 UI（进度条/按钮）遮挡的区域",
+    "step_5": "发布时按平台要求勾选/声明「AI 生成」相关选项",
+    "forbidden": "不得删除、篡改、隐匿标识（《标识办法》§10）"
+  },
+  "texts": {
+    "full_final": "本文件由AI生成，已经过合规验证",
+    "full_suggested": "本文件由人工智能（AI）生成，请注意甄别",
+    "short_badge": "AI生成"
+  },
+  "assets": [
+    {
+      "file": "overlay_intro_16x9.png",
+      "type": "intro_card",
+      "canvas": "1920x1080",
+      "text": "本文件由AI生成，已经过合规验证",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 1,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_16x9.png",
+      "type": "corner_badge",
+      "canvas": "1080x117",
+      "text": "本文件由AI生成，已经过合规验证",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 1,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_short_16x9.png",
+      "type": "corner_badge_short",
+      "canvas": "276x117",
+      "text": "AI生成",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 1,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_suggest_16x9.png",
+      "type": "corner_badge_suggest",
+      "canvas": "1348x117",
+      "text": "本文件由人工智能（AI）生成，请注意甄别",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 1,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_intro_9x16.png",
+      "type": "intro_card",
+      "canvas": "1080x1920",
+      "text": "本文件由AI生成，已经过合规验证",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 2,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_9x16.png",
+      "type": "corner_badge",
+      "canvas": "611x204",
+      "text": "本文件由AI生成，已经过合规验证",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 2,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_short_9x16.png",
+      "type": "corner_badge_short",
+      "canvas": "276x117",
+      "text": "AI生成",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 1,
+      "duration_ms": 3000
+    },
+    {
+      "file": "overlay_corner_suggest_9x16.png",
+      "type": "corner_badge_suggest",
+      "canvas": "1013x204",
+      "text": "本文件由人工智能（AI）生成，请注意甄别",
+      "font_px": 65,
+      "height_ratio": 0.0602,
+      "lines": 2,
+      "duration_ms": 3000
+    }
+  ]
+}

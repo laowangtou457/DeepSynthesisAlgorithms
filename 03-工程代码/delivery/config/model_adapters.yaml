@@ -1,0 +1,341 @@
+# ============================================================
+# 多模型提示词适配规则（model adapters）
+# 规范依据：NORM-DELIVERY-001 v1.1 §6 / 附录 A（SW-025）
+# 优先级来源：SYS-Q17 —— P0: MiniMax H3、Seedance ｜ P1: 即梦 ｜ P2: 可灵 ｜ P3: 其余
+#
+# ★★ v1.1 重写说明（依导演视角评审 D-01~D-04、D-14、D-15）：
+#   v1.0 的本章内容是按「公共印象」写的占位框架，与项目已实测核实的官方规范
+#   存在系统性冲突（方括号运镜指令、以中文为主、只设时长上限、负向词残留等）。
+#   v1.1 按 h3_prompt_model/h3_compiler.py（95 条规则）+ 参考方法论 §8~§11 重写。
+#
+# ★ 核对状态 verify_status：
+#     verified = 已按官方文档/本项目实测核对并回填（可直接交付）
+#     partial  = 结构写法已核对，部分「数值」待官方核对（输出须附「适配参数待核对」提示）
+#     pending  = 待核对（输出须附提示，不得标为已验证）
+#   ★ 规范 §13 T-03：partial 未清除前，该模型适配文本不得作为「照做就行」的样板。
+#
+# ★ 铁律：本文件不得出现任何下游 API 地址、密钥字段或调用逻辑（SYS-018 脱钩原则）。
+# ============================================================
+
+schema_version: "1.1.0"
+updated_at: "2026-10-12"
+
+defaults:
+  fallback_action: general_spec_with_guide   # 无适配配置时：输出通用规范 + 使用说明（规范 §6.6）
+  unknown_model_behavior: degrade            # degrade | block（永远不用 block，保证降级可用）
+  # 通用要素书写顺序（与 config/shot_vocab.yaml: prompt_order 一致）
+  prompt_order: [subject, action, environment, lighting, camera_language, style]
+  # 适配文本固定分隔行格式（规范 §6.8）
+  unit_separator: "━━━ 单元 {unit_id}（{shot_count} 镜 · {unit_duration_s}s · {model_display}）━━━"
+  shot_separator: "─── 镜 {shot_id}（{shot_size_zh} · {camera_move_zh} · {duration_s}s · {aspect_ratio}）───"
+  file_header: "━━━ 交付包 {pack_id} ━━━\n模型：{model_display} ｜ 单元数：{unit_count} ｜ 镜数：{shot_count} ｜ 总时长：{total_duration_s}s ｜ 生成时间：{created_at}\n"
+  # ★ v1.1：适配输出改为「两段式」（规范 §6.8 / §9.2）——标识区 + 分隔行 + 提示词区
+  two_section_output: true
+  mark_section: "【AI生成内容】{explicit_text}        ← 标识区，请勿复制"
+  mark_divider: "════════════ 以下为提示词区，请从此行以下复制 ════════════"
+  copy_hint: "复制方法：请从上方「提示词区」分隔行以下开始复制，不要连同标识区一起粘贴。"
+  # 适配输出不含 AIGC 元数据块（元数据写在 pack 与导出文件中，避免污染提示词）
+  include_aigc_meta_in_adapter_output: false
+
+# 负向词处理通则（规范 §6.4）
+negative_policy:
+  rule: "内容质量层统一持有负向意图（style_bible.negative_global / shots[].negative_prompt）；是否可投喂由目标模型决定"
+  when_supported: "填入模型的独立负向字段；不得与正向文本混写"
+  when_unsupported: "必须转写为正向约束句，并确保交付文本中【无任何形式的负向残留】——包括用中文括号伪装的「（负向：…）」写法（规范 §8.3 第 17 项）"
+  residual_patterns:                      # 负向残留扫描模式（validate_pack.py 使用）
+    - "（负向："
+    - "(负向:"
+    - "Negative prompt:"
+    - "negative_prompt"
+
+models:
+
+  # ────────────────────────── P0 ──────────────────────────
+  - code: minimax_h3
+    display_name: MiniMax H3（海螺）
+    priority: P0
+    verify_status: verified
+    verify_source: "h3_prompt_model/h3_compiler.py（95 条规则，本项目实测）+ 07-提示词工程/外部提示词集AI可用化改造方法论.md §8"
+    export_filename: minimax_h3.txt
+    dims:
+      language_preference: en_primary      # ★ v1.1 修正：H3 以英文为基底（v1.0 误写为 zh_primary）
+      language_hard_constraint: true       # 语言倾向不得覆盖模型硬约束（规范 §6.3 第 1 维）
+      language_rule: "英文为基底；中文仅允许出现在 <d>[Chinese]…</d>（台词）与英文双引号内的画面可见文字；框架描述不得出现中文；画面可见文字必须用英文双引号，中文引号违规"
+      prompt_order: [subject, action, environment, lighting, camera_language, style]
+      style_sentence_position: "基础模式（三字段）写在 [Shot 1] 之内；Ref2VA 六段式写在 [Shot 1] 之前（最易搞混）"
+      camera_expression: natural_language_sentence   # ★ v1.1：废止 bracket_directive
+      camera_rule: "运镜为英文自然语言末句，必须以 'The camera' 起句且独立成句，写成「类型 + 幅度 + 速度」三元组；禁止方括号指令；禁止藏在从句里"
+      camera_amplitude: [small, large]               # medium 省略
+      camera_speed: [slow, fast]                     # normal 省略
+      camera_no_amplitude_no_speed: [static, pov]
+      camera_map_source: config/shot_vocab.yaml#camera_move.model_map.minimax_h3
+      cut_phrases:                                   # 官方仅此 5 条，不得自造
+        - the camera cuts to
+        - the shot cuts to
+        - the shot transitions to
+        - the shot changes to
+        - the shot switches to
+      transition_fallback: "the shot transitions to"  # fade_in/fade_out/dissolve/wipe 均降级至此
+      negative_prompt:
+        supported: false                  # ★ v1.1 修正：基础模式（三字段）无 Negative 字段
+        translate_to_positive: true
+        must_have_no_residue: true
+        positive_rewrite_example: "「保持雨势中等」「画面无字幕与水印」「建筑保持年代感」"
+      reference_image:
+        first_frame: true                 # I2VA
+        first_last_frame: true            # FL2VA
+        last_frame: true                  # L2VA
+        full_reference: true              # Ref2VA（六段式；本期不作适配，见 meta.unsupported_task_types）
+        character_ref: true
+        style_ref: true
+      reference_limits: { Picture: 9, Video: 3, Audio: 3 }
+      reference_labels: ["<Subject N>", "<Picture N>", "<Video N>", "<Audio N>"]
+      limits:
+        min_duration_ms: 4000             # ★ v1.1：MIN_DUR = 4（秒）
+        max_duration_ms: 15000            # ★ v1.1：MAX_DUR = 15（秒）
+        integer_seconds_only: true        # 模型侧不接受毫秒精度
+        max_prompt_chars: 7000            # ★ v1.1：MAX_CHARS = 7000（v1.0 误写为估值 1500）
+        max_shots_per_unit_8dim: 3        # 八维全开时单单元 ≤ 3 镜（§4.3）
+        detailed_description_words: [350, 500]   # 仅 Ref2VA
+      sound:
+        organization: split_fields        # 分轨字段
+        fields: [overall_soundscape, non_diegetic_music]
+        soundscape_sentences: [1, 4]
+        music_sentences: [1, 3]
+        music_forbidden: [抽象情绪词]      # 如 sad/happy/tense/悲/紧张
+        source: ["units[].soundscape", "units[].music"]
+        aggregation: "环境音取并集去重；配乐按段落归并"
+      mode_skeleton:
+        base: [integrated_multimodal_description, overall_soundscape, non_diegetic_music]
+        ref2va: [subject_definitions, summary, retention_analysis, detailed_description, overall_soundscape, non_diegetic_music]
+      import_format: plain_text
+      special_rules:
+        - "避免出现真实人物姓名与肖像描述"
+        - "提示词走词库校验，避免平台禁用词"
+        - "<d> 与 </d> 数量必须配对；<d> 内必须以语言标签开头"
+        - "overall_soundscape 不得复述对白（1–4 句）"
+        - "non_diegetic_music 1–3 句，禁抽象情绪词；全静音填 N/A"
+        - "[Shot 2] 起每镜必须使用官方 5 条切镜短语之一"
+        - "时间码格式 At MM:SS.mmm,，严格递增、个数 = 镜数 − 1；[Shot 1] 不带时间码"
+
+  - code: seedance
+    display_name: Seedance
+    priority: P0
+    verify_status: partial              # 结构已核对；字数/时长公开上限待官方核对
+    verify_pending: [max_prompt_chars, min_duration_ms, max_duration_ms]
+    verify_source: "07-提示词工程/外部提示词集AI可用化改造方法论.md §9 + 项目已确立写法（悬崖吊桥刀战_Seedance提示词集.md）"
+    export_filename: seedance.txt
+    dims:
+      language_preference: zh_primary
+      language_hard_constraint: false
+      language_rule: "中文为工作语言，无位置限制；对白用花括号 {…}，音效用尖括号 <…>，音乐用圆括号 (…)，字幕用全角方括号 【…】"
+      # ★ v1.1：四段结构（v1.0 为单段散句，丢了权重与素材引用）
+      structure: four_sections
+      sections: [asset_mapping, one_sentence_brief, timeline, global_constraints]
+      weight_syntax:
+        enabled: true
+        form: "(景别、时长、主体、核心动作与镜头起始状态:1.3)"
+        rule: "每个权重短语独立成行；建议权重区间 0.8–1.3"
+      prompt_order: [subject, action, environment, lighting, camera_language, style]
+      camera_expression: natural_language_with_speed
+      camera_rule: "点名景别 + 运动 + 速度；速度修饰 very slow / gradually / quick pan / sweeping"
+      transition_named: true              # 转场可点名（whip-pan left + wipe + dissolve）
+      negative_prompt:
+        supported: true                   # 约束块：结尾独立 "Negative prompt:" 行
+        translate_to_positive: false
+        must_have_no_residue: false
+        placement: "结尾独立一行，不与正向混写"
+      reference_image:
+        first_frame: true
+        character_ref: true
+        style_ref: true
+      reference_syntax: ["@Image N", "@Video N", "@Audio N"]
+      reference_limits: { Picture: 30, Video: 10, Audio: 10, total: 50 }
+      reference_rules:
+        - "每个素材必须能补完「Use this asset for ___，and ignore ___」"
+        - "同一主体多视图必须显式声明「All three images describe one X」并加基数约束"
+        - "部分使用必须声明不继承什么（只借运镜就写「仅参考运镜，不得复制其主体或场景」）"
+      limits:
+        min_duration_ms: 4000             # 待官方核对
+        max_duration_ms: 30000            # 待官方核对
+        integer_seconds_only: true
+        max_prompt_chars: null            # 无明确公开上限（宜短）；待核对
+        max_timeline_segments: 5
+      timeline_rule: "时间区间必须连续（0–3秒、3–7秒、7–15秒），不留未解释空档；每段一个主要状态变化 + 一个可见结束态"
+      import_format: plain_text
+      special_rules:
+        - "每条提示词只含一项可见变化"
+        - "不重复描述参考图里能看到的东西（图生视频模式下提示词是导演指令，不是美术描述）"
+        - "避免模糊赞美（「更具电影感」）、相互冲突的运镜、过多同时发生的动作、不被支持的精确指令"
+        - "避免真实人物姓名与肖像描述"
+
+  # ────────────────────────── P1 ──────────────────────────
+  - code: dreamina
+    display_name: 即梦（Dreamina）
+    priority: P1
+    verify_status: partial
+    verify_pending: [min_duration_ms, max_duration_ms, max_prompt_chars]
+    verify_source: "07-提示词工程/外部提示词集AI可用化改造方法论.md §11（官方公式与官方镜头词典）"
+    export_filename: dreamina.txt
+    dims:
+      language_preference: zh_primary
+      language_hard_constraint: false
+      language_rule: "中文原生，理解最好；分层撰写，越靠前的信息识别权重越高"
+      # ★ v1.1：官方公式（v1.0 仅「中文优先、自然语言为主」）
+      formula: "主体 + 运动 + 背景 + 镜头语言"
+      multi_shot_formula: "镜头1 + 主体 + 动作1 + 镜头2 + 主体 + 动作2 …"
+      extended_formula: "{主体（外貌/肢体/服饰）} + {运动（运动对象+变化类型+速度节奏）} + {背景（前景/中景/背景）} + {镜头语言（运镜轨迹/分镜节奏）} + {风格质感} + {视频时长要求}"
+      prompt_order: [subject, action, environment, lighting, camera_language, style]
+      camera_expression: platform_lexicon
+      # ★ v1.1：官方镜头词典（必须使用官方写法，不得自造）
+      camera_lexicon:
+        push_in: 镜头拉近
+        pull_out: 镜头拉远
+        arc: 镜头环绕
+        tracking: 镜头跟随
+        static: 固定镜头
+        pan_up: 镜头向上移动
+        pan_down: 镜头向下移动
+        pan_left: 镜头向左移动
+        pan_right: 镜头向右移动
+        close: 镜头特写
+        shake: 镜头晃动
+        roll: 镜头360度旋转
+        cut: 镜头切换
+      degree_adverbs: [快速, 大幅度, 高频率, 剧烈, 缓缓]
+      negative_prompt:
+        supported: true                   # 独立输入框
+        translate_to_positive: false
+        placement: "独立负向输入框，不与正向混写"
+      reference_image:
+        first_frame: true
+        character_ref: true
+        style_ref: null
+      limits:
+        min_duration_ms: 4000             # 待官方核对
+        max_duration_ms: 12000            # 待官方核对（4–12 秒量级）
+        integer_seconds_only: true
+        max_prompt_chars: null            # 无明确公开上限；待核对
+      import_format: plain_text
+      special_rules:
+        - "主体必须具体（年龄/外形/穿着 或 材质/形态/数量），不用「好看」「高级」这类抽象形容词"
+        - "官方明示不适用于画面内精准文字场景"
+        - "不虚构平台专属参数（不写不存在的分辨率、专属字段、伪 API 名词）"
+
+  # ────────────────────────── P2 ──────────────────────────
+  - code: kling
+    display_name: 可灵（Kling）
+    priority: P2
+    verify_status: partial
+    verify_pending: [limits 数值微调]
+    verify_source: "07-提示词工程/外部提示词集AI可用化改造方法论.md §10（官方公式、2500 字符、六轴 [-10,10]）"
+    export_filename: kling.txt
+    dims:
+      language_preference: zh_primary
+      language_hard_constraint: false
+      language_rule: "中文优先，描述宜简洁；图生视频时只描述动作与镜头，不描述画面"
+      # ★ v1.1：官方公式（v1.0 仅「简洁、运镜选项 + 文本」）
+      formula: "主体 + 主体动作 + 场景 +（镜头语言 + 灯光 + 氛围）"
+      extended_formula: "主体（细节）+ 运动 + 场景（背景）+ 镜头语言 + 灯光 + 氛围"
+      prompt_order: [subject, action, environment, lighting, camera_language, style]
+      camera_expression: natural_language_and_axis
+      camera_rule: "禁止模糊镜头指令（「电影感运动」无意义），必须用明确术语；可用六轴数值精确定量"
+      camera_axis_api:
+        range: [-10, 10]
+        axes:
+          horizontal: { positive: 相机右移, negative: 相机左移 }
+          vertical: { positive: 相机上移, negative: 相机下移 }
+          pan: { positive: 右转, negative: 左转 }
+          tilt: { positive: 上仰, negative: 下俯 }
+          roll: { positive: 顺时针, negative: 逆时针 }
+          zoom: { positive: 短焦（更广视角）, negative: 长焦（更窄视角） }
+      negative_prompt:
+        supported: true                   # 独立字段
+        translate_to_positive: false
+        placement: "独立字段，不与正向混写（混写会干扰识别）"
+      reference_image:
+        first_frame: true
+        character_ref: true               # Element 库，最多 7 个参考角色
+        style_ref: null
+      reference_limits: { Picture: 7 }
+      capabilities: [首尾帧插值(image_tail), 运动笔刷(Motion Brush), 原生音频(2.6+), Element 库]
+      limits:
+        min_duration_ms: 3000             # 3–15 秒（可延长）
+        max_duration_ms: 15000
+        integer_seconds_only: true
+        max_prompt_chars: 2500            # ★ v1.1 修正：v1.0 误写为 800
+        negative_max_prompt_chars: 2500
+      multi_shot: "使用独立的「多镜头模式」，不是单提示词内切镜"
+      import_format: plain_text
+      special_rules:
+        - "禁止相互冲突的指令（如「晴朗的日子 + 暴雨 + 浓重乌云」）"
+        - "「2500 是天花板不是目标」——60–100 字精炼提示词效果几乎总是优于 2000 字堆砌"
+
+  # ────────────────────────── P3 ──────────────────────────
+  - code: vidu
+    display_name: Vidu
+    priority: P3
+    verify_status: pending
+    verify_source: ""
+    export_filename: null                   # P3 不默认导出，按需增配
+    dims:
+      language_preference: bilingual
+      camera_expression: natural_language
+      negative_prompt: { supported: null, translate_to_positive: true }
+      reference_image: { first_frame: true, character_ref: null, style_ref: null }
+      limits: { min_duration_ms: 4000, max_duration_ms: 8000, integer_seconds_only: true, max_prompt_chars: 800 }
+      import_format: plain_text
+      special_rules: ["未核对，按通用规范降级输出"]
+
+  - code: tongyi_wanxiang
+    display_name: 通义万相
+    priority: P3
+    verify_status: pending
+    verify_source: ""
+    export_filename: null
+    dims:
+      language_preference: zh_primary
+      camera_expression: natural_language
+      negative_prompt: { supported: null, translate_to_positive: true }
+      reference_image: { first_frame: true, character_ref: null, style_ref: null }
+      limits: { min_duration_ms: 4000, max_duration_ms: 8000, integer_seconds_only: true, max_prompt_chars: 800 }
+      import_format: plain_text
+      special_rules: ["未核对，按通用规范降级输出"]
+
+  - code: other
+    display_name: 其他模型（通用降级）
+    priority: P3
+    verify_status: pending
+    verify_source: ""
+    export_filename: generic.txt
+    dims:
+      language_preference: bilingual
+      camera_expression: natural_language
+      negative_prompt: { supported: null, translate_to_positive: true }
+      reference_image: { first_frame: null, character_ref: null, style_ref: null }
+      limits: { min_duration_ms: 4000, max_duration_ms: 8000, integer_seconds_only: true, max_prompt_chars: 800 }
+      import_format: plain_text
+      special_rules:
+        - 输出通用规范提示词 + 《通用使用说明》
+        - 说明中列出：如何把结构化字段人工填入该平台、如何贴入标识素材
+
+# ────────────────────────────────────────────────────────────
+# 适配覆盖表（规范 §13 T-03 附）
+# ────────────────────────────────────────────────────────────
+coverage_table:
+  - { model: MiniMax H3, priority: P0, verify_status: verified, note: "运镜/时长/字符/负向/切镜均已按实测回填" }
+  - { model: Seedance,   priority: P0, verify_status: partial,  note: "四段结构/权重/素材语法已核对；字数与时长上限待官方核对" }
+  - { model: 即梦,       priority: P1, verify_status: partial,  note: "官方公式与镜头词典已核对；时长/字数待官方核对" }
+  - { model: 可灵,       priority: P2, verify_status: partial,  note: "官方公式/2500 字符/六轴已核对；个别数值待微调" }
+
+# ────────────────────────────────────────────────────────────
+# 新增模型接入检查表（规范 §6.7）
+# ────────────────────────────────────────────────────────────
+onboarding_checklist:
+  - 在 models 下新增条目（code / display_name / priority / export_filename）
+  - 先在 config/shot_vocab.yaml 的 model_map 补齐该模型的运镜/景别/光学/光照字面（规范 §6.5）
+  - 填满 11 个适配维度；无法确认项置 verify_status: pending，数值类未定项记入 verify_pending
+  - 用 examples/demo_pack.json 跑一次适配，人工核对输出可读性与完整性
+  - 核对官方文档后回填 limits 与指令语法，置 verify_status: verified 并填 verify_source
+  - 确认无代码改动、无下游 API 依赖（SW-025 / SYS-018）
+  - 登记到 coverage_table 并在交付测试中抽样验证

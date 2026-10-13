@@ -1,0 +1,771 @@
+# =============================================================================
+# 关键词库词表：A4-01 危害他人身心健康
+# 组别：A.4   单类配额：>= 300 个
+# 本项目相关度：★高
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+# 同时对应本项目 §2 未成年人、自杀自残相关约束。
+教唆自杀	block	
+自杀方法	block	
+自残教程	block	
+诱导自伤	review	
+极端减肥	review	
+劝酒致死	review	
+
+# ===== 危害身心健康·自杀与自伤 =====
+诱导自杀	block
+自杀群	block
+相约自杀	block
+蓝鲸游戏	block
+自残	block
+割腕	block
+自伤	block
+教唆自残	block
+一起死	block
+
+# ===== 危害身心健康·不良诱导 =====
+诱导吸烟	block
+诱导饮酒	block
+劝酒	block
+拼酒	block
+酗酒	block
+窒息挑战	block
+晕厥挑战	block
+危险挑战	block
+吞异物	block
+
+# ===== 危害身心健康·饮食与作息 =====
+催吐	review
+减肥药	review
+泻药	review
+厌食	review
+过度减肥	review
+瘦身偏方	review
+减肥偏方	review
+熬夜方法	review
+
+# 词条数（不含注释）：32 / 300
+
+# -------- 核心词（动作 × 对象 合成）--------
+诱导自残	review	批量扩充·核心词，须人工复核语境
+自杀教程	review	批量扩充·核心词，须人工复核语境
+吞药挑战	review	批量扩充·核心词，须人工复核语境
+极限自残	review	批量扩充·核心词，须人工复核语境
+鼓励绝食	review	批量扩充·核心词，须人工复核语境
+暴食	review	批量扩充·核心词，须人工复核语境
+诱导厌食	review	批量扩充·核心词，须人工复核语境
+网络霸凌	review	批量扩充·核心词，须人工复核语境
+羞辱他人	review	批量扩充·核心词，须人工复核语境
+精神控制	review	批量扩充·核心词，须人工复核语境
+洗脑	review	批量扩充·核心词，须人工复核语境
+情绪勒索	review	批量扩充·核心词，须人工复核语境
+精神虐待	review	批量扩充·核心词，须人工复核语境
+长期辱骂	review	批量扩充·核心词，须人工复核语境
+孤立排挤	review	批量扩充·核心词，须人工复核语境
+传播恐慌	review	批量扩充·核心词，须人工复核语境
+制造恐慌	review	批量扩充·核心词，须人工复核语境
+诱导成瘾	review	批量扩充·核心词，须人工复核语境
+教唆酗酒	review	批量扩充·核心词，须人工复核语境
+诱导赌博	review	批量扩充·核心词，须人工复核语境
+诱导熬夜	review	批量扩充·核心词，须人工复核语境
+宣扬厌世	review	批量扩充·核心词，须人工复核语境
+鼓励放弃治疗	review	批量扩充·核心词，须人工复核语境
+诱导绝食	review	批量扩充·核心词，须人工复核语境
+诱导抑郁	review	批量扩充·核心词，须人工复核语境
+诱导焦虑	review	批量扩充·核心词，须人工复核语境
+诱导恐惧	review	批量扩充·核心词，须人工复核语境
+诱导恐慌	review	批量扩充·核心词，须人工复核语境
+诱导未成年人	review	批量扩充·核心词，须人工复核语境
+诱导心理疾病	review	批量扩充·核心词，须人工复核语境
+诱导成瘾行为	review	批量扩充·核心词，须人工复核语境
+诱导酗酒	review	批量扩充·核心词，须人工复核语境
+教唆自伤	review	批量扩充·核心词，须人工复核语境
+教唆厌食	review	批量扩充·核心词，须人工复核语境
+教唆绝食	review	批量扩充·核心词，须人工复核语境
+教唆抑郁	review	批量扩充·核心词，须人工复核语境
+教唆焦虑	review	批量扩充·核心词，须人工复核语境
+教唆恐惧	review	批量扩充·核心词，须人工复核语境
+教唆恐慌	review	批量扩充·核心词，须人工复核语境
+教唆未成年人	review	批量扩充·核心词，须人工复核语境
+教唆心理疾病	review	批量扩充·核心词，须人工复核语境
+教唆成瘾行为	review	批量扩充·核心词，须人工复核语境
+教唆熬夜	review	批量扩充·核心词，须人工复核语境
+教唆赌博	review	批量扩充·核心词，须人工复核语境
+鼓励自杀	review	批量扩充·核心词，须人工复核语境
+鼓励自残	review	批量扩充·核心词，须人工复核语境
+鼓励自伤	review	批量扩充·核心词，须人工复核语境
+鼓励厌食	review	批量扩充·核心词，须人工复核语境
+鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+鼓励未成年人	review	批量扩充·核心词，须人工复核语境
+鼓励心理疾病	review	批量扩充·核心词，须人工复核语境
+鼓励成瘾行为	review	批量扩充·核心词，须人工复核语境
+鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+鼓励赌博	review	批量扩充·核心词，须人工复核语境
+怂恿自杀	review	批量扩充·核心词，须人工复核语境
+怂恿自残	review	批量扩充·核心词，须人工复核语境
+怂恿自伤	review	批量扩充·核心词，须人工复核语境
+怂恿厌食	review	批量扩充·核心词，须人工复核语境
+怂恿绝食	review	批量扩充·核心词，须人工复核语境
+怂恿抑郁	review	批量扩充·核心词，须人工复核语境
+怂恿焦虑	review	批量扩充·核心词，须人工复核语境
+怂恿恐惧	review	批量扩充·核心词，须人工复核语境
+怂恿恐慌	review	批量扩充·核心词，须人工复核语境
+怂恿未成年人	review	批量扩充·核心词，须人工复核语境
+怂恿心理疾病	review	批量扩充·核心词，须人工复核语境
+怂恿成瘾行为	review	批量扩充·核心词，须人工复核语境
+怂恿熬夜	review	批量扩充·核心词，须人工复核语境
+怂恿酗酒	review	批量扩充·核心词，须人工复核语境
+怂恿赌博	review	批量扩充·核心词，须人工复核语境
+煽动自杀	review	批量扩充·核心词，须人工复核语境
+煽动自残	review	批量扩充·核心词，须人工复核语境
+煽动自伤	review	批量扩充·核心词，须人工复核语境
+煽动厌食	review	批量扩充·核心词，须人工复核语境
+煽动绝食	review	批量扩充·核心词，须人工复核语境
+煽动抑郁	review	批量扩充·核心词，须人工复核语境
+煽动焦虑	review	批量扩充·核心词，须人工复核语境
+煽动恐惧	review	批量扩充·核心词，须人工复核语境
+煽动恐慌	review	批量扩充·核心词，须人工复核语境
+煽动未成年人	review	批量扩充·核心词，须人工复核语境
+煽动心理疾病	review	批量扩充·核心词，须人工复核语境
+煽动成瘾行为	review	批量扩充·核心词，须人工复核语境
+煽动熬夜	review	批量扩充·核心词，须人工复核语境
+煽动酗酒	review	批量扩充·核心词，须人工复核语境
+煽动赌博	review	批量扩充·核心词，须人工复核语境
+强迫自杀	review	批量扩充·核心词，须人工复核语境
+强迫自残	review	批量扩充·核心词，须人工复核语境
+强迫自伤	review	批量扩充·核心词，须人工复核语境
+强迫厌食	review	批量扩充·核心词，须人工复核语境
+强迫绝食	review	批量扩充·核心词，须人工复核语境
+强迫抑郁	review	批量扩充·核心词，须人工复核语境
+强迫焦虑	review	批量扩充·核心词，须人工复核语境
+强迫恐惧	review	批量扩充·核心词，须人工复核语境
+强迫恐慌	review	批量扩充·核心词，须人工复核语境
+强迫未成年人	review	批量扩充·核心词，须人工复核语境
+强迫心理疾病	review	批量扩充·核心词，须人工复核语境
+强迫成瘾行为	review	批量扩充·核心词，须人工复核语境
+强迫熬夜	review	批量扩充·核心词，须人工复核语境
+强迫酗酒	review	批量扩充·核心词，须人工复核语境
+强迫赌博	review	批量扩充·核心词，须人工复核语境
+逼迫自杀	review	批量扩充·核心词，须人工复核语境
+逼迫自残	review	批量扩充·核心词，须人工复核语境
+逼迫自伤	review	批量扩充·核心词，须人工复核语境
+逼迫厌食	review	批量扩充·核心词，须人工复核语境
+逼迫绝食	review	批量扩充·核心词，须人工复核语境
+逼迫抑郁	review	批量扩充·核心词，须人工复核语境
+逼迫焦虑	review	批量扩充·核心词，须人工复核语境
+逼迫恐惧	review	批量扩充·核心词，须人工复核语境
+逼迫恐慌	review	批量扩充·核心词，须人工复核语境
+逼迫未成年人	review	批量扩充·核心词，须人工复核语境
+逼迫心理疾病	review	批量扩充·核心词，须人工复核语境
+逼迫成瘾行为	review	批量扩充·核心词，须人工复核语境
+逼迫熬夜	review	批量扩充·核心词，须人工复核语境
+逼迫酗酒	review	批量扩充·核心词，须人工复核语境
+逼迫赌博	review	批量扩充·核心词，须人工复核语境
+虐待自杀	review	批量扩充·核心词，须人工复核语境
+虐待自残	review	批量扩充·核心词，须人工复核语境
+虐待自伤	review	批量扩充·核心词，须人工复核语境
+虐待厌食	review	批量扩充·核心词，须人工复核语境
+虐待绝食	review	批量扩充·核心词，须人工复核语境
+虐待抑郁	review	批量扩充·核心词，须人工复核语境
+虐待焦虑	review	批量扩充·核心词，须人工复核语境
+虐待恐惧	review	批量扩充·核心词，须人工复核语境
+虐待恐慌	review	批量扩充·核心词，须人工复核语境
+虐待未成年人	review	批量扩充·核心词，须人工复核语境
+虐待心理疾病	review	批量扩充·核心词，须人工复核语境
+虐待成瘾行为	review	批量扩充·核心词，须人工复核语境
+虐待熬夜	review	批量扩充·核心词，须人工复核语境
+虐待酗酒	review	批量扩充·核心词，须人工复核语境
+虐待赌博	review	批量扩充·核心词，须人工复核语境
+霸凌自杀	review	批量扩充·核心词，须人工复核语境
+霸凌自残	review	批量扩充·核心词，须人工复核语境
+霸凌自伤	review	批量扩充·核心词，须人工复核语境
+霸凌厌食	review	批量扩充·核心词，须人工复核语境
+霸凌绝食	review	批量扩充·核心词，须人工复核语境
+霸凌抑郁	review	批量扩充·核心词，须人工复核语境
+霸凌焦虑	review	批量扩充·核心词，须人工复核语境
+霸凌恐惧	review	批量扩充·核心词，须人工复核语境
+霸凌恐慌	review	批量扩充·核心词，须人工复核语境
+霸凌未成年人	review	批量扩充·核心词，须人工复核语境
+霸凌心理疾病	review	批量扩充·核心词，须人工复核语境
+霸凌成瘾行为	review	批量扩充·核心词，须人工复核语境
+霸凌熬夜	review	批量扩充·核心词，须人工复核语境
+霸凌酗酒	review	批量扩充·核心词，须人工复核语境
+霸凌赌博	review	批量扩充·核心词，须人工复核语境
+威胁自杀	review	批量扩充·核心词，须人工复核语境
+威胁自残	review	批量扩充·核心词，须人工复核语境
+威胁自伤	review	批量扩充·核心词，须人工复核语境
+威胁厌食	review	批量扩充·核心词，须人工复核语境
+威胁绝食	review	批量扩充·核心词，须人工复核语境
+威胁抑郁	review	批量扩充·核心词，须人工复核语境
+威胁焦虑	review	批量扩充·核心词，须人工复核语境
+威胁恐惧	review	批量扩充·核心词，须人工复核语境
+威胁恐慌	review	批量扩充·核心词，须人工复核语境
+威胁未成年人	review	批量扩充·核心词，须人工复核语境
+威胁心理疾病	review	批量扩充·核心词，须人工复核语境
+威胁成瘾行为	review	批量扩充·核心词，须人工复核语境
+威胁熬夜	review	批量扩充·核心词，须人工复核语境
+威胁酗酒	review	批量扩充·核心词，须人工复核语境
+威胁赌博	review	批量扩充·核心词，须人工复核语境
+恐吓自杀	review	批量扩充·核心词，须人工复核语境
+恐吓自残	review	批量扩充·核心词，须人工复核语境
+恐吓自伤	review	批量扩充·核心词，须人工复核语境
+恐吓厌食	review	批量扩充·核心词，须人工复核语境
+恐吓绝食	review	批量扩充·核心词，须人工复核语境
+恐吓抑郁	review	批量扩充·核心词，须人工复核语境
+恐吓焦虑	review	批量扩充·核心词，须人工复核语境
+恐吓恐惧	review	批量扩充·核心词，须人工复核语境
+恐吓恐慌	review	批量扩充·核心词，须人工复核语境
+恐吓未成年人	review	批量扩充·核心词，须人工复核语境
+恐吓心理疾病	review	批量扩充·核心词，须人工复核语境
+恐吓成瘾行为	review	批量扩充·核心词，须人工复核语境
+恐吓熬夜	review	批量扩充·核心词，须人工复核语境
+恐吓酗酒	review	批量扩充·核心词，须人工复核语境
+恐吓赌博	review	批量扩充·核心词，须人工复核语境
+羞辱自杀	review	批量扩充·核心词，须人工复核语境
+羞辱自残	review	批量扩充·核心词，须人工复核语境
+羞辱自伤	review	批量扩充·核心词，须人工复核语境
+羞辱厌食	review	批量扩充·核心词，须人工复核语境
+羞辱绝食	review	批量扩充·核心词，须人工复核语境
+羞辱抑郁	review	批量扩充·核心词，须人工复核语境
+羞辱焦虑	review	批量扩充·核心词，须人工复核语境
+羞辱恐惧	review	批量扩充·核心词，须人工复核语境
+羞辱恐慌	review	批量扩充·核心词，须人工复核语境
+羞辱未成年人	review	批量扩充·核心词，须人工复核语境
+羞辱心理疾病	review	批量扩充·核心词，须人工复核语境
+羞辱成瘾行为	review	批量扩充·核心词，须人工复核语境
+羞辱熬夜	review	批量扩充·核心词，须人工复核语境
+羞辱酗酒	review	批量扩充·核心词，须人工复核语境
+羞辱赌博	review	批量扩充·核心词，须人工复核语境
+孤立自杀	review	批量扩充·核心词，须人工复核语境
+孤立自残	review	批量扩充·核心词，须人工复核语境
+孤立自伤	review	批量扩充·核心词，须人工复核语境
+孤立厌食	review	批量扩充·核心词，须人工复核语境
+孤立绝食	review	批量扩充·核心词，须人工复核语境
+孤立抑郁	review	批量扩充·核心词，须人工复核语境
+孤立焦虑	review	批量扩充·核心词，须人工复核语境
+孤立恐惧	review	批量扩充·核心词，须人工复核语境
+孤立恐慌	review	批量扩充·核心词，须人工复核语境
+孤立未成年人	review	批量扩充·核心词，须人工复核语境
+孤立心理疾病	review	批量扩充·核心词，须人工复核语境
+孤立成瘾行为	review	批量扩充·核心词，须人工复核语境
+孤立熬夜	review	批量扩充·核心词，须人工复核语境
+孤立酗酒	review	批量扩充·核心词，须人工复核语境
+孤立赌博	review	批量扩充·核心词，须人工复核语境
+排挤自杀	review	批量扩充·核心词，须人工复核语境
+排挤自残	review	批量扩充·核心词，须人工复核语境
+排挤自伤	review	批量扩充·核心词，须人工复核语境
+排挤厌食	review	批量扩充·核心词，须人工复核语境
+排挤绝食	review	批量扩充·核心词，须人工复核语境
+排挤抑郁	review	批量扩充·核心词，须人工复核语境
+排挤焦虑	review	批量扩充·核心词，须人工复核语境
+排挤恐惧	review	批量扩充·核心词，须人工复核语境
+排挤恐慌	review	批量扩充·核心词，须人工复核语境
+排挤未成年人	review	批量扩充·核心词，须人工复核语境
+排挤心理疾病	review	批量扩充·核心词，须人工复核语境
+排挤成瘾行为	review	批量扩充·核心词，须人工复核语境
+排挤熬夜	review	批量扩充·核心词，须人工复核语境
+排挤酗酒	review	批量扩充·核心词，须人工复核语境
+排挤赌博	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励自残	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+诱导并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励自残	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+教唆并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励自残	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+鼓励并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励自残	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+怂恿并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励自残	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+煽动并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励自残	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+强迫并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励自残	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+逼迫并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励自残	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+虐待并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励自残	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+霸凌并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励自残	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+威胁并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励自残	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+恐吓并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励自残	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+羞辱并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励自残	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+孤立并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励自杀	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励自残	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励自伤	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励厌食	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励绝食	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+排挤并鼓励赌博	review	批量扩充·核心词，须人工复核语境
+向他人诱导自杀	review	批量扩充·核心词，须人工复核语境
+向他人诱导自残	review	批量扩充·核心词，须人工复核语境
+向他人诱导自伤	review	批量扩充·核心词，须人工复核语境
+向他人诱导厌食	review	批量扩充·核心词，须人工复核语境
+向他人诱导绝食	review	批量扩充·核心词，须人工复核语境
+向他人诱导抑郁	review	批量扩充·核心词，须人工复核语境
+向他人诱导焦虑	review	批量扩充·核心词，须人工复核语境
+向他人诱导恐惧	review	批量扩充·核心词，须人工复核语境
+向他人诱导恐慌	review	批量扩充·核心词，须人工复核语境
+向他人诱导熬夜	review	批量扩充·核心词，须人工复核语境
+向他人诱导酗酒	review	批量扩充·核心词，须人工复核语境
+向他人诱导赌博	review	批量扩充·核心词，须人工复核语境
+向他人教唆自杀	review	批量扩充·核心词，须人工复核语境
+向他人教唆自残	review	批量扩充·核心词，须人工复核语境
+向他人教唆自伤	review	批量扩充·核心词，须人工复核语境
+向他人教唆厌食	review	批量扩充·核心词，须人工复核语境
+向他人教唆绝食	review	批量扩充·核心词，须人工复核语境
+向他人教唆抑郁	review	批量扩充·核心词，须人工复核语境
+向他人教唆焦虑	review	批量扩充·核心词，须人工复核语境
+向他人教唆恐惧	review	批量扩充·核心词，须人工复核语境
+向他人教唆恐慌	review	批量扩充·核心词，须人工复核语境
+向他人教唆熬夜	review	批量扩充·核心词，须人工复核语境
+向他人教唆酗酒	review	批量扩充·核心词，须人工复核语境
+向他人教唆赌博	review	批量扩充·核心词，须人工复核语境
+向他人鼓励自杀	review	批量扩充·核心词，须人工复核语境
+向他人鼓励自残	review	批量扩充·核心词，须人工复核语境
+向他人鼓励自伤	review	批量扩充·核心词，须人工复核语境
+向他人鼓励厌食	review	批量扩充·核心词，须人工复核语境
+向他人鼓励绝食	review	批量扩充·核心词，须人工复核语境
+向他人鼓励抑郁	review	批量扩充·核心词，须人工复核语境
+向他人鼓励焦虑	review	批量扩充·核心词，须人工复核语境
+向他人鼓励恐惧	review	批量扩充·核心词，须人工复核语境
+向他人鼓励恐慌	review	批量扩充·核心词，须人工复核语境
+向他人鼓励熬夜	review	批量扩充·核心词，须人工复核语境
+向他人鼓励酗酒	review	批量扩充·核心词，须人工复核语境
+向他人鼓励赌博	review	批量扩充·核心词，须人工复核语境
+向他人怂恿自杀	review	批量扩充·核心词，须人工复核语境
+向他人怂恿自残	review	批量扩充·核心词，须人工复核语境
+向他人怂恿自伤	review	批量扩充·核心词，须人工复核语境
+向他人怂恿厌食	review	批量扩充·核心词，须人工复核语境
+向他人怂恿绝食	review	批量扩充·核心词，须人工复核语境
+向他人怂恿抑郁	review	批量扩充·核心词，须人工复核语境
+向他人怂恿焦虑	review	批量扩充·核心词，须人工复核语境
+向他人怂恿恐惧	review	批量扩充·核心词，须人工复核语境
+向他人怂恿恐慌	review	批量扩充·核心词，须人工复核语境
+向他人怂恿熬夜	review	批量扩充·核心词，须人工复核语境
+向他人怂恿酗酒	review	批量扩充·核心词，须人工复核语境
+向他人怂恿赌博	review	批量扩充·核心词，须人工复核语境
+向他人煽动自杀	review	批量扩充·核心词，须人工复核语境
+向他人煽动自残	review	批量扩充·核心词，须人工复核语境
+向他人煽动自伤	review	批量扩充·核心词，须人工复核语境
+向他人煽动厌食	review	批量扩充·核心词，须人工复核语境
+向他人煽动绝食	review	批量扩充·核心词，须人工复核语境
+向他人煽动抑郁	review	批量扩充·核心词，须人工复核语境
+向他人煽动焦虑	review	批量扩充·核心词，须人工复核语境
+向他人煽动恐惧	review	批量扩充·核心词，须人工复核语境
+向他人煽动恐慌	review	批量扩充·核心词，须人工复核语境
+向他人煽动熬夜	review	批量扩充·核心词，须人工复核语境
+向他人煽动酗酒	review	批量扩充·核心词，须人工复核语境
+向他人煽动赌博	review	批量扩充·核心词，须人工复核语境
+向他人强迫自杀	review	批量扩充·核心词，须人工复核语境
+向他人强迫自残	review	批量扩充·核心词，须人工复核语境
+向他人强迫自伤	review	批量扩充·核心词，须人工复核语境
+向他人强迫厌食	review	批量扩充·核心词，须人工复核语境
+向他人强迫绝食	review	批量扩充·核心词，须人工复核语境
+向他人强迫抑郁	review	批量扩充·核心词，须人工复核语境
+向他人强迫焦虑	review	批量扩充·核心词，须人工复核语境
+向他人强迫恐惧	review	批量扩充·核心词，须人工复核语境
+向他人强迫恐慌	review	批量扩充·核心词，须人工复核语境
+向他人强迫熬夜	review	批量扩充·核心词，须人工复核语境
+向他人强迫酗酒	review	批量扩充·核心词，须人工复核语境
+向他人强迫赌博	review	批量扩充·核心词，须人工复核语境
+向他人逼迫自杀	review	批量扩充·核心词，须人工复核语境
+向他人逼迫自残	review	批量扩充·核心词，须人工复核语境
+向他人逼迫自伤	review	批量扩充·核心词，须人工复核语境
+向他人逼迫厌食	review	批量扩充·核心词，须人工复核语境
+向他人逼迫绝食	review	批量扩充·核心词，须人工复核语境
+向他人逼迫抑郁	review	批量扩充·核心词，须人工复核语境
+向他人逼迫焦虑	review	批量扩充·核心词，须人工复核语境
+向他人逼迫恐惧	review	批量扩充·核心词，须人工复核语境
+向他人逼迫恐慌	review	批量扩充·核心词，须人工复核语境
+向他人逼迫熬夜	review	批量扩充·核心词，须人工复核语境
+向他人逼迫酗酒	review	批量扩充·核心词，须人工复核语境
+向他人逼迫赌博	review	批量扩充·核心词，须人工复核语境
+向他人虐待自杀	review	批量扩充·核心词，须人工复核语境
+向他人虐待自残	review	批量扩充·核心词，须人工复核语境
+向他人虐待自伤	review	批量扩充·核心词，须人工复核语境
+向他人虐待厌食	review	批量扩充·核心词，须人工复核语境
+向他人虐待绝食	review	批量扩充·核心词，须人工复核语境
+向他人虐待抑郁	review	批量扩充·核心词，须人工复核语境
+向他人虐待焦虑	review	批量扩充·核心词，须人工复核语境
+向他人虐待恐惧	review	批量扩充·核心词，须人工复核语境
+向他人虐待恐慌	review	批量扩充·核心词，须人工复核语境
+向他人虐待熬夜	review	批量扩充·核心词，须人工复核语境
+向他人虐待酗酒	review	批量扩充·核心词，须人工复核语境
+向他人虐待赌博	review	批量扩充·核心词，须人工复核语境
+向他人霸凌自杀	review	批量扩充·核心词，须人工复核语境
+向他人霸凌自残	review	批量扩充·核心词，须人工复核语境
+向他人霸凌自伤	review	批量扩充·核心词，须人工复核语境
+向他人霸凌厌食	review	批量扩充·核心词，须人工复核语境
+向他人霸凌绝食	review	批量扩充·核心词，须人工复核语境
+向他人霸凌抑郁	review	批量扩充·核心词，须人工复核语境
+向他人霸凌焦虑	review	批量扩充·核心词，须人工复核语境
+向他人霸凌恐惧	review	批量扩充·核心词，须人工复核语境
+向他人霸凌恐慌	review	批量扩充·核心词，须人工复核语境
+向他人霸凌熬夜	review	批量扩充·核心词，须人工复核语境
+向他人霸凌酗酒	review	批量扩充·核心词，须人工复核语境
+向他人霸凌赌博	review	批量扩充·核心词，须人工复核语境
+向他人威胁自杀	review	批量扩充·核心词，须人工复核语境
+向他人威胁自残	review	批量扩充·核心词，须人工复核语境
+向他人威胁自伤	review	批量扩充·核心词，须人工复核语境
+向他人威胁厌食	review	批量扩充·核心词，须人工复核语境
+向他人威胁绝食	review	批量扩充·核心词，须人工复核语境
+向他人威胁抑郁	review	批量扩充·核心词，须人工复核语境
+向他人威胁焦虑	review	批量扩充·核心词，须人工复核语境
+向他人威胁恐惧	review	批量扩充·核心词，须人工复核语境
+向他人威胁恐慌	review	批量扩充·核心词，须人工复核语境
+向他人威胁熬夜	review	批量扩充·核心词，须人工复核语境
+向他人威胁酗酒	review	批量扩充·核心词，须人工复核语境
+向他人威胁赌博	review	批量扩充·核心词，须人工复核语境
+向他人恐吓自杀	review	批量扩充·核心词，须人工复核语境
+向他人恐吓自残	review	批量扩充·核心词，须人工复核语境
+向他人恐吓自伤	review	批量扩充·核心词，须人工复核语境
+向他人恐吓厌食	review	批量扩充·核心词，须人工复核语境
+向他人恐吓绝食	review	批量扩充·核心词，须人工复核语境
+向他人恐吓抑郁	review	批量扩充·核心词，须人工复核语境
+向他人恐吓焦虑	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+yiqisi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chuanbokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+cuitu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jianfeipianfang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jianfeiyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhizaokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gewan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+quanjiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+quanjiuzhisi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiantiaozhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tunyiwu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tunyaotiaozhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixieyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiekongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiekonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixieyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiejiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixieaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiejueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiezishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiezisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiezican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiedubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+weixiexujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guliyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulikongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulikonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guliyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulipaiji	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulijiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guliaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulijueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulizishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulizisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulizican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulidubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+gulixujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuanyangyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpoyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpokongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpoyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpojiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpoaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpojueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpozishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpozisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpozican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpodubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiangpoxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongkongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongkonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongjiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongjueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongzishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongzisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongzican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongdubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+songyongxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kongheyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghekongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghekonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kongheyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghejiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kongheaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghejueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghezishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghezisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghezican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghedubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+konghexujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qingxulesuo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pinjiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijiyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijikongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijikonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijiyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijijiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijiaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijijueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijizishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijizisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijizican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijidubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+paijixujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuoyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuokongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuoyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuojiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuoaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuojueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuozishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuozisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuozican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuodubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiaosuoxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yunjuetiaozhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+baoshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiduanjianfei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jixianzican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongkongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongkonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongjiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongjueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongzishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongzisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongzican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongdubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shandongxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+aoyefangfa	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shoushenpianfang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiangyuezisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhixitiaozhan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jingshenkongzhi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jingshennvedai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wangluobaling	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurutaren	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurukongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurukonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurujiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurujueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruzishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruzisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruzican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiurudubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiuruxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zishajiaocheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zishafangfa	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zishaqun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zicanjiaocheng	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+lanjingyouxi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaiyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaikongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaikonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaiyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaijiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaiaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaijueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaizishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaizisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaizican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaidubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+nvedaixujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoxiyan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaokongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaochengyin	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaojiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaojueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaozishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaozisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaozican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaodubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+youdaoyinjiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+guodujianfei	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipoyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipokongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipokonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipoyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipojiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipoaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipojueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipozishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipozisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipozican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipodubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+bipoxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+changqiruma	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingyanshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingkongju	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingkonghuang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingyiyu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingjiaolv	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingaoye	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingjueshi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingzishang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingzisha	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingzican	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingdubo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+balingxujiu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核

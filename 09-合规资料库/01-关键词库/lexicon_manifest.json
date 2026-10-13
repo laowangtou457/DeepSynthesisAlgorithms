@@ -1,0 +1,372 @@
+{
+  "standard": "GB/T 45654—2025",
+  "clauses": {
+    "lexicon_total_min": 10000,
+    "a1_per_class_min": 200,
+    "a2_per_class_min": 100,
+    "covered_groups": [
+      "A.1",
+      "A.2"
+    ],
+    "covered_class_count": 17,
+    "update_cycle": "每周至少一次"
+  },
+  "categories": [
+    {
+      "id": "A1-01",
+      "group": "A.1",
+      "name": "煽动颠覆国家政权、推翻社会主义制度",
+      "quota": 200,
+      "project_relevance": "低",
+      "controlled": true,
+      "file": "A1-01-煽动颠覆国家政权推翻社会主义制度.txt",
+      "seed_count": 0,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-02",
+      "group": "A.1",
+      "name": "危害国家安全和利益、损害国家形象",
+      "quota": 200,
+      "project_relevance": "低",
+      "controlled": true,
+      "file": "A1-02-危害国家安全和利益损害国家形象.txt",
+      "seed_count": 0,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-03",
+      "group": "A.1",
+      "name": "煽动分裂国家、破坏国家统一和社会稳定",
+      "quota": 200,
+      "project_relevance": "低",
+      "controlled": true,
+      "file": "A1-03-煽动分裂国家破坏国家统一和社会稳定.txt",
+      "seed_count": 0,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-04",
+      "group": "A.1",
+      "name": "宣扬恐怖主义、极端主义",
+      "quota": 200,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A1-04-宣扬恐怖主义极端主义.txt",
+      "seed_count": 34,
+      "current_count": 332
+    },
+    {
+      "id": "A1-05",
+      "group": "A.1",
+      "name": "宣扬民族仇恨",
+      "quota": 200,
+      "project_relevance": "中",
+      "controlled": true,
+      "file": "A1-05-宣扬民族仇恨.txt",
+      "seed_count": 0,
+      "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
+      "ledger_count": 0,
+      "current_count": 0
+    },
+    {
+      "id": "A1-06",
+      "group": "A.1",
+      "name": "宣扬暴力、淫秽色情",
+      "quota": 200,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A1-06-宣扬暴力淫秽色情.txt",
+      "seed_count": 173,
+      "current_count": 457
+    },
+    {
+      "id": "A1-07",
+      "group": "A.1",
+      "name": "传播虚假有害信息",
+      "quota": 200,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A1-07-传播虚假有害信息.txt",
+      "seed_count": 49,
+      "current_count": 356
+    },
+    {
+      "id": "A1-08",
+      "group": "A.1",
+      "name": "其他法律、行政法规禁止的内容",
+      "quota": 200,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A1-08-其他法律行政法规禁止的内容.txt",
+      "seed_count": 101,
+      "current_count": 417
+    },
+    {
+      "id": "A2-01",
+      "group": "A.2",
+      "name": "民族歧视内容",
+      "quota": 100,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A2-01-民族歧视内容.txt",
+      "seed_count": 25,
+      "current_count": 198
+    },
+    {
+      "id": "A2-02",
+      "group": "A.2",
+      "name": "信仰歧视内容",
+      "quota": 100,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A2-02-信仰歧视内容.txt",
+      "seed_count": 46,
+      "current_count": 218
+    },
+    {
+      "id": "A2-03",
+      "group": "A.2",
+      "name": "国别歧视内容",
+      "quota": 100,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A2-03-国别歧视内容.txt",
+      "seed_count": 23,
+      "current_count": 218
+    },
+    {
+      "id": "A2-04",
+      "group": "A.2",
+      "name": "地域歧视内容",
+      "quota": 100,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A2-04-地域歧视内容.txt",
+      "seed_count": 23,
+      "current_count": 206
+    },
+    {
+      "id": "A2-05",
+      "group": "A.2",
+      "name": "性别歧视内容",
+      "quota": 100,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A2-05-性别歧视内容.txt",
+      "seed_count": 33,
+      "current_count": 221
+    },
+    {
+      "id": "A2-06",
+      "group": "A.2",
+      "name": "年龄歧视内容",
+      "quota": 100,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A2-06-年龄歧视内容.txt",
+      "seed_count": 25,
+      "current_count": 206
+    },
+    {
+      "id": "A2-07",
+      "group": "A.2",
+      "name": "职业歧视内容",
+      "quota": 100,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A2-07-职业歧视内容.txt",
+      "seed_count": 23,
+      "current_count": 216
+    },
+    {
+      "id": "A2-08",
+      "group": "A.2",
+      "name": "健康歧视内容",
+      "quota": 100,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A2-08-健康歧视内容.txt",
+      "seed_count": 38,
+      "current_count": 204
+    },
+    {
+      "id": "A2-09",
+      "group": "A.2",
+      "name": "其他方面歧视内容",
+      "quota": 100,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A2-09-其他方面歧视内容.txt",
+      "seed_count": 42,
+      "current_count": 227
+    },
+    {
+      "id": "A3-01",
+      "group": "A.3",
+      "name": "侵犯他人知识产权",
+      "quota": 300,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A3-01-侵犯他人知识产权.txt",
+      "seed_count": 32,
+      "current_count": 807
+    },
+    {
+      "id": "A3-02",
+      "group": "A.3",
+      "name": "违反商业道德",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A3-02-违反商业道德.txt",
+      "seed_count": 31,
+      "current_count": 805
+    },
+    {
+      "id": "A3-03",
+      "group": "A.3",
+      "name": "泄露他人商业秘密",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A3-03-泄露他人商业秘密.txt",
+      "seed_count": 19,
+      "current_count": 573
+    },
+    {
+      "id": "A3-04",
+      "group": "A.3",
+      "name": "利用算法、数据、平台等优势实施垄断和不正当竞争",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A3-04-利用算法数据平台等优势实施垄断和不正当竞争.txt",
+      "seed_count": 18,
+      "current_count": 662
+    },
+    {
+      "id": "A3-05",
+      "group": "A.3",
+      "name": "其他商业违法违规行为",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A3-05-其他商业违法违规行为.txt",
+      "seed_count": 27,
+      "current_count": 679
+    },
+    {
+      "id": "A4-01",
+      "group": "A.4",
+      "name": "危害他人身心健康",
+      "quota": 300,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A4-01-危害他人身心健康.txt",
+      "seed_count": 32,
+      "current_count": 747
+    },
+    {
+      "id": "A4-02",
+      "group": "A.4",
+      "name": "侵害他人肖像权",
+      "quota": 300,
+      "project_relevance": "★高",
+      "controlled": false,
+      "file": "A4-02-侵害他人肖像权.txt",
+      "seed_count": 21,
+      "current_count": 593
+    },
+    {
+      "id": "A4-03",
+      "group": "A.4",
+      "name": "侵害他人名誉权",
+      "quota": 300,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A4-03-侵害他人名誉权.txt",
+      "seed_count": 22,
+      "current_count": 655
+    },
+    {
+      "id": "A4-04",
+      "group": "A.4",
+      "name": "侵害他人荣誉权",
+      "quota": 300,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A4-04-侵害他人荣誉权.txt",
+      "seed_count": 19,
+      "current_count": 618
+    },
+    {
+      "id": "A4-05",
+      "group": "A.4",
+      "name": "侵害他人隐私权",
+      "quota": 300,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A4-05-侵害他人隐私权.txt",
+      "seed_count": 23,
+      "current_count": 578
+    },
+    {
+      "id": "A4-06",
+      "group": "A.4",
+      "name": "侵害他人个人信息权益",
+      "quota": 300,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A4-06-侵害他人个人信息权益.txt",
+      "seed_count": 20,
+      "current_count": 564
+    },
+    {
+      "id": "A4-07",
+      "group": "A.4",
+      "name": "侵犯他人其他合法权益",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A4-07-侵犯他人其他合法权益.txt",
+      "seed_count": 20,
+      "current_count": 594
+    },
+    {
+      "id": "A5-01",
+      "group": "A.5",
+      "name": "内容不准确，严重不符合科学常识或主流认知",
+      "quota": 300,
+      "project_relevance": "中",
+      "controlled": false,
+      "file": "A5-01-内容不准确严重不符合科学常识或主流认知.txt",
+      "seed_count": 25,
+      "current_count": 579
+    },
+    {
+      "id": "A5-02",
+      "group": "A.5",
+      "name": "内容不可靠，无法对使用者形成帮助",
+      "quota": 300,
+      "project_relevance": "低",
+      "controlled": false,
+      "file": "A5-02-内容不可靠无法对使用者形成帮助.txt",
+      "seed_count": 32,
+      "current_count": 648
+    }
+  ],
+  "last_seed": "2026-10-12 seed_common_lexicon.py",
+  "counts_snapshot": {
+    "as_of": "2026-10-12",
+    "total": 12578,
+    "signature": "06-构建工具/sync_manifest.py",
+    "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
+  }
+}

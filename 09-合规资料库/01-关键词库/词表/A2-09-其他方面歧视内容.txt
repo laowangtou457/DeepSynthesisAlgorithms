@@ -1,0 +1,254 @@
+# =============================================================================
+# 关键词库词表：A2-09 其他方面歧视内容
+# 组别：A.2   单类配额：>= 100 个
+# 本项目相关度：中
+# 依据：GB/T 45654—2025 §8.1 + 附录 A
+# 格式：一行一个词条；支持 `词条` / `词条<TAB>等级<TAB>备注`；`#` 开头为注释
+# 等级：block（阻断）/ review（复核）/ warn（提示）
+# 状态：骨架 + 种子词，待扩充至配额线。运行 ../06-构建工具/check_quota.py 查看进度。
+# =============================================================================
+
+# ---------------------------- 词条 ----------------------------
+群体侮辱	review	
+身份歧视	review	
+出身体歧视	review	
+婚史歧视	review	
+
+# ===== 其他歧视·概括与煽动 =====
+学历歧视	block
+出身歧视	block
+体型歧视	block
+性取向歧视	block
+地域歧视	block
+阶层歧视	block
+贫富歧视	block
+
+# ===== 外貌与体型歧视 =====
+胖子	review
+死胖子	review
+肥猪	review
+瘦猴	review
+竹竿	review
+矮子	review
+矮冬瓜	review
+丑八怪	review
+矮穷矬	review
+土肥圆	review
+长残了	review
+
+# ===== 经济状况与出身歧视 =====
+穷鬼	review
+穷逼	review
+屌丝	review
+穷酸	review
+寒酸	review
+乡下出身	review
+城中村	review
+棚户区	review
+外来务工低等	review
+
+# ===== 学历与智识歧视 =====
+文盲	review
+没文化	review
+小学文化	review
+大专狗	review
+二本狗	review
+学历低	review
+鼠目寸光	review
+
+# ===== 性取向与性别表达歧视 =====
+基佬	review
+人妖	review
+死同性恋	review
+变态	review
+
+# 词条数（不含注释）：42 / 100
+
+# -------- 核心词（动作 × 对象 合成）--------
+户籍歧视	review	批量扩充·核心词，须人工复核语境
+院校歧视	review	批量扩充·核心词，须人工复核语境
+第一学历歧视	review	批量扩充·核心词，须人工复核语境
+婚育歧视	review	批量扩充·核心词，须人工复核语境
+生育歧视	review	批量扩充·核心词，须人工复核语境
+外貌歧视	review	批量扩充·核心词，须人工复核语境
+口音歧视	review	批量扩充·核心词，须人工复核语境
+方言歧视	review	批量扩充·核心词，须人工复核语境
+单身歧视	review	批量扩充·核心词，须人工复核语境
+婚恋歧视	review	批量扩充·核心词，须人工复核语境
+前科人员歧视	review	批量扩充·核心词，须人工复核语境
+身份标签化	review	批量扩充·核心词，须人工复核语境
+学历贬低	review	批量扩充·核心词，须人工复核语境
+婚育状况歧视	review	批量扩充·核心词，须人工复核语境
+外貌贬损	review	批量扩充·核心词，须人工复核语境
+身份偏见	review	批量扩充·核心词，须人工复核语境
+歧视非全日制学历	review	批量扩充·核心词，须人工复核语境
+歧视二本学生	review	批量扩充·核心词，须人工复核语境
+歧视大专生	review	批量扩充·核心词，须人工复核语境
+歧视高职生	review	批量扩充·核心词，须人工复核语境
+歧视已婚未育女性	review	批量扩充·核心词，须人工复核语境
+歧视大龄单身	review	批量扩充·核心词，须人工复核语境
+歧视外地户籍	review	批量扩充·核心词，须人工复核语境
+歧视农村户口	review	批量扩充·核心词，须人工复核语境
+歧视有前科人员	review	批量扩充·核心词，须人工复核语境
+歧视特殊体型人群	review	批量扩充·核心词，须人工复核语境
+歧视离异人士	review	批量扩充·核心词，须人工复核语境
+歧视再婚人士	review	批量扩充·核心词，须人工复核语境
+贬低非全日制学历	review	批量扩充·核心词，须人工复核语境
+贬低二本学生	review	批量扩充·核心词，须人工复核语境
+贬低大专生	review	批量扩充·核心词，须人工复核语境
+贬低高职生	review	批量扩充·核心词，须人工复核语境
+贬低已婚未育女性	review	批量扩充·核心词，须人工复核语境
+贬低大龄单身	review	批量扩充·核心词，须人工复核语境
+贬低外地户籍	review	批量扩充·核心词，须人工复核语境
+贬低农村户口	review	批量扩充·核心词，须人工复核语境
+贬低有前科人员	review	批量扩充·核心词，须人工复核语境
+贬低特殊体型人群	review	批量扩充·核心词，须人工复核语境
+贬低离异人士	review	批量扩充·核心词，须人工复核语境
+贬低再婚人士	review	批量扩充·核心词，须人工复核语境
+排斥非全日制学历	review	批量扩充·核心词，须人工复核语境
+排斥二本学生	review	批量扩充·核心词，须人工复核语境
+排斥大专生	review	批量扩充·核心词，须人工复核语境
+排斥高职生	review	批量扩充·核心词，须人工复核语境
+排斥已婚未育女性	review	批量扩充·核心词，须人工复核语境
+排斥大龄单身	review	批量扩充·核心词，须人工复核语境
+排斥外地户籍	review	批量扩充·核心词，须人工复核语境
+排斥农村户口	review	批量扩充·核心词，须人工复核语境
+排斥有前科人员	review	批量扩充·核心词，须人工复核语境
+排斥特殊体型人群	review	批量扩充·核心词，须人工复核语境
+排斥离异人士	review	批量扩充·核心词，须人工复核语境
+排斥再婚人士	review	批量扩充·核心词，须人工复核语境
+嘲讽非全日制学历	review	批量扩充·核心词，须人工复核语境
+嘲讽二本学生	review	批量扩充·核心词，须人工复核语境
+嘲讽大专生	review	批量扩充·核心词，须人工复核语境
+嘲讽高职生	review	批量扩充·核心词，须人工复核语境
+嘲讽已婚未育女性	review	批量扩充·核心词，须人工复核语境
+嘲讽大龄单身	review	批量扩充·核心词，须人工复核语境
+嘲讽外地户籍	review	批量扩充·核心词，须人工复核语境
+嘲讽农村户口	review	批量扩充·核心词，须人工复核语境
+嘲讽有前科人员	review	批量扩充·核心词，须人工复核语境
+嘲讽特殊体型人群	review	批量扩充·核心词，须人工复核语境
+嘲讽离异人士	review	批量扩充·核心词，须人工复核语境
+嘲讽再婚人士	review	批量扩充·核心词，须人工复核语境
+标签化二本学生	review	批量扩充·核心词，须人工复核语境
+标签化大专生	review	批量扩充·核心词，须人工复核语境
+标签化高职生	review	批量扩充·核心词，须人工复核语境
+标签化大龄单身	review	批量扩充·核心词，须人工复核语境
+标签化外地户籍	review	批量扩充·核心词，须人工复核语境
+标签化农村户口	review	批量扩充·核心词，须人工复核语境
+标签化有前科人员	review	批量扩充·核心词，须人工复核语境
+标签化离异人士	review	批量扩充·核心词，须人工复核语境
+标签化再婚人士	review	批量扩充·核心词，须人工复核语境
+污名化二本学生	review	批量扩充·核心词，须人工复核语境
+污名化大专生	review	批量扩充·核心词，须人工复核语境
+污名化高职生	review	批量扩充·核心词，须人工复核语境
+污名化大龄单身	review	批量扩充·核心词，须人工复核语境
+污名化外地户籍	review	批量扩充·核心词，须人工复核语境
+污名化农村户口	review	批量扩充·核心词，须人工复核语境
+污名化有前科人员	review	批量扩充·核心词，须人工复核语境
+污名化离异人士	review	批量扩充·核心词，须人工复核语境
+污名化再婚人士	review	批量扩充·核心词，须人工复核语境
+偏见非全日制学历	review	批量扩充·核心词，须人工复核语境
+偏见二本学生	review	批量扩充·核心词，须人工复核语境
+偏见大专生	review	批量扩充·核心词，须人工复核语境
+偏见高职生	review	批量扩充·核心词，须人工复核语境
+偏见已婚未育女性	review	批量扩充·核心词，须人工复核语境
+偏见大龄单身	review	批量扩充·核心词，须人工复核语境
+偏见外地户籍	review	批量扩充·核心词，须人工复核语境
+偏见农村户口	review	批量扩充·核心词，须人工复核语境
+偏见有前科人员	review	批量扩充·核心词，须人工复核语境
+偏见特殊体型人群	review	批量扩充·核心词，须人工复核语境
+偏见离异人士	review	批量扩充·核心词，须人工复核语境
+偏见再婚人士	review	批量扩充·核心词，须人工复核语境
+贬损非全日制学历	review	批量扩充·核心词，须人工复核语境
+贬损二本学生	review	批量扩充·核心词，须人工复核语境
+贬损大专生	review	批量扩充·核心词，须人工复核语境
+贬损高职生	review	批量扩充·核心词，须人工复核语境
+贬损已婚未育女性	review	批量扩充·核心词，须人工复核语境
+贬损大龄单身	review	批量扩充·核心词，须人工复核语境
+贬损外地户籍	review	批量扩充·核心词，须人工复核语境
+贬损农村户口	review	批量扩充·核心词，须人工复核语境
+贬损有前科人员	review	批量扩充·核心词，须人工复核语境
+贬损特殊体型人群	review	批量扩充·核心词，须人工复核语境
+贬损离异人士	review	批量扩充·核心词，须人工复核语境
+贬损再婚人士	review	批量扩充·核心词，须人工复核语境
+羞辱非全日制学历	review	批量扩充·核心词，须人工复核语境
+羞辱二本学生	review	批量扩充·核心词，须人工复核语境
+羞辱大专生	review	批量扩充·核心词，须人工复核语境
+羞辱高职生	review	批量扩充·核心词，须人工复核语境
+羞辱已婚未育女性	review	批量扩充·核心词，须人工复核语境
+羞辱大龄单身	review	批量扩充·核心词，须人工复核语境
+羞辱外地户籍	review	批量扩充·核心词，须人工复核语境
+羞辱农村户口	review	批量扩充·核心词，须人工复核语境
+羞辱有前科人员	review	批量扩充·核心词，须人工复核语境
+羞辱特殊体型人群	review	批量扩充·核心词，须人工复核语境
+羞辱离异人士	review	批量扩充·核心词，须人工复核语境
+羞辱再婚人士	review	批量扩充·核心词，须人工复核语境
+对二本学生的歧视	review	批量扩充·核心词，须人工复核语境
+对大专生的歧视	review	批量扩充·核心词，须人工复核语境
+对高职生的歧视	review	批量扩充·核心词，须人工复核语境
+对大龄单身的歧视	review	批量扩充·核心词，须人工复核语境
+对外地户籍的歧视	review	批量扩充·核心词，须人工复核语境
+对农村户口的歧视	review	批量扩充·核心词，须人工复核语境
+对离异人士的歧视	review	批量扩充·核心词，须人工复核语境
+对再婚人士的歧视	review	批量扩充·核心词，须人工复核语境
+对二本学生的贬低	review	批量扩充·核心词，须人工复核语境
+对大专生的贬低	review	批量扩充·核心词，须人工复核语境
+对高职生的贬低	review	批量扩充·核心词，须人工复核语境
+对大龄单身的贬低	review	批量扩充·核心词，须人工复核语境
+对外地户籍的贬低	review	批量扩充·核心词，须人工复核语境
+对农村户口的贬低	review	批量扩充·核心词，须人工复核语境
+对离异人士的贬低	review	批量扩充·核心词，须人工复核语境
+对再婚人士的贬低	review	批量扩充·核心词，须人工复核语境
+对二本学生的排斥	review	批量扩充·核心词，须人工复核语境
+对大专生的排斥	review	批量扩充·核心词，须人工复核语境
+对高职生的排斥	review	批量扩充·核心词，须人工复核语境
+对大龄单身的排斥	review	批量扩充·核心词，须人工复核语境
+
+# ===== 拼音变体（pypinyin 生成，误伤风险高，一律 review 级）=====
+choubaguai	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiangxiachushen	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+erbengou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+renyao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tixingqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chushenqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+danshenqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+kouyinqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+tufeiyuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+diyuqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+chengzhongcun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jilao	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+waimaoqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+waimaobiansun	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+dazhuangou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hunshiqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hunlianqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hunyuqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuelidi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xueliqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xuelibiandi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hansuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+xiaoxuewenhua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+diaosi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+hujiqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+wenmang	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+fangyanqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+penghuqu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+sitongxinglian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+sipangzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+meiwenhua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shengyuqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shouhou	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+aidonggua	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+aiqiongcuo	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiongbi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qiongsuan	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+qionggui	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+quntiwuru	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+feizhu	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pangzi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+pinfuqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shenfenpianjian	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+shenfenqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+zhangcanle	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+jiecengqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
+yuanxiaoqishi	review	拼音变体（pypinyin 生成），误伤风险高，须人工复核
