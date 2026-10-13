@@ -3,8 +3,8 @@
   "mechanism": "开发历史巡检（每 2 小时）",
   "owner_doc": "11-过程文档/开发历史/README.md",
   "workspace": "E:\\深度合成算法工程材料",
-  "last_scan_at": "2026-10-13T11:12:00+08:00",
-  "last_scanned_commit": "dd59581084c2d83125818da918363d90577717c5",
+  "last_scan_at": "2026-10-13T11:20:00+08:00",
+  "last_scanned_commit": "f2fbcf5d02f83dc0888e12f37dbdd76aee7e7c0f",
   "last_scanned_branch": "main",
   "baseline_note": "留痕起点 2026-10-13。2026-10-09 ~ 2026-10-12 的历史动作未逐条回填。本文件自身变化不构成工程推进动作，不得记录。",
   "excluded_paths": [
@@ -16,30 +16,29 @@
     ".venv/"
   ],
   "last_scan_result": {
-    "window_start": "2026-10-13T10:19:53+08:00",
-    "window_end": "2026-10-13T11:12:00+08:00",
-    "new_actions": 2,
+    "window_start": "2026-10-13T11:12:00+08:00",
+    "window_end": "2026-10-13T11:20:00+08:00",
+    "new_actions": 1,
     "documents_created": [
-      "DEV-20261013-005-建立SW-004梗概生成模板与样例校验器.md",
-      "DEV-20261013-006-硬件前置闭环与模型权重下载启动.md"
+      "DEV-20261013-007-以导演视角独立评审synopsis_v1模板.md"
     ],
-    "note": "窗口内完成两笔动作并已由主会话记录：① 提示词资产内容层首个模板 synopsis_v1（SW-004）+ 样例目录规范 + 结构校验器 validate_templates.py；② 硬件前置闭环（GPU 实测 RTX 4090 / compute_cap 8.9 → BF16 路线，T-010 完成）+ Qwen2.5-7B-Instruct 权重下载完成（14.20 GB，落 E 盘工程外）。窗口内同时发生：Git 认证方式由 HTTPS 改为 SSH、两次推送（2b464bf..ee109a4..dd59581）、12-项目管理 任务清单与日程表按「硬件路线冻结」调整。",
+    "note": "窗口内完成一笔动作并已由主会话记录：以本机专家包 ai-video-prompt-director（v1.1.0）的同一份角色定义另起实例，对业务链路首个提示词模板 synopsis_v1（SW-004）执行一次独立导演视角评审，产出 7 条意见（P0 3 / P1 2 / P2 2），登记进 10-评审记录 归档 4 并同步要点速览。评审方身份为「本会话内加载同一份专家定义」的实例（路径 A），未经真实独立会话背书；如需备案举证，应改走文件接力（路径 B）重新取得独立意见。",
     "window_specifics": {
-      "git_new_commits": 2,
-      "git_head": "dd59581 (main, 与 origin/main 一致)",
+      "git_new_commits": 0,
+      "git_head": "f2fbcf5 (main, 与 origin/main 一致；本轮变更尚未提交)",
       "git_branch_local_pending": "local-full-names@2e6c457 未推送",
       "git_status_dirty": [
-        "M 04-部署运维/硬件配置清单与采购建议.md（属 DEV-20261013-006）",
-        "M 12-项目管理/任务清单.md（属 DEV-20261013-006）",
-        "M 03-工程代码/prompts/manifest.yaml（属 DEV-20261013-005）",
-        "M 03-工程代码/prompts/SCHEMA.md（属 DEV-20261013-005）",
-        "?? 03-工程代码/prompts/templates/synopsis_v1.yaml（属 DEV-20261013-005）",
-        "?? 03-工程代码/prompts/examples/（属 DEV-20261013-005）",
-        "?? 03-工程代码/prompts/validate_templates.py（属 DEV-20261013-005）"
+        "?? 10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见.md（属 DEV-20261013-007，新增）",
+        "M 10-评审记录/README.md（属 DEV-20261013-007，清单增归档 4 + 要点速览）",
+        "?? 11-过程文档/开发历史/DEV-20261013-007-以导演视角独立评审synopsis_v1模板.md（属 DEV-20261013-007，新增）",
+        "M 11-过程文档/开发历史/README.md（属 DEV-20261013-007，清单增第 7 条）",
+        "M 11-过程文档/README.md（属 DEV-20261013-007，清单增第 7 条）",
+        "M 12-项目管理/任务清单.md（属 DEV-20261013-007，T-001 进展 + §9 变更记录）"
       ],
       "git_stash": "空",
       "controlled_zone": "未扫描（排除路径）；本次未观察到受控资产计数变化",
-      "outside_workspace": "模型权重落 E:\\models\\Qwen2.5-7B-Instruct（工程目录之外，不入版本控制）；下载脚本 download_qwen.py 同置工程外"
+      "outside_workspace": "模型权重落 E:\\models\\Qwen2.5-7B-Instruct（工程目录之外，不入版本控制）；专家包位于用户配置目录 ~/.workbuddy/plugins/cache/experts/（不入工程版本控制）",
+      "no_touch_verification": "评审实例未修改 synopsis_v1.yaml / 用例 / SCHEMA / manifest 等既有文件；git status 仅有本轮新增与清单类修改"
     }
   },
   "open_issues": [
@@ -61,6 +60,16 @@
       "impact": "若留痕文档写入真实企业名、人名或含用户名的本机绝对路径，会随仓库提交造成泄漏。",
       "action_taken": "两篇文档撰写时一律使用工程内相对路径；不写含用户名的本机绝对路径。",
       "resolution": "已执行关键词扫描，真实企业名 / 人名 0 命中。",
+      "status": "已消解"
+    },
+    {
+      "id": "ISSUE-003",
+      "raised_at": "2026-10-13T11:18:00+08:00",
+      "type": "留痕自检（工具缺陷）",
+      "summary": "本轮脱敏自检首次运行时报「⚠️ 有命中」，经复核为**脚本判断逻辑缺陷**：`grep ... | head -5 && echo 有命中 || echo 0命中` 中，管道退出码由 `head` 决定（恒为 0），导致无论是否命中都走「有命中」分支。",
+      "impact": "可能造成两类误判：一是**假警报**（无命中却报有命中，本轮即如此）；二是早期同类写法若反向配置，可能造成**假阴性**（有命中却报通过）。",
+      "action_taken": "改用**命中计数**（`grep -rn ... | wc -l`）复核，并在 DEV-20261013-007 §4 留痕；结论为真实企业名/人名 **0**、本机用户名/机器名 **0**。",
+      "resolution": "本轮结论已修正；后续巡检与自检一律采用「计数」而非「管道退出码」判定。",
       "status": "已消解"
     }
   ],
@@ -120,7 +129,7 @@
         "03-工程代码/prompts/SCHEMA.md",
         "03-工程代码/prompts/manifest.yaml"
       ],
-      "note": "业务链路首个提示词模板 synopsis_v1（SW-004）+ 样例目录规范与 structure 校验器；同时固化两项形态决策：SW-007 直出交付包 JSON、四期开展路径。状态：已产出、待用户验收；用例未实测"
+      "note": "业务链路首个提示词模板 synopsis_v1（SW-004）+ 样例目录规范与结构校验器；同时固化两项形态决策：SW-007 直出交付包 JSON、四期开展路径。状态：已产出、待用户验收；用例未实测"
     },
     {
       "id": "DEV-20261013-006",
@@ -132,6 +141,20 @@
         "12-项目管理/任务清单.md"
       ],
       "note": "GPU 实测 RTX 4090 / compute_cap 8.9 → 精度方案定 BF16（T-010 完成、HW-Q1 闭环、T-012 解锁）；内存 63.8 GiB；发现系统盘 C 199 GiB 低于门槛。Qwen2.5-7B-Instruct 权重下载完成：15 文件 / 14.20 GB / 2.8 分钟，落 E 盘工程外"
+    },
+    {
+      "id": "DEV-20261013-007",
+      "recorded_at": "2026-10-13T11:20:00+08:00",
+      "action_type": "文档",
+      "fingerprint": "manual:synopsis-director-review",
+      "files": [
+        "10-评审记录/synopsis_v1-故事梗概生成模板-导演视角评审意见.md",
+        "10-评审记录/README.md",
+        "12-项目管理/任务清单.md",
+        "11-过程文档/README.md",
+        "11-过程文档/开发历史/README.md"
+      ],
+      "note": "以本机专家包 ai-video-prompt-director（v1.1.0）同一份角色定义另起实例，对 synopsis_v1（SW-004）执行独立导演视角评审：7 条意见（P0 3 / P1 2 / P2 2），登记为 10-评审记录 归档 4。核心发现：模板「不得编造」硬约束与下游 v1.1 §3.4 必填的 character_id/appearance_lock_zh 在链路中段顶死。评审方为本会话子实例（路径 A），未取得真实独立会话背书；被评审正文零改动"
     }
   ]
 }
