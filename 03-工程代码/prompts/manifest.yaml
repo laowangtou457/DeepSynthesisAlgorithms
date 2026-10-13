@@ -12,7 +12,7 @@ meta:
   project: 生成合成类（文本合成）算法
   asset_type: 提示词模板资产
   schema_version: "1.0.0"
-  updated_at: "2026-10-10"
+  updated_at: "2026-10-13"
 
 # 版本规范：主版本.次版本.修订号
 #   主版本：模板结构变更（变量增删、职责调整）
@@ -22,6 +22,23 @@ meta:
 templates:
 
   # ========== 内容生成类 ==========
+  - id: synopsis_v1
+    name: 故事梗概生成
+    task_type: generate
+    stage: synopsis
+    file: templates/synopsis_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [source_input, genre, target_duration, audience, must_include, must_avoid]
+    scenes:
+      - AI 漫剧链路第 1 段：一句话创意 → 结构化梗概
+      - 短剧项目立项前的故事结构梳理
+    constraints:
+      - 只依据给定要点扩写；人名／地名／机构名／年代不得自行编造，缺失一律写「未指定」
+      - 覆盖全部输入要点，覆盖情况写入 covered_points 字段供机器核查
+      - 不得改变客户已给定的角色关系、事件因果与结局走向
+    notes: 链路源头模板，输出 JSON 供 SW-005 剧本生成消费；用例见 examples/synopsis-case01.md
+
   - id: gen_article_v1
     name: 长文内容生成
     task_type: generate
@@ -169,12 +186,19 @@ templates:
 
 # ========== 统计 ==========
 summary:
-  total: 9
-  active: 9
+  total: 10
+  active: 10
   deprecated: 0
   by_task_type:
-    generate: 2
+    generate: 3
     summarize: 2
     rewrite: 2
     extract: 1
     guard: 2
+  by_stage:
+    synopsis: 1
+    script: 0
+    storyboard: 0
+    shot_prompt: 0
+    revise: 0
+  business_chain_note: "AI 漫剧业务链路 6 个模板建设中：已建 1（synopsis_v1），待建 5（script / storyboard / shot_prompt / prompt_refactor / revise）"

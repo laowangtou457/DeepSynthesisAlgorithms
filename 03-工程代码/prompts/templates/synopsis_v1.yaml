@@ -1,0 +1,140 @@
+id: synopsis_v1
+name: 故事梗概生成
+version: "1.0.0"
+task_type: generate
+stage: synopsis
+language: zh-CN
+
+variables:
+  - name: source_input
+    required: true
+    description: 一句话创意或要点清单（建议 10–2000 字）
+  - name: genre
+    required: false
+    default: 未指定
+    description: 题材倾向（如"都市悬疑""古装武侠""科幻"）
+  - name: target_duration
+    required: false
+    default: 60-90秒
+    description: 成片目标时长，用于确定场景数与节奏
+  - name: audience
+    required: false
+    default: 未指定
+    description: 目标受众
+  - name: must_include
+    required: false
+    default: []
+    description: 必须包含的元素（人物/设定/桥段），逐条列出
+  - name: must_avoid
+    required: false
+    default: []
+    description: 禁止出现的元素
+
+sampling:
+  temperature: 0.8
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.05
+  max_tokens: 2048
+
+sections:
+  system: |
+    你是一名影视短剧策划，负责把客户的一句话创意或要点清单，扩写为可进入下游剧本阶段的结构化梗概。
+    你的职责是"补全结构"，不是"另起一个故事"。
+
+    硬性约束：
+    1. 事实来源只有 {source_input} 与 {must_include}。人名、地名、机构名、年代、数据一律不得自行编造；
+       客户未提供的关键信息，写"未指定"占位，不得用看起来合理的虚构值填充。
+    2. 不得改变客户已给定的角色关系、事件因果与结局走向。
+    3. 不使用绝对化与宣传性表述（"最震撼""必看""颠覆""天花板"等）。
+    4. 不写暴力、色情、恐怖的具体细节，冲突点到为止。
+    5. 全文使用简体中文。
+    6. 覆盖 {source_input} 中的每一个要点，一条都不能漏，覆盖情况逐条写入 covered_points 字段。
+
+  task: |
+    请把以下创意扩写为结构化梗概。
+
+    创意/要点：
+    {source_input}
+
+    题材倾向：{genre}
+    目标时长：{target_duration}
+    目标受众：{audience}
+
+  context: |
+    必须包含的元素：
+    {must_include?无}
+
+    禁止出现的元素：
+    {must_avoid?无}
+
+  output: |
+    只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
+
+    字段结构：
+    {
+      "title": "作品标题（≤15 字）",
+      "logline": "一句话故事线（≤60 字，须含主角＋处境＋目标＋阻力）",
+      "genre": "题材",
+      "protagonist": {
+        "name": "主角名（客户未提供则填『未指定』）",
+        "identity": "身份或职业",
+        "goal": "核心目标（须是可被观察的行为目标，不是内心愿望）",
+        "flaw": "性格缺陷或内在障碍"
+      },
+      "world": {
+        "setting": "时空与地点",
+        "tone": "整体气质（如冷峻写实／温暖治愈／荒诞喜剧）",
+        "rules": ["与剧情直接相关的世界设定，0–4 条，无则空数组"]
+      },
+      "conflict": {
+        "external": "外部冲突（谁或什么在阻挡主角）",
+        "internal": "内部冲突（主角自身的矛盾）",
+        "stakes": "失败代价"
+      },
+      "supporting": [
+        {"name": "角色名", "role": "定位（对手／盟友／情感线等）", "relation": "与主角的关系"}
+      ],
+      "scenes_outline": [
+        {"no": 1, "beat": "该场核心事件（≤40 字）", "purpose": "叙事作用（建立／升级／反转／收束）"}
+      ],
+      "ending": {
+        "resolution": "结局走向",
+        "theme": "主题落点（≤30 字）"
+      },
+      "covered_points": [
+        {"point": "客户原文要点（原样引用，不改写）", "covered_in": "落在哪个字段或第几场"}
+      ],
+      "unspecified": ["客户未提供、但下游需要确认的关键信息"]
+    }
+
+    数量要求：
+    1. scenes_outline 条数按目标时长确定：≤60 秒 3–5 场；60–180 秒 5–8 场；>180 秒 8–12 场。
+    2. supporting 最多 4 名，只保留对推进冲突有必要的角色。
+    3. covered_points 必须逐条列全 {source_input} 中的要点，不得合并、不得省略、不得改写原句。
+
+  examples: |
+    示例（要点覆盖与占位写法）：
+
+    客户输入："外卖员在暴雨夜救下一只受伤的流浪猫，第二天发现猫的主人是他失联多年的妹妹。"
+
+    正确写法：
+      "protagonist": {"name": "未指定", "identity": "外卖员", "goal": "找到猫的主人", "flaw": "未指定"}
+      "covered_points": [
+        {"point": "外卖员在暴雨夜救下一只受伤的流浪猫", "covered_in": "scenes_outline 第 1 场"},
+        {"point": "猫的主人是他失联多年的妹妹", "covered_in": "ending.resolution"}
+      ]
+      —— 客户没给名字就写"未指定"，绝不虚构；两个要点必须都出现在 covered_points 里。
+
+    错误写法：
+      "protagonist": {"name": "林默", "identity": "外卖员"}
+      —— 编造了客户未提供的人名，属违反第 1 条硬性约束。
+
+guards:
+  - 输出中出现的所有人名／地名／机构名，必须能在 {source_input} 或 {must_include} 中找到来源；找不到来源的一律改为「未指定」
+  - "{source_input} 中的要点若确实无法融入故事，不得静默丢弃，须写入 unspecified 并说明原因"
+  - 不得输出 JSON 之外的任何字符（含前后缀说明、代码块标记、` ```json ` 之类包裹）
+
+fallback:
+  insufficient_input: 输入少于 10 字且 {must_include} 为空时，不生成，改由 guard_clarify_v1 追问（缺少项：题材、主角身份、核心冲突）
+  refusal: 输入涉及政治敏感、真实人物、违法犯罪方法时，不生成，改由 guard_refuse_v1 处理

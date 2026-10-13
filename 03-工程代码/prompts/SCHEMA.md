@@ -8,6 +8,10 @@
 #   name        中文名称
 #   version     版本号（主.次.修订），修改必须升版本
 #   task_type   generate | summarize | rewrite | extract | guard
+#   stage       业务链路阶段（仅 AI 漫剧业务链路模板填写，其他模板留空）：
+#                 synopsis | script | storyboard | shot_prompt | revise
+#               —— 与《分镜提示词交付规范 v1.1》§3.2 的 stage_chain 枚举对齐，
+#                  用于下游按链路顺序编排模板、并写入交付包的 generation_trace.stage_chain
 #   variables   变量清单，加载时校验必填项
 #   sampling    推荐采样参数（服务层默认值，可被请求覆盖）
 #   sections    提示分节，按固定顺序拼装：

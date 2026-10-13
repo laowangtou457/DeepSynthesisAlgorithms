@@ -3,8 +3,8 @@
   "mechanism": "开发历史巡检（每 2 小时）",
   "owner_doc": "11-过程文档/开发历史/README.md",
   "workspace": "E:\\深度合成算法工程材料",
-  "last_scan_at": "2026-10-13T10:19:53+08:00",
-  "last_scanned_commit": "2b464bf92fe32f300b615d728bfa0c442eed0a15",
+  "last_scan_at": "2026-10-13T11:12:00+08:00",
+  "last_scanned_commit": "dd59581084c2d83125818da918363d90577717c5",
   "last_scanned_branch": "main",
   "baseline_note": "留痕起点 2026-10-13。2026-10-09 ~ 2026-10-12 的历史动作未逐条回填。本文件自身变化不构成工程推进动作，不得记录。",
   "excluded_paths": [
@@ -16,23 +16,30 @@
     ".venv/"
   ],
   "last_scan_result": {
-    "window_start": "2026-10-13T10:16:13+08:00",
-    "window_end": "2026-10-13T10:19:53+08:00",
-    "new_actions": 0,
-    "documents_created": [],
-    "note": "窗口内工作区确有文件落地（11-过程文档/README.md 更新、00-需求/硬件级需求/硬件级需求文档.md 新建、04-部署运维/硬件配置清单与采购建议.md 新建、DEV-20261013-001~004 落地），但逐条比对 recorded_actions 后，全部已归属 DEV-20261013-001/002/003/004 四笔既有记录，无新增动作；_巡检状态.json 与 .workbuddy/ 为机制元数据与工具缓存，不计。",
+    "window_start": "2026-10-13T10:19:53+08:00",
+    "window_end": "2026-10-13T11:12:00+08:00",
+    "new_actions": 2,
+    "documents_created": [
+      "DEV-20261013-005-建立SW-004梗概生成模板与样例校验器.md",
+      "DEV-20261013-006-硬件前置闭环与模型权重下载启动.md"
+    ],
+    "note": "窗口内完成两笔动作并已由主会话记录：① 提示词资产内容层首个模板 synopsis_v1（SW-004）+ 样例目录规范 + 结构校验器 validate_templates.py；② 硬件前置闭环（GPU 实测 RTX 4090 / compute_cap 8.9 → BF16 路线，T-010 完成）+ Qwen2.5-7B-Instruct 权重下载完成（14.20 GB，落 E 盘工程外）。窗口内同时发生：Git 认证方式由 HTTPS 改为 SSH、两次推送（2b464bf..ee109a4..dd59581）、12-项目管理 任务清单与日程表按「硬件路线冻结」调整。",
     "window_specifics": {
-      "git_new_commits": 0,
-      "git_head": "2b464bf (main, 与 origin/main 一致)",
-      "git_branch_local_pending": "local-full-names@2e6c457 未推送且未纳入扫描窗口变更",
+      "git_new_commits": 2,
+      "git_head": "dd59581 (main, 与 origin/main 一致)",
+      "git_branch_local_pending": "local-full-names@2e6c457 未推送",
       "git_status_dirty": [
-        "M 11-过程文档/README.md（属 DEV-20261013-003）",
-        "?? 00-需求/硬件级需求/（属 DEV-20261013-004）",
-        "?? 04-部署运维/（属 DEV-20261013-004）",
-        "?? 11-过程文档/开发历史/（属 DEV-20261013-003）"
+        "M 04-部署运维/硬件配置清单与采购建议.md（属 DEV-20261013-006）",
+        "M 12-项目管理/任务清单.md（属 DEV-20261013-006）",
+        "M 03-工程代码/prompts/manifest.yaml（属 DEV-20261013-005）",
+        "M 03-工程代码/prompts/SCHEMA.md（属 DEV-20261013-005）",
+        "?? 03-工程代码/prompts/templates/synopsis_v1.yaml（属 DEV-20261013-005）",
+        "?? 03-工程代码/prompts/examples/（属 DEV-20261013-005）",
+        "?? 03-工程代码/prompts/validate_templates.py（属 DEV-20261013-005）"
       ],
       "git_stash": "空",
-      "controlled_zone": "未扫描（排除路径）；本次未观察到受控资产计数变化"
+      "controlled_zone": "未扫描（排除路径）；本次未观察到受控资产计数变化",
+      "outside_workspace": "模型权重落 E:\\models\\Qwen2.5-7B-Instruct（工程目录之外，不入版本控制）；下载脚本 download_qwen.py 同置工程外"
     }
   },
   "open_issues": [
@@ -44,6 +51,16 @@
       "impact": "曾使开发历史/README.md 第七节与 11-过程文档/README.md §5.2 指向缺失文件。",
       "action_taken": "先按幂等与「无证据不闭环」原则登记待确认、未生成占位件；随后于同一窗口内复核，发现并发写入在 2026-10-13 10:18:47 ~ 10:19:31 补齐了 00-需求/硬件级需求/硬件级需求文档.md、04-部署运维/硬件配置清单与采购建议.md 与 DEV-20261013-004 文档，实体与清单已自洽。",
       "resolution": "已消解：2026-10-13 10:19:53 复核确认四个文件均存在且清单一致，无需人工干预；本记录按幂等原则不重复生成。",
+      "status": "已消解"
+    },
+    {
+      "id": "ISSUE-002",
+      "raised_at": "2026-10-13T11:12:00+08:00",
+      "type": "留痕自检",
+      "summary": "本轮新增的 DEV-20261013-005 与 006 属「留痕文档本身」，须纳入脱敏自检范围（工程内曾于 2026-10-13 因同类问题修正一处）。",
+      "impact": "若留痕文档写入真实企业名、人名或含用户名的本机绝对路径，会随仓库提交造成泄漏。",
+      "action_taken": "两篇文档撰写时一律使用工程内相对路径；不写含用户名的本机绝对路径。",
+      "resolution": "已执行关键词扫描，真实企业名 / 人名 0 命中。",
       "status": "已消解"
     }
   ],
@@ -89,6 +106,32 @@
         "04-部署运维/硬件配置清单与采购建议.md"
       ],
       "note": "编制硬件级需求文档（D-014，HW-DOC-001 V1.0）与硬件配置清单（OPS-HW-001）；正文文档与 DEV 记录均于 2026-10-13 10:18:47 ~ 10:19:31 落地，清单一致"
+    },
+    {
+      "id": "DEV-20261013-005",
+      "recorded_at": "2026-10-13T11:08:00+08:00",
+      "action_type": "代码",
+      "fingerprint": "manual:sw004-synopsis-template",
+      "files": [
+        "03-工程代码/prompts/templates/synopsis_v1.yaml",
+        "03-工程代码/prompts/examples/README.md",
+        "03-工程代码/prompts/examples/synopsis-case01.md",
+        "03-工程代码/prompts/validate_templates.py",
+        "03-工程代码/prompts/SCHEMA.md",
+        "03-工程代码/prompts/manifest.yaml"
+      ],
+      "note": "业务链路首个提示词模板 synopsis_v1（SW-004）+ 样例目录规范与 structure 校验器；同时固化两项形态决策：SW-007 直出交付包 JSON、四期开展路径。状态：已产出、待用户验收；用例未实测"
+    },
+    {
+      "id": "DEV-20261013-006",
+      "recorded_at": "2026-10-13T11:08:00+08:00",
+      "action_type": "部署",
+      "fingerprint": "manual:hw-probe-and-model-download",
+      "files": [
+        "04-部署运维/硬件配置清单与采购建议.md",
+        "12-项目管理/任务清单.md"
+      ],
+      "note": "GPU 实测 RTX 4090 / compute_cap 8.9 → 精度方案定 BF16（T-010 完成、HW-Q1 闭环、T-012 解锁）；内存 63.8 GiB；发现系统盘 C 199 GiB 低于门槛。Qwen2.5-7B-Instruct 权重下载完成：15 文件 / 14.20 GB / 2.8 分钟，落 E 盘工程外"
     }
   ]
 }
