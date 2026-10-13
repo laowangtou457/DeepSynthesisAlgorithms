@@ -32,7 +32,13 @@ except ImportError:
 BASE = os.path.dirname(os.path.abspath(__file__))
 SECTIONS = ["system", "task", "context", "output", "examples"]
 TPL_REQUIRED = ["id", "name", "task_type", "file", "version", "status"]
-VAR_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)[?}]")
+# 模板变量插值：{var} / {var?default}
+#   ⚠️ 必须**排除双花括号**——本工程的占位符约定是 `{{PROVIDER_NAME}}`／`{{PROVIDER_CODE}}`
+#      这类「交付前须回填」的占位，不是待插值的模板变量。若不加 (?!\})／(?<!\{) 两个断言，
+#      `{{PROVIDER_CODE}}` 的内层 `{PROVIDER_CODE}` 会被误判为「引用了未声明变量」，
+#      逼模板把占位符塞进 variables（语义颠倒：占位符是留给人工回填的，变量是运行期注入的）。
+#      2026-10-13 随 shot_prompt_v1（首个需要输出 aigc_meta 的模板）首次暴露并修正。
+VAR_RE = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_]*)[?}](?!\})")
 JSON_BLOCK_RE = re.compile(r"```json\s*\n(.*?)\n```", re.S)
 
 _result = {"checks": 0, "errors": [], "warnings": []}

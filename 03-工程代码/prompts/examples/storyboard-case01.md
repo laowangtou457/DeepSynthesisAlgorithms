@@ -357,7 +357,7 @@
       "shot_size": "medium",
       "camera": {
         "move": "arc",
-        "amplitude": "medium",
+        "amplitude": "",
         "speed": "slow",
         "from": "门铃面板正前",
         "to": "绕到 CHR-01 侧后，把背影与门框一起收进画面",

@@ -20,6 +20,7 @@
   R3 SCENE_NO_CONTINUITY   场号须从 1 起连续、不重复（R-06：区间与档位口径）
   R4 EST_SECONDS_SUM       total_est_seconds 须等于各场 est_seconds 之和
   R5 REQUIRED_KEYS         按产物形态（synopsis／script／storyboard）核对必备顶层字段
+                           （交付包 pack 不走本条，其必备结构由 R27 统一核对，避免两处口径打架）
   R6 ACT_STRUCTURE         （仅 script）acts 恰为 3 幕，且每场 act_no 与所属幕一致
 
 剧本层补充规则（SW-005 `script_v1` v2.0.0，2026-10-13 依导演视角独立评审 `SR-01`~`SR-11` 新增）：
@@ -66,6 +67,48 @@
                            quality_gate 的数值字段为可选参考；**填写即须等于由 shots 复算的真值**。
                            模型可写「11 项全通过」而无人比对，是全链路唯一「声明值可被证伪却无人证伪」处。
 
+交付包层规则（SW-007 `shot_prompt_v1`，2026-10-13 新增；形态 pack）：
+  R26 MOVE_PARAM_OMISSION  运镜幅度／速度的**省略规则**（规范 §3.7.2）——
+                           camera.amplitude 只允许 small／large、camera.speed 只允许 slow／fast，
+                           `medium`／`normal` 是「通常省略」的默认值，须留空串。
+                           ⚠️ 本条**同时作用于分镜脚本与交付包**：分镜层 v2.1.0 已把该口径写进硬性约束，
+                           但当轮**无脚本判据**（SCHEMA.md 曾误称由 R13 判，R13 实为时长区间），
+                           导致用例残留一处 `amplitude="medium"` 未被发现。本条即补该缺口。
+  R27 PACK_REQUIRED        **交付包必备结构**（规范 §3.1~§3.6、§3.8）——
+                           顶层 schema_version／meta／style_bible／units／shots／aigc_meta 齐备；
+                           每镜必备 13 字段（含 prompt_zh／prompt_en／style_ref／action／shot_language）；
+                           `style_ref` 必须命中 `style_bible.style_id`（§3.8 列**阻断项**）；
+                           `character_refs` 必须命中 `characters[].character_id`。
+                           这是「分镜层产出是规范字段集真子集」的补全验收——SW-007 的存在理由。
+  R28 PACK_APPEARANCE_ECHO **外观复用检测**（规范 §3.4「外观只在此处定义一次」）——
+                           把交付包自带的 `characters[].appearance_lock_zh`（及 `_en`）与
+                           `prompt_zh`／`prompt_en` **正文**比对；命中即报错。
+                           ⚠️ 两侧判据**不同**：中文取**连续 3 字**，英文取**连续 3 个实词**
+                           （英文 3 个字符只是词内片段，`the`／`old` 会在任何英文正文里命中——
+                           2026-10-13 首跑即误报 773 处，故英文侧先剔停用词再取 n-gram）。
+                           与 R23 的分工：R23 管**分镜层的语义字段**不得重述外观（需 --script）；
+                           本条管**提示词正文**不得复述外观（用包内 characters，自足）。
+                           正文里写的是「这一镜在发生什么」，不是「这个人长什么样」。
+  R29 PACK_PROMPT_HYGIENE  **提示词正文卫生**（规范 §3.3／§3.7.6／§6.4）——
+                           ① 不得含模型参数指令（`--ar`／`--v`／`--style` 等）；
+                           ② 不得含负向残留写法（`（负向：`／`Negative prompt:`／`(negative:`）——
+                              负向意图须走 `negative_global` 字段或转写为正向约束句；
+                           ③ **风格锚点封闭**：正文不得出现 `style_anchors` 之外的**已知风格词**
+                              （词表取自 delivery/config/shot_vocab.yaml 的 style_tags，脚本内置常量）。
+  R30 AIGC_META            **AIGC 元数据块规则**（规范 §5.2／§5.3）——
+                           `aigc_meta` 仅一份；7 字段齐备；`Label` 恒为 "1"；
+                           `ProduceID` 必须等于 `meta.pack_id`（编号可反查生成记录）；
+                           `PropagateID` 等于 `ProduceID`、`ContentPropagator` 等于 `ContentProducer`
+                           （首次写入的取值规则）。
+  R31 PACK_DURATION_LOCK   **时长守恒与不变量**（本层「不改导演决策」的判据）——
+                           ① `meta.total_duration_ms` 必须等于各镜 `duration_ms` 之和；
+                           ② 若以 `--storyboard` 提供上游，则交付包与上游的**镜数、镜序、逐镜 duration_ms**
+                              必须逐项相同——SW-007 是编译表达层，改一个秒数就改了一个导演决策。
+  R32 LIGHTING_VOCAB       **光照字段的词表纯度**（投影规则①）——
+                           交付包的 `shots[].lighting` 与 `style_bible.lighting_default` 必须是**纯词表值**
+                           （`^[a-z][a-z_]*$`，且命中 15 值词表）。上游允许写成「词表值——中文光位说明」，
+                           但交付包 schema 不允许；本层须拆分（说明移入 prompt 正文）。
+
   ⚠️ 口径差异（必须知道）：R19 判定的是**结构化字段是否有值**（SW-006 的产物）；
      audit_shots.py 判定的是**适配投喂文本**（SW-007 的产物）。两者对象不同——
      本层判定通过不等于下游文本判定通过，SW-007 完成后须对文本再跑一次（规范 §4.8）。
@@ -74,6 +117,7 @@
   python validate_output.py                     # 扫描 examples/*.md 内全部 JSON 块（自动配对上/下游）
   python validate_output.py --file out.json     # 校验单个 JSON 文件（真实模型输出）
   python validate_output.py --file out.json --script script.json   # 附带上游剧本 → 启用 R23/R24
+  python validate_output.py --file pack.json --storyboard sb.json  # 附带上游分镜 → 启用 R31 时长守恒
   python validate_output.py --json              # 机器可读结果
   python validate_output.py --duration-bounds 4-15   # 覆盖单镜时长区间（秒）
 
@@ -115,6 +159,38 @@ MOVE_ENUM = [
 NO_PARAM_MOVES = ("static", "pov")   # 不得携带幅度与速度
 TRANSITION_ENUM = ["cut", "fade_in", "fade_out", "dissolve", "wipe"]
 
+# 运镜幅度／速度的**省略规则**（规范 §3.7.2，2026-10-13 依 SW-007 补判据 → R26）
+#   medium／normal 是「通常省略」的默认值，工程侧一律留空串；只允许强调用的两值。
+AMPLITUDE_ENUM = ["", "small", "large"]
+SPEED_ENUM = ["", "slow", "fast"]
+
+# 光照词表（规范 §3.7.5，15 值；与 delivery/config/shot_vocab.yaml 的 lighting 段一致 → R32）
+LIGHT_ENUM = [
+    "soft_key_light", "hard_key_light", "rim_light", "backlight", "side_light",
+    "top_light", "under_light", "practical_light", "volumetric_light",
+    "golden_hour", "blue_hour", "overcast", "neon_night", "candlelight", "moonlight",
+]
+
+# 交付包必备顶层段（规范 §3.1 → R27）；characters 规范标「应当」，故单列
+PACK_TOP_REQUIRED = ["schema_version", "meta", "style_bible", "units", "shots", "aigc_meta"]
+# 每镜必备字段（规范 §3.6 的「必须」级 + style_ref 的阻断项 → R27）
+PACK_SHOT_REQUIRED = [
+    "shot_id", "unit_id", "scene_no", "shot_no", "shot_size", "camera", "duration_ms",
+    "prompt_zh", "prompt_en", "action", "shot_language", "style_ref", "character_refs",
+]
+# AIGC 元数据块 7 字段（规范 §5.1 → R30）
+AIGC_FIELDS = ["Label", "ContentProducer", "ProduceID",
+               "ReservedCode1", "ContentPropagator", "PropagateID", "ReservedCode2"]
+
+# 提示词正文卫生（规范 §3.7.6 / §6.4 → R29）
+PARAM_INSTR_RE = re.compile(r"--(ar|v|style|seed|no|stylize|chaos|aspect|q|s)\b|--\w+\s*\d")
+NEG_RESIDUE_RE = re.compile(r"（负向[:：]|\(负向[:：]|negative\s*prompt\s*[:：]|\(negative\s*[:：]|no\s+negative", re.I)
+# 「已知风格词」清单（取自 delivery/config/shot_vocab.yaml 的 style_tags；用于风格锚点封闭检测）
+KNOWN_STYLE_TAGS = [
+    "赛璐璐", "厚涂", "水彩", "水墨", "油画", "像素", "美式卡通", "欧式绘本",
+    "日式动画", "国风", "写实", "三渲二", "平涂", "描边", "网点", "手绘",
+]
+
 # 镜头语言质量门阈值 —— **直接引用 audit_shots.py 的 GATE**，不得另立一套（规范 §4.2）
 GATE = {
     "运镜覆盖": 1.00,       # 每镜都要有
@@ -138,20 +214,43 @@ SHOT_ID_RE = re.compile(r"^S\d{2}-SH\d{3}$")
 
 # 外观锚切段用的标点/空白（R23）：锚串按这些字符切段后再取 3-gram
 ANCHOR_SPLIT_RE = re.compile(r"[、，,。；;：:（）()【】\[\]{}／/·\s\"'“”‘’—－\-]+")
-ANCHOR_NGRAM = 3          # 命中长度阈值（3 字）
+ANCHOR_NGRAM = 3          # 命中长度阈值（3 字／3 实词，见下）
 SHOT_SEMANTIC_TEXT_KEYS = ("start", "change", "end")   # action.*
 SEMANTIC_SL_KEYS = ("composition", "axis", "result")   # shot_language.*
 
-# examples/ 内的跨层配对：用于在默认扫描时自动启用跨层规则 R23 / R24。
-# 真实产物请用 --script 显式指定上游（本脚本不猜路径）。
+# 外观锚比对（R23／R28）的两侧最小语义单位：
+#   中文 → **连续 3 字**（中文 3 字已是一个语义单位）
+#   英文 → **连续 3 个实词**（英文 3 个字符只是词内片段！）
+#   ⚠️ 2026-10-13 首跑 R28 时，直接对英文锚取 3 字符 → 误报 773 处
+#      （`the`／`old` 这类片段出现在任何英文正文里）。英文侧须先剔停用词。
+EN_STOPWORDS = frozenset("""
+a an the and or but nor so yet of in on at to from with without for by as
+is are was were be been being am
+his her hers he she it its they them their there here
+this that these those then than
+into onto over under above below up down out off
+not no yes very still just also too only own same such each every both few more most other some any all
+if when while because during before after between through about against within upon
+do does did doing have has had having will would shall should can could may might must
+one two three four five six seven eight nine ten
+""".split())
+EN_WORD_RE = re.compile(r"[A-Za-z][A-Za-z'\-]*")
+CJK_RUN_RE = re.compile(r"[\u3400-\u9fff]+")
+
+# examples/ 内的跨层配对：用于在默认扫描时自动启用跨层规则。
+#   值为「该用例的上游文件列表」——SW-007 的交付包**需要两份上游**
+#   （剧本出锚、分镜出决策），故此处允许一个用例配多个上游，按形态各归其位。
+#   真实产物请用 --script / --storyboard 显式指定上游（本脚本不猜路径）。
 EXAMPLES_UPSTREAM = {
-    "script-case01.md": "synopsis-case01.md",
-    "storyboard-case01.md": "script-case01.md",
+    "script-case01.md": ["synopsis-case01.md"],
+    "storyboard-case01.md": ["script-case01.md"],
+    "shot-prompt-case01.md": ["script-case01.md", "storyboard-case01.md"],
 }
 
 RESULT = {"checks": 0, "errors": [], "warnings": []}
 QUIET = False
-UPSTREAM = {"doc": None, "src": None}      # 当前生效的上游剧本产物（缺失时 R23/R24 跳过并 WARN）
+# 当前生效的上游产物：script 供 R23/R24；storyboard 供 R31（时长守恒）。
+UPSTREAM = {"doc": None, "src": None, "sb_doc": None, "sb_src": None}
 
 
 def out(msg=""):
@@ -176,9 +275,16 @@ def warn(msg):
 
 # ---------------- 形态识别与字段抽取 ----------------
 def detect_shape(doc):
-    """按产物顶层字段识别形态。"""
+    """按产物顶层字段识别形态。
+
+    ⚠️ 顺序敏感：交付包（pack）与分镜脚本（storyboard）**都有 units 与 shots**，
+    故必须先判 pack（凭 aigc_meta + schema_version，二者是分镜层不产出的字段），
+    否则交付包会被误判为分镜脚本、整段规则跑错对象。
+    """
     if not isinstance(doc, dict):
         return None
+    if "aigc_meta" in doc and "schema_version" in doc:
+        return "pack"
     if "acts" in doc:
         return "script"
     if "shots" in doc and "units" in doc:
@@ -280,7 +386,11 @@ def rule_est_seconds_sum(doc, shape, where):
 
 
 def rule_required_keys(doc, shape, where):
-    """R5：按形态核对必备顶层字段。"""
+    """R5：按形态核对必备顶层字段。
+
+    ⚠️ 交付包（pack）不在本表内——它的必备结构由 R27 单独核对（顶层六段 + 逐镜 13 字段），
+    两处口径若都写会互相打架。此处用 `.get()` 兜底，确保误入也不会 KeyError。
+    """
     need = {
         "synopsis": ["title", "logline", "protagonist", "supporting", "world",
                      "conflict", "scenes_outline", "ending", "forbidden_items",
@@ -290,7 +400,9 @@ def rule_required_keys(doc, shape, where):
         "storyboard": ["title", "genre", "style_ref", "aspect_ratio_default",
                        "total_duration_ms", "units", "shots", "forbidden_items",
                        "unspecified", "quality_gate"],
-    }[shape]
+    }.get(shape)
+    if need is None:
+        return
     miss = [k for k in need if k not in doc]
     if miss:
         err(f"{where} · R5 REQUIRED_KEYS（{shape}）：缺 {miss}")
@@ -753,13 +865,30 @@ def _anchors(upstream):
 
 
 def _anchor_ngrams(anchor, n=ANCHOR_NGRAM):
-    """锚串按标点切段后取 n-gram（只看段内连续，避免跨标点的伪命中）。"""
+    """中文锚串按标点切段后取 n-**字符** gram（只看段内连续，避免跨标点的伪命中）。"""
     grams = set()
     for seg in ANCHOR_SPLIT_RE.split(anchor or ""):
         if len(seg) < n:
             continue
         for i in range(len(seg) - n + 1):
             grams.add(seg[i:i + n])
+    return grams
+
+
+def _en_content_ngrams(text, n=ANCHOR_NGRAM):
+    """英文锚串／正文的 n-**实词** gram（与中文 3 字的对等单位）。
+
+    ⚠️ 为什么英文不能沿用中文的字符 3-gram：中文 3 个字已是一个语义单位，
+    而英文 3 个字符只是**词内片段**——`the`（来自 "the right wrist"）、`old`
+    （来自 "an old scar"）这类片段会出现在任何一段英文正文里。
+    2026-10-13 首跑 R28 即由此产生 **773 处误报**（14 镜 × 每镜数十处），
+    规则形同失效。英文的最小语义单位是**实词**，故先剔停用词、再取连续 n 个实词。
+    """
+    words = [w.lower() for w in EN_WORD_RE.findall(text or "")
+             if w.lower() not in EN_STOPWORDS]
+    grams = set()
+    for i in range(len(words) - n + 1):
+        grams.add(" ".join(words[i:i + n]))
     return grams
 
 
@@ -885,6 +1014,260 @@ def rule_gate_self_check(doc, where):
         ok(f"{where} · R25 GATE_SELF_CHECK：自声明 {len(keys)} 个数值字段与由 shots 复算的真值一致")
 
 
+# ---------------- 交付包层规则（SW-007 · shot_prompt_v1，形态 pack） ----------------
+def rule_move_param_omission(doc, where):
+    """R26：运镜幅度／速度的省略规则（规范 §3.7.2）。
+
+    只允许 amplitude ∈ {空串, small, large}、speed ∈ {空串, slow, fast}；
+    medium／normal 是「通常省略」的默认值，工程侧一律留空串。
+    本条同时作用于分镜脚本与交付包——它是 v2.1.0 写进硬性约束、却漏了脚本判据的那一条。
+    """
+    shots = _shots(doc)
+    if not shots:
+        return
+    bad = []
+    for r in shots:
+        c = _cam(r)
+        a, s = c.get("amplitude", None), c.get("speed", None)
+        if a is not None and a not in AMPLITUDE_ENUM:
+            bad.append(f"{r.get('shot_id')}.camera.amplitude=『{a}』")
+        if s is not None and s not in SPEED_ENUM:
+            bad.append(f"{r.get('shot_id')}.camera.speed=『{s}』")
+    if bad:
+        err(f"{where} · R26 MOVE_PARAM_OMISSION：{len(bad)} 处使用默认值当必填值 → "
+            + "；".join(bad[:6])
+            + "（medium／normal 是「通常省略」的默认值，须留空串）")
+    else:
+        ok(f"{where} · R26 MOVE_PARAM_OMISSION：{len(shots)} 镜的幅度／速度取值合规"
+           f"（只出现空串／small／large 与 空串／slow／fast）")
+
+
+def rule_pack_required(doc, where):
+    """R27：交付包必备结构（规范 §3.1~§3.6、§3.8 阻断项）。"""
+    miss = [k for k in PACK_TOP_REQUIRED if k not in doc]
+    if miss:
+        err(f"{where} · R27 PACK_REQUIRED：顶层缺段 → {miss}")
+    sv = doc.get("schema_version")
+    if sv != "1.1.0":
+        warn(f"{where} · R27 PACK_REQUIRED：schema_version=『{sv}』（当前 schema 为 1.1.0）")
+    sb = doc.get("style_bible") if isinstance(doc.get("style_bible"), dict) else {}
+    style_id = sb.get("style_id")
+    chars = [c for c in (doc.get("characters") or []) if isinstance(c, dict)]
+    char_ids = {c.get("character_id") for c in chars}
+    if not chars:
+        warn(f"{where} · R27 PACK_REQUIRED：characters 缺失或为空（规范标『应当』，无角色的成片可空）")
+    shots = _shots(doc)
+    if not shots:
+        err(f"{where} · R27 PACK_REQUIRED：shots 缺失或为空")
+        return
+    bad = []
+    for r in shots:
+        sid = r.get("shot_id")
+        for k in PACK_SHOT_REQUIRED:
+            v = r.get(k)
+            if v is None or (isinstance(v, str) and not v.strip()):
+                bad.append(f"{sid}.{k} 缺失／为空")
+        if r.get("style_ref") != style_id:
+            bad.append(f"{sid}.style_ref=『{r.get('style_ref')}』未命中 style_bible.style_id=『{style_id}』")
+        for ref in (r.get("character_refs") or []):
+            if ref not in char_ids:
+                bad.append(f"{sid}.character_refs 引用未定义角色 『{ref}』")
+    if bad:
+        err(f"{where} · R27 PACK_REQUIRED：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R27 PACK_REQUIRED：顶层六段齐备；{len(shots)} 镜必备 13 字段齐备；"
+           f"style_ref 全部命中 『{style_id}』；character_refs 全部命中已定义角色")
+
+
+def _prompt_texts(shot):
+    """取出该镜的提示词正文（R28/R29 的扫描对象）。
+
+    ⚠️ 只扫**正文**，不扫字段（字段里的外观锚字串是合法的——那是锚本身）。
+    """
+    return [shot.get("prompt_zh") or "", shot.get("prompt_en") or ""]
+
+
+def rule_pack_appearance_echo(doc, where):
+    """R28：提示词正文不得复述外观锚（规范 §3.4「外观只在此处定义一次」）。
+
+    用**包内自带**的 characters[].appearance_lock_zh / _en，与 prompt_zh / prompt_en **正文**比。
+    两侧判据不同（见 `_en_content_ngrams` 的说明）：中文取 3 字、英文取 3 实词。
+    与 R23 的分工：R23 管分镜层的语义字段（需 --script）；本条管提示词正文（自足，不需外部上游）。
+    """
+    chars = [c for c in (doc.get("characters") or []) if isinstance(c, dict)]
+    zh_anchors, en_anchors = [], []
+    for c in chars:
+        cid = c.get("character_id")
+        a = c.get("appearance_lock_zh")
+        if isinstance(a, str) and a.strip():
+            zh_anchors.append((f"{cid}.appearance_lock_zh", a))
+        a = c.get("appearance_lock_en")
+        if isinstance(a, str) and a.strip():
+            en_anchors.append((f"{cid}.appearance_lock_en", a))
+    shots = _shots(doc)
+    if not (zh_anchors or en_anchors) or not shots:
+        warn(f"{where} · R28 PACK_APPEARANCE_ECHO：无可比对的外观锚（跳过）")
+        return
+    zh_grams = set()
+    for _, a in zh_anchors:
+        zh_grams |= _anchor_ngrams(a)
+    en_grams = set()
+    for _, a in en_anchors:
+        en_grams |= _en_content_ngrams(a)
+
+    hits = []
+    for r in shots:
+        sid = r.get("shot_id")
+        # 中文正文：只在**汉字连续段**内取 3 字（避免跨中英混排的伪命中）
+        zh_txt = r.get("prompt_zh") or ""
+        if zh_grams and zh_txt:
+            first = None
+            for run in CJK_RUN_RE.findall(zh_txt):
+                for i in range(len(run) - ANCHOR_NGRAM + 1):
+                    g = run[i:i + ANCHOR_NGRAM]
+                    if g in zh_grams:
+                        first = g
+                        break
+                if first:
+                    break
+            if first:
+                hits.append(f"{sid}：中文正文含外观锚片段『{first}』")
+        # 英文正文：取实词 3-gram 求交
+        en_txt = r.get("prompt_en") or ""
+        if en_grams and en_txt:
+            inter = _en_content_ngrams(en_txt) & en_grams
+            if inter:
+                hits.append(f"{sid}：英文正文含外观锚片段『{sorted(inter)[0]}』")
+    if hits:
+        err(f"{where} · R28 PACK_APPEARANCE_ECHO：{len(hits)} 处正文复述外观 → " + "；".join(hits[:6])
+            + "（正文写的是「这一镜在发生什么」，不是「这个人长什么样」）")
+    else:
+        ok(f"{where} · R28 PACK_APPEARANCE_ECHO：{len(shots)} 镜正文均未复述外观锚"
+           f"（比对 {len(zh_anchors)} 条中文锚／{len(en_anchors)} 条英文锚；"
+           f"中文 3 字 · 英文 3 实词）")
+
+
+def rule_pack_prompt_hygiene(doc, where):
+    """R29：提示词正文卫生——参数指令／负向残留／风格锚点封闭（规范 §3.3／§3.7.6／§6.4）。"""
+    sb = doc.get("style_bible") if isinstance(doc.get("style_bible"), dict) else {}
+    anchors = [a for a in (sb.get("style_anchors") or []) if isinstance(a, str)]
+    shots = _shots(doc)
+    if not shots:
+        return
+    bad_param, bad_neg, bad_style = [], [], []
+    for r in shots:
+        sid = r.get("shot_id")
+        for txt in _prompt_texts(r):
+            if not txt:
+                continue
+            if PARAM_INSTR_RE.search(txt):
+                bad_param.append(sid)
+            if NEG_RESIDUE_RE.search(txt):
+                bad_neg.append(sid)
+            # 风格锚点封闭：正文出现了「已知风格词」，但它不在 style_anchors 的任何一条里
+            for tag in KNOWN_STYLE_TAGS:
+                if tag in txt and not any(tag in a for a in anchors):
+                    bad_style.append(f"{sid}：『{tag}』不在 style_anchors 内")
+    if bad_param:
+        err(f"{where} · R29 PACK_PROMPT_HYGIENE：正文含模型参数指令 → {sorted(set(bad_param))}"
+            f"（参数一律走结构化字段）")
+    if bad_neg:
+        err(f"{where} · R29 PACK_PROMPT_HYGIENE：正文含负向残留写法 → {sorted(set(bad_neg))}"
+            f"（负向意图走 negative_global 或转写为正向约束句）")
+    if bad_style:
+        err(f"{where} · R29 PACK_PROMPT_HYGIENE：正文出现锚点清单之外的风格词 → "
+            + "；".join(sorted(set(bad_style))[:6]))
+    if not (bad_param or bad_neg or bad_style):
+        ok(f"{where} · R29 PACK_PROMPT_HYGIENE：{len(shots)} 镜正文无参数指令、无负向残留、"
+           f"风格词全部落在 {len(anchors)} 条锚内")
+
+
+def rule_aigc_meta(doc, where):
+    """R30：AIGC 元数据块规则（规范 §5.1／§5.2／§5.3）。"""
+    am = doc.get("aigc_meta")
+    if not isinstance(am, dict):
+        err(f"{where} · R30 AIGC_META：aigc_meta 缺失（违反 §5 隐式标识义务）")
+        return
+    aigc = am.get("AIGC")
+    if not isinstance(aigc, dict):
+        err(f"{where} · R30 AIGC_META：aigc_meta 缺 AIGC 键")
+        return
+    miss = [k for k in AIGC_FIELDS if k not in aigc]
+    meta = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}
+    pack_id = meta.get("pack_id")
+    bad = list(f"缺字段 {m}" for m in miss)
+    if aigc.get("Label") != "1":
+        bad.append(f"Label=『{aigc.get('Label')}』（须为 \"1\"）")
+    if pack_id is not None and aigc.get("ProduceID") != pack_id:
+        bad.append(f"ProduceID=『{aigc.get('ProduceID')}』≠ meta.pack_id=『{pack_id}』（编号须可反查生成记录）")
+    if aigc.get("PropagateID") != aigc.get("ProduceID"):
+        bad.append("PropagateID ≠ ProduceID（首次写入须同值）")
+    if aigc.get("ContentPropagator") != aigc.get("ContentProducer"):
+        bad.append("ContentPropagator ≠ ContentProducer（首次写入须同值）")
+    if bad:
+        err(f"{where} · R30 AIGC_META：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R30 AIGC_META：7 字段齐备；Label=\"1\"；ProduceID 与 pack_id 一致；"
+           f"传播方首次写入取值正确；文件中仅一份")
+
+
+def rule_pack_duration_lock(doc, where):
+    """R31：时长守恒与「不改导演决策」不变量。"""
+    shots = _shots(doc)
+    if not shots:
+        return
+    meta = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}
+    total = meta.get("total_duration_ms")
+    s = sum(r.get("duration_ms") or 0 for r in shots)
+    problems = []
+    if total is not None and total != s:
+        problems.append(f"meta.total_duration_ms={total} ≠ Σ各镜 duration_ms={s}")
+    up = UPSTREAM.get("sb_doc")
+    if up is not None:
+        up_shots = _shots(up)
+        up_ids = [(r.get("shot_id"), r.get("duration_ms")) for r in up_shots]
+        now_ids = [(r.get("shot_id"), r.get("duration_ms")) for r in shots]
+        if len(up_shots) != len(shots):
+            problems.append(f"镜数与上游不一致：上游 {len(up_shots)} vs 本层 {len(shots)}")
+        diff = [f"{a[0]}({a[1]}→{b[1]})" for a, b in zip(up_ids, now_ids) if a != b]
+        if diff:
+            problems.append(f"与上游逐镜不一致（镜号或时长被改动）→ {diff[:6]}")
+        up_total = (up.get("total_duration_ms"))
+        if up_total is not None and total is not None and up_total != total:
+            problems.append(f"总时长与上游不一致：上游 {up_total} vs 本层 {total}")
+        if not problems:
+            ok(f"{where} · R31 PACK_DURATION_LOCK：Σ={s}ms 自洽；与上游分镜逐镜一致"
+               f"（{len(shots)} 镜、镜序与时长均未改动）")
+    else:
+        if not problems:
+            ok(f"{where} · R31 PACK_DURATION_LOCK：Σ各镜 duration_ms={s} 与 meta.total_duration_ms 一致")
+    if problems:
+        err(f"{where} · R31 PACK_DURATION_LOCK：{len(problems)} 处不守恒 → " + "；".join(problems[:5])
+            + "（本层是编译表达层，改一个秒数就改了一个导演决策）")
+
+
+def rule_lighting_vocab(doc, where):
+    """R32：光照字段须为纯词表值（投影规则①；上游的「词表值——说明」形态不得进交付包）。"""
+    bad = []
+    shots = _shots(doc)
+    for r in shots:
+        lg = r.get("lighting")
+        if lg is None or lg == "":
+            continue
+        if not isinstance(lg, str) or lg not in LIGHT_ENUM:
+            bad.append(f"{r.get('shot_id')}.lighting=『{lg}』")
+    sb = doc.get("style_bible") if isinstance(doc.get("style_bible"), dict) else {}
+    ld = sb.get("lighting_default")
+    if ld not in (None, "") and ld not in LIGHT_ENUM:
+        bad.append(f"style_bible.lighting_default=『{ld}』")
+    if bad:
+        err(f"{where} · R32 LIGHTING_VOCAB：{len(bad)} 处非纯词表值 → " + "；".join(bad[:6])
+            + "（须拆分为：字段留词表 code，光位说明移入 prompt 正文）")
+    else:
+        n = sum(1 for r in shots if r.get("lighting"))
+        ok(f"{where} · R32 LIGHTING_VOCAB：{n} 镜 lighting 与 lighting_default 均为纯词表值")
+
+
 # ---------------- 调度 ----------------
 def validate_doc(doc, where):
     shape = detect_shape(doc)
@@ -892,6 +1275,19 @@ def validate_doc(doc, where):
         warn(f"{where}：无法识别产物形态（既无 acts／shots 也无 scenes_outline），跳过")
         return
     out(f"\n--- {where}（形态：{shape}）---")
+    if shape == "pack":
+        # 交付包（SW-007）走的是一套**自足**的规则：
+        #   · 顶层必备字段由 R27 统一核对（R5 的 need 表不列 pack，避免两处口径打架）；
+        #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层六段无此段），故 R2 不适用——
+        #     上游台账留在上游产物自身，本层不输出、不搬运、不重编号。
+        rule_pack_required(doc, where)
+        rule_move_param_omission(doc, where)
+        rule_pack_appearance_echo(doc, where)
+        rule_pack_prompt_hygiene(doc, where)
+        rule_aigc_meta(doc, where)
+        rule_pack_duration_lock(doc, where)
+        rule_lighting_vocab(doc, where)
+        return
     rule_required_keys(doc, shape, where)
     rule_fill_stage_enum(doc, where)
     if shape == "storyboard":
@@ -909,6 +1305,7 @@ def validate_doc(doc, where):
         rule_gate_self_check(doc, where)
         rule_rewrite_lock(doc, where)
         rule_prop_coverage(doc, where)
+        rule_move_param_omission(doc, where)   # R26 同时作用于分镜脚本
         rule_unspecified_owner(doc, shape, where)
         return
     rule_purpose_enum(doc, shape, where)
@@ -955,10 +1352,23 @@ def scan_examples():
         warn("examples/ 下无可校验样例")
         return
     for fn in files:
-        # 自动配对上游（仅 examples 目录内），以启用跨层规则 R23 / R24
-        up_fn = EXAMPLES_UPSTREAM.get(fn)
-        up_doc = _load_doc_by_shape(os.path.join(exp_dir, up_fn)) if up_fn else None
-        UPSTREAM["doc"], UPSTREAM["src"] = up_doc, (up_fn if up_doc else None)
+        # 自动配对上游（仅 examples 目录内），以启用跨层规则 R23 / R24 / R31。
+        # ⚠️ SW-007 的交付包是**双上游**（剧本出锚 + 分镜出决策），故本表的值是**列表**：
+        #    列表里按形态自动分流——script 形态进 UPSTREAM["doc"]（供 R23/R24），
+        #    storyboard 形态进 UPSTREAM["sb_doc"]（供 R31 逐镜时长守恒）。
+        up_fns = EXAMPLES_UPSTREAM.get(fn) or []
+        if isinstance(up_fns, str):          # 兼容旧的字符串写法
+            up_fns = [up_fns]
+        used = []
+        for up_fn in up_fns:
+            up_doc = _load_doc_by_shape(os.path.join(exp_dir, up_fn))
+            if up_doc is None:
+                continue
+            used.append(up_fn)
+            if detect_shape(up_doc) == "storyboard":
+                UPSTREAM["sb_doc"], UPSTREAM["sb_src"] = up_doc, up_fn
+            else:
+                UPSTREAM["doc"], UPSTREAM["src"] = up_doc, up_fn
         with open(os.path.join(exp_dir, fn), encoding="utf-8") as f:
             text = f.read()
         blocks = JSON_BLOCK_RE.findall(text)
@@ -971,9 +1381,9 @@ def scan_examples():
             except Exception as e:
                 err(f"{fn}（第 {i} 个 JSON 块）：解析失败 {e}")
                 continue
-            suffix = f"（上游＝{up_fn}）" if up_doc else ""
+            suffix = f"（上游＝{' + '.join(used)}）" if used else ""
             validate_doc(doc, f"{fn}#{i}{suffix}")
-    UPSTREAM["doc"], UPSTREAM["src"] = None, None
+    UPSTREAM.update({"doc": None, "src": None, "sb_doc": None, "sb_src": None})
 
 
 def validate_file(path):
@@ -1000,6 +1410,7 @@ def main():
     ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门与跨层锚/道具比对）")
     ap.add_argument("--file", help="校验单个 JSON（或含 ```json 块的 .md）文件")
     ap.add_argument("--script", help="上游剧本产物（script_v1 的输出）——提供后启用跨层规则 R23（外观锚重述）与 R24（道具覆盖）")
+    ap.add_argument("--storyboard", help="上游分镜产物（storyboard_v1 的输出）——校验交付包时提供，启用 R31 的逐镜纪律（镜数/镜序/duration_ms 逐项相同）")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--duration-bounds", metavar="MIN-MAX",
                     help="单镜时长区间（秒），如 4-15；默认 4-15（MiniMax H3 口径）")
@@ -1022,6 +1433,13 @@ def main():
             return 2
         UPSTREAM["doc"], UPSTREAM["src"] = up, args.script
 
+    if args.storyboard:
+        up = _load_doc_by_shape(args.storyboard)
+        if up is None:
+            print(f"[FATAL] --storyboard 无法解析出 JSON 产物：{args.storyboard}", file=sys.stderr)
+            return 2
+        UPSTREAM["sb_doc"], UPSTREAM["sb_src"] = up, args.storyboard
+
     if not QUIET:
         print("输出契约校验 · validate_output.py")
         print(f"根目录：{BASE}")
@@ -1032,8 +1450,9 @@ def main():
         print(f"场时长下限：{SCENE_MIN_SECONDS}s（单镜 4s × 单元最少 2 镜）")
         print(f"分镜单镜时长区间：{DURATION_MIN_MS // 1000}–{DURATION_MAX_MS // 1000}s"
               f"（质量门阈值引用 audit_shots.py 的 GATE）")
-        print(f"跨层规则：R23 外观锚重述 / R24 道具覆盖 —— "
-              f"{'已载入上游：' + str(UPSTREAM['src']) if UPSTREAM['doc'] else '未提供上游剧本（--script），将跳过并告警'}")
+        print(f"跨层规则：R23 外观锚重述 / R24 道具覆盖 / R31 逐镜时长守恒 —— "
+              f"剧本上游：{'已载入 ' + str(UPSTREAM['src']) if UPSTREAM['doc'] else '未提供（--script），跨层规则将跳过并告警'}；"
+              f"分镜上游：{'已载入 ' + str(UPSTREAM['sb_src']) if UPSTREAM['sb_doc'] else '未提供（--storyboard）'}")
 
     if args.file:
         validate_file(args.file)

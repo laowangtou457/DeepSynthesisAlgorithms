@@ -10,9 +10,9 @@
 #   task_type   generate | summarize | rewrite | extract | guard
 #   stage       业务链路阶段（仅 AI 漫剧业务链路模板填写，其他模板留空）：
 #                 synopsis | script | storyboard | shot_prompt | revise
-#               —— 与《分镜提示词交付规范 v1.2》§3.2 的 stage_chain 枚举对齐
-#                  （2026-10-13 更新：原引 v1.1，现行版为 **v1.2**；v1.2 仅改内部待办编号体系，
-#                    §3.2 的技术内容与 v1.1 逐字相同，故本处引用对齐不涉及口径变化），
+#               —— 与《分镜提示词交付规范 v1.3》§3.2 的 stage_chain 枚举对齐
+#                  （2026-10-13 二次更新：原引 v1.1 → v1.2 → **现行版 v1.3**；v1.3 仅澄清 §3.7.5
+#                    转场措辞的适用范围，§3.2 的技术内容与 v1.1／v1.2 逐字相同，故本处引用对齐不涉及口径变化），
 #                  用于下游按链路顺序编排模板、并写入交付包的 generation_trace.stage_chain
 #   —— 业务链路模板的「锚点首定义」约定（2026-10-13 定案，经导演视角两轮评审）：
 #       ① 角色外观（age_band / appearance_lock_zh）、全片风格串与道具／关键物件外观（props）
@@ -63,18 +63,67 @@
 #            写进生成约束只换来一份失真的自查声明——故标注为「交付前脚本复算」，
 #            `quality_gate` 的数值字段降为**可选参考**（填写即须与复算一致，见 R25）。
 #
-#   ★ **设计类来源在本层的判定口径**（依 `BR-04` 写明，不留空白）：
+#       ⑥ 分镜提示词阶段（stage=shot_prompt，SW-007）是**编译表达层**：SW-006 决定「切几刀、切在哪、
+#          每镜怎么拍」，本层决定「**怎么把这些决策写成目标模型读得懂的话**」。一句话边界——
+#          **不改变任何导演决策，只把决策翻译成表达并补全结构**。
+#          职责边界五条（2026-10-13 随 `shot_prompt_v1` 建立）：
+#            · **承继守恒**（本层第一条纪律）：`shot_id`／`unit_id`／`scene_no`／`shot_no`／
+#              `units[].shot_ids`／`duration_ms`／`shot_size`／`camera.*`／`action.*`／`shot_language.*`／
+#              `dialogue`／`sfx`／`transition_*`／`character_refs`／`prop_refs`／`soundscape`／`music`
+#              一律**原样承继**。**尤其不得改 `duration_ms`**——它是导演决策，也是与 `total_duration_ms`
+#              一致性的凭据；若台词语速超标，那是上游缺陷，须回退剧本层／分镜层，不得在本层悄悄改秒数。
+#              该纪律已脚本化（**R31**，逐镜比对需 `--storyboard`）。
+#            · **补出必填字段**：SW-006 的产出是规范字段集的**真子集**，镜头级 `style_ref`（规范标必须、
+#              §3.8 列阻断项）、`prompt_zh`／`prompt_en`（必须）、`aspect_ratio`／`negative_prompt`（应当／可）
+#              均由本层补齐。**这是 SW-007 存在的理由**（**R27**）。
+#            · **双上游**（本层独有）：分镜层只给**引用**、锚的**内容**在剧本层，故本层是全链路唯一
+#              需要两份上游的一段——`script_json` 出**锚**（character_id／character_refs 所指的外观与声线）、
+#              `storyboard_json` 出**决策**（镜序／景别／运镜／时长／action 落点）。
+#            · **八维双落地**（规范 §4.1）：每个维度须**同时** ① 有字段承载 ② 写进 `prompt_zh`／`prompt_en`
+#              **正文**——模型读到的是文本，不是字段。八维落点承自 SW-006，本层只负责「写进正文」。
+#              ⚠️ 与规范 §3.7.6 的 40–120 字长度建议**存在张力**（长镜实测 150–200 字），已列入评审待议项。
+#            · **不做模型适配**（刻意边界）：规范 §6.1「基准唯一 + 单向投影」＋§6.3「语言倾向不得覆盖
+#              模型硬约束」＋§6.1「配置化：新增模型＝改 `model_adapters.yaml` 不改代码」——
+#              把适配写进模板，等于每接一个模型就要改一次提示词。适配在交付后的服务层完成。
+#          **三处必要改写**（全链路唯一允许「不逐字承继」的地方，须在 `meta.notes` 留痕）：
+#            ① `lighting`／`lighting_default` 的「词表值 + 中文光位说明」形态须**拆分**——字段取**纯词表 code**，
+#               说明移入 prompt 正文；上游若给了词表外的描述性说法，按语义映射到最近词表值并写明（禁自造 code）。
+#               该校验见 **R32**。
+#            ② `notes` 须**删除内部标注**（如「本镜对应 action 节点①」——那是给编制者看的，不是给模型看的）。
+#            ③ `camera.amplitude`／`camera.speed` 若为 `medium`／`normal`，**规范化为空串**（语义无损等价）。
+#          **交付包无 `unspecified` 字段**（规范 §3.1 顶层六段无台账段）：本层**不输出、不搬运、不重编号**
+#          缺口台账——上游台账留在上游产物自身；本层的映射与回退说明写进 `meta.notes`。
+#          **分段策略**：`segment` 变量三粒度——`all`（整包，仅短片）／`package_head`（只出
+#          `schema_version`+`meta`+`style_bible`+`characters`+`aigc_meta`）／`unit:<unit_id>`（只出该单元与其成员镜）。
+#          **按「生成单元」切而非按字数硬切**——规范 §3.5 明写「生成单元＝一次生成调用所提交的完整分镜块」，
+#          故**分段粒度与业务语义粒度一致**（按字数硬切会产生「半句话的镜头」）。
+#          **元数据不得编造**：`pack_id`／`created_at`／`session_id`／`task_id`／`statement_id`／
+#          `provider_code`／`compliance.*` 一律取自服务层注入的 `pack_meta`；缺失写占位符
+#          （`{{PROVIDER_CODE}}` 等），**不得自拟**——自拟会使「编号 → 生成记录」的反查断链（规范 §5.2）。
+#
+#   ★ **设计类来源在分镜层的判定口径**（依 `BR-04` 写明，不留空白）：
 #       本层（storyboard）的产出**不属 SCHEMA 意义上的设计类内容**——本层是导演决策层，产出的是
 #       「怎么拍」（切点／镜号／景别／运镜／八维落点／时长），属**技艺表达**而非**内容设计**；
 #       SCHEMA 的设计类指**内容性设计**（角色外观／全片风格串／道具外观），其**首定义责任在剧本层**。
 #       **唯一例外**：本层若自主提议了具体配乐织体（`units[].music` 非 `N/A`），该项属本层新产生的设计内容
 #       → 按既有机制在 `unspecified` 台账登记来源（`owner=客户`／`fill_stage=storyboard`／`upstream_field` 空串），
-#       **不新增 `design_source` 字段**。⚠️ 待决项见 `ISSUE-007`（规范 §3.5 的 units[] 是否增该字段）。
+#       **不新增 `design_source` 字段**。✅ **已定案（2026-10-13，`ISSUE-007` 闭环）**：规范 §3.5 的
+#       `units[]` **不增设**该字段（理由与触发条件见 `12-项目管理/任务清单.md` §8 的 ISSUE-007 行）。
 #
-#   —— 产物契约的静态校验见同目录 validate_output.py（**R1~R25 共 25 条**：
-#      梗概/剧本层 9 条 + 分镜层 13 条 + 跨层 2 条（需 `--script`）+ 通用 1 条，
+#   ★ **设计类来源在提示词层的判定口径**（2026-10-13 随 `shot_prompt_v1` 写明）：
+#       本层（shot_prompt）**不新建任何设计类内容**——它是编译表达层，角色外观／全片风格串／道具外观
+#       一律**搬运**上游（剧本层）已定义的锚，`style_bible` 与 `characters[].appearance_lock_*` 逐字承继。
+#       故本层产出**不涉及 `design_source`**，也不在交付包内登记缺口台账（见 ⑥ 末段）。
+#
+#   —— 产物契约的静态校验见同目录 validate_output.py（**R1~R32 共 32 条**：
+#      梗概/剧本层 9 条 + 分镜层 13 条 + 交付包层 7 条 + 跨层 3 条（R23／R24 需 `--script`，
+#      R31 需 `--storyboard`）+ 通用 1 条，
 #      含 purpose 封闭枚举、dialogue.type 枚举、缺口台账 owner 责任归属、11 项镜头语言质量门、
-#      外观锚重述检测（R23）、道具覆盖检测（R24）与质量门自声明复算（R25））。
+#      外观锚重述检测（R23）、道具覆盖检测（R24）、质量门自声明复算（R25）、
+#      运镜幅度／速度省略规则（R26）、交付包必备结构（R27）、外观复用检测（R28）、
+#      提示词正文卫生（R29）、AIGC 元数据块规则（R30）、时长守恒（R31）与光照词表纯度（R32））。
+#      ⚠️ **负向验证纪律**：只跑通过样本证明不了校验器有效——新增规则必须构造越界样本验证能触发。
+#         R26~R32 已逐条验证（19 个越界样本全部 EXIT=1；2 个已知盲区登记在案，见 R31 条目）。
 #   variables   变量清单，加载时校验必填项
 #   sampling    推荐采样参数（服务层默认值，可被请求覆盖）
 #   sections    提示分节，按固定顺序拼装：
@@ -121,19 +170,50 @@
 #               —— static 与 pov 不得携带 amplitude／speed
 #   amplitude   small｜large（2026-10-13 依 `BR-08` 登记）
 #               —— 与规范 §3.7.2 一致：`medium` **通常省略**，本层一律**留空字符串**；
-#                  仅在需要强调幅度时出现 small／large 两值。校验：`validate_output.py` R13（禁 medium 等）。
+#                  仅在需要强调幅度时出现 small／large 两值。
+#                  校验：`validate_output.py` **R26**（禁 medium 等默认值当必填值）。
+#                  ⚠️ **更正（2026-10-13，随 SW-007 自查发现）**：本行此前写「校验：R13（禁 medium 等）」，
+#                     **该声称有误**——R13 实为**单镜时长区间**（DURATION_BOUNDS），与幅度无关。
+#                     后果：v2.1.0 已把该口径写进 `storyboard_v1` 硬性约束 6，**却无任何脚本判据**，
+#                     用例 `storyboard-case01.md` 的 S03-SH002 因而残留 `amplitude="medium"` 未被发现。
+#                     现已补 R26 判据（同时作用于分镜脚本与交付包）并修正上游用例。**登记即契约，不得虚指。**
 #   speed       slow｜fast（2026-10-13 依 `BR-08` 登记）
 #               —— 与规范 §3.7.2 一致：`normal` **通常省略**，本层一律**留空字符串**；
-#                  仅在需要强调速度时出现 slow／fast 两值。校验：`validate_output.py` R13（禁 normal 等）。
-#   transition  cut｜fade_in｜fade_out｜dissolve｜wipe（单侧表达：由后一镜 transition_in 承接）
-#               —— ⚠️ **单元边界口径（2026-10-13 依 `BR-07` 裁定）**：规范 §3.7.5 自身措辞存在
-#                  「衔接由后一镜单侧表达」与「前镜 transition_out 用于单元末镜」互斥；本层裁定为
-#                  **两个半段**——单元**末镜**用 `transition_out` 表达出点、下一单元**首镜**用
-#                  `transition_in` 承接入点，二者**不算「两头都写」**（单元内部的镜间转场仍严格单侧）。
-#                  ⚠️ 待项目方确认是否回改规范措辞（已登记 `ISSUE-008`）。
+#                  仅在需要强调速度时出现 slow／fast 两值。
+#                  校验：`validate_output.py` **R26**（同上一处更正：原写 R13 系误指）。
+#   transition  cut｜fade_in｜fade_out｜dissolve｜wipe（单侧表达：**仅指同一单元内部**，由后一镜 transition_in 承接）
+#               —— ✅ **单元边界口径（2026-10-13 依 `BR-07` 裁定；`ISSUE-008` 已闭环）**：规范 §3.7.5 原文
+#                  的「衔接由后一镜单侧表达」与「前镜 transition_out 仅用于单元末镜」在单元边界**字面互斥**；
+#                  **规范已回改（V1.3 §3.7.5）**——「单侧表达」明确限定为**同一生成单元内部**（非末镜一律不得填
+#                  `transition_out`），并增补「**单元边界＝两半段**」一行——单元**末镜**用 `transition_out`
+#                  表达出点、下一单元**首镜**用 `transition_in` 承接入点，二者**不算「两头都写」**。
+#                  **本登记与规范 V1.3 逐字同口径**，无需再作差异标注。
+#                  校验：`validate_output.py` R18（单元内非末镜不得填 transition_out）。
 #   shot_ids    镜序号（`units[].shot_ids`）**必须按镜序递增**，且单元内各镜必须同场
 #               （2026-10-13 依 `BR-11` 登记；校验：`validate_output.py` R9 增补段）。
 #               —— 「顺序即镜序」：跨镜头双向引用（`unit_refs`）依赖此约定才可逆。
+#   lighting    光照 15 值（规范 §3.7.5，2026-10-13 随 SW-007 登记入本块的**唯一真值来源**）：
+#               soft_key_light｜hard_key_light｜rim_light｜backlight｜side_light｜top_light｜under_light｜
+#               practical_light｜volumetric_light｜golden_hour｜blue_hour｜overcast｜neon_night｜
+#               candlelight｜moonlight
+#               —— 与 `delivery/config/shot_vocab.yaml` 的 `lighting` 段一致；
+#                  **上游（分镜层）允许写「词表值——中文光位说明」**，但**交付包（shot_prompt）只允许纯词表值**
+#                  （schema `additionalProperties: false` 且字段类型为 string）→ 本层须**拆分**：
+#                  字段留词表 code、说明移入 prompt 正文（投影规则①）。
+#                  校验：`validate_output.py` **R32**（须为纯词表值；同时校 `shots[].lighting` 与
+#                  `style_bible.lighting_default`）。
+#   style_anchors 风格锚点**封闭**（规范 §3.3，2026-10-13 随 SW-007 登记）：
+#               交付包 `prompt_zh`／`prompt_en` 正文**不得出现 `style_bible.style_anchors` 之外的风格词**——
+#               闭集来源为 `delivery/config/shot_vocab.yaml` 的 `style_tags`（脚本内置为常量 `KNOWN_STYLE_TAGS`）。
+#               校验：`validate_output.py` **R29**（③ 风格锚点封闭一项）。
+#   negative_*  负向意图**只走容器字段**（`style_bible.negative_global` / `shots[].negative_prompt`），
+#               **不得进 prompt 正文**（正文须转写为正向约束句）。校验：`validate_output.py` **R29**（② 负向残留）。
+#   AIGC.*      AIGC 元数据块 7 字段（规范 §5.1，2026-10-13 随 SW-007 登记）：
+#               Label｜ContentProducer｜ProduceID｜ReservedCode1｜ContentPropagator｜PropagateID｜ReservedCode2
+#               —— `Label` 恒为字符串 "1"；`ProduceID` 必须 = `meta.pack_id`；
+#                  `PropagateID` = `ProduceID`、`ContentPropagator` = `ContentProducer`（首次写入的取值规则）；
+#                  文件中**仅一份**。校验：`validate_output.py` **R30**。
+#               该块是**规则区不是生成区**：字段由服务层注入的 `pack_meta` 拼接，模型不得自拟（见 ⑥ 末段）。
 # ------------------------------------------------------------
 # 【跨层校验（需 `--script` 指定上游剧本输出）】
 #   上游契约类判据不属枚举，但其**取值来源**在本块，故一并登记其真值口径：
@@ -143,6 +223,26 @@
 #   R24 PROP_COVERAGE  某场 `props_present` 非空 → 该场**至少一镜**须标出对应 `prop_refs`。
 #                      （守恒律的物件侧：道具入画必须可追溯，不得只在剧本层存在。）
 #   R25 GATE_SELF_CHECK `quality_gate` 数值字段**可选**；一旦填写，须等于脚本复算真值（防伪证）。
+# ------------------------------------------------------------
+# 【交付包层校验（形态 `pack`；SW-007）】
+#   R26 MOVE_PARAM_OMISSION `camera.amplitude` ∈ {空串, small, large}、`camera.speed` ∈ {空串, slow, fast}；
+#                           `medium`／`normal` 是「通常省略」的默认值，须留空串。
+#                           ⚠️ **同时作用于分镜脚本与交付包**——这是修 SCHEMA 错指的同一处缺口（见 amplitude 条目）。
+#   R27 PACK_REQUIRED       顶层 `schema_version`／`meta`／`style_bible`／`units`／`shots`／`aigc_meta` 齐备；
+#                           每镜必备 13 字段（与 schema `$defs/shot.required` **逐字一致**）；
+#                           `style_ref` 命中 `style_bible.style_id`（§3.8 阻断项）；`character_refs` 命中已定义角色。
+#   R28 PACK_APPEARANCE_ECHO 正文（`prompt_zh`／`prompt_en`）不得复述 `characters[].appearance_lock_zh|_en`。
+#                           ⚠️ **两侧判据不同**：中文取**连续 3 字**、英文取**连续 3 个实词**（先剔停用词）——
+#                           英文 3 个字符只是词内片段（`the`／`old`），2026-10-13 首跑即误报 773 处。
+#   R29 PACK_PROMPT_HYGIENE ① 无模型参数指令；② 无负向残留写法；③ 风格锚点封闭（见 style_anchors 条目）。
+#   R30 AIGC_META           见 AIGC.* 条目。
+#   R31 PACK_DURATION_LOCK  **需 `--storyboard`**：① `meta.total_duration_ms` = Σ各镜 `duration_ms` 自洽；
+#                           ② 与上游分镜的**镜数／镜序／逐镜 `duration_ms`** 逐项相同（承继守恒的判据）。
+#                           ⚠️ **已知盲区两条**（登记而非修复）：(a) 未提供上游时，若同时改单镜时长**与**总时长，
+#                              两者仍自洽、无外部真值可比；(b) `meta.total_duration_ms` 在 schema 的
+#                              `meta.required` 里**是可选的**，缺失时本层无从守恒。
+#                              → **结论：校验交付包时须始终带 `--storyboard`。**
+#   R32 LIGHTING_VOCAB      见 lighting 条目。
 # ============================================================
 
 schema_version: "1.0.0"

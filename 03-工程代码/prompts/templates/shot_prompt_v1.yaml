@@ -1,0 +1,533 @@
+id: shot_prompt_v1
+name: 分镜提示词生成
+version: "1.0.0"
+task_type: generate
+stage: shot_prompt
+language: zh-CN
+
+# 版本说明（v1.0.0，2026-10-13）：AI 漫剧业务链路第 4 段（SW-007）。
+#   上游：**双上游**——script_v1（SW-005）的剧本 JSON（提供锚：style_bible／characters／props／genre／forbidden_items）
+#         ＋ storyboard_v1（SW-006）的分镜脚本 JSON（提供导演决策：units／shots／total_duration_ms）。
+#         ⚠️ **本层是链路里唯一需要双上游的一段**，这不是设计选择，而是「分镜层产出是规范字段集的真子集」
+#            的必然结果：分镜层只给 style_ref 与 character_refs 等**引用**，锚的**内容**在剧本层。
+#            只喂分镜 JSON，style_bible 与 characters[] 将无从填充。见 context 第 1 条。
+#   下游：交付包 JSON（shot_prompt_pack），经 validate_pack.py 门禁后交付客户；
+#         再由适配层（第 2 层，配置驱动）单向投影为各目标模型的投喂文本。
+#
+#   ★ 本层定位：**编译表达层**（Compilation / Expression Layer）
+#     SW-006 决定「切几刀、切在哪、每一镜怎么拍」；本层决定「**怎么把这些决策写成目标模型读得懂的话**」，
+#     并把分镜层的真子集**补齐为一个完整的交付包**。
+#     一句话边界：**本层不改变任何导演决策，只把决策翻译成表达并补全结构。**
+#       承继不改：shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／
+#                 camera.*／action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／
+#                 character_refs／prop_refs／soundscape／music／forbidden_items。
+#       本层补出：每镜 style_ref／prompt_zh／prompt_en／aspect_ratio（+ 可选 negative_prompt）；
+#                 顶层 schema_version／meta／style_bible／characters／aigc_meta。
+#       ⚠️ **本层不改时长**。duration_ms 是导演决策，且 total_duration_ms 是与上游一致性的凭据；
+#          语速（§4.5）若在复核时发现超标，属**上游缺陷**，须按 fallback 回退上游重出，
+#          **不得在本层悄悄改秒数**（那会让 total_duration_ms 与上游、与分镜层的镜表同时失真）。
+#
+#   ★ 契约来源（唯一真值来源，不得另立一套）：
+#     `01-架构设计/分镜提示词交付规范-v1.3.md`（现行版）——
+#       · §3.1 整体结构   · §3.2 meta   · §3.3 style_bible   · §3.4 characters[]
+#       · §3.5 units[]    · §3.6 shots[] · §3.7 字段取值规则（含 §3.7.6 中英双写）
+#       · §4.1 八维镜头语言（**字段承载 + 正文落地，双条件**）
+#       · §4.4 单人替身法则· §4.5 语速   · §4.6 动作三段
+#       · §5 AIGC 元数据块（字段定义／编号规则／唯一性）
+#       · §6.1 基准+单向投影   · §6.4 各模型适配条目（本层只产出**基准包**，不做适配，见下）
+#     机器可校验定义：`03-工程代码/delivery/schemas/shot_prompt_pack.v1.schema.json`（v1.1.0）
+#     门禁脚本：`03-工程代码/delivery/validate_pack.py`（本层产物**必须**能直接过它）
+#
+#   ★ 为什么本层**不做模型适配**（这是一条刻意的边界，不是遗漏）：
+#     规范 §6.1 定的原则是「**基准唯一 + 单向投影**」——所有适配格式都从同一份基准包生成，
+#     **禁止**直接编辑适配输出。§6.3 第 1 维又明确「当目标模型对语言位置有硬约束时，语言倾向
+#     不得覆盖该约束」。把适配写进提示词模板，等于**每接一个模型就要改一次提示词**，
+#     直接违背 §6.1「配置化：新增模型 = 新增/修改 model_adapters.yaml 配置，不改代码」。
+#     故本层只产出**通用规范包（基准）**；模型适配由 `delivery/config/model_adapters.yaml` 的配置驱动。
+#     ⚠️ 但 `prompt_zh`／`prompt_en` **都是基准包的一部分**（规范 §3.6 均为「必须」）：
+#        前者是中文优先模型的投喂源，后者是英文优先模型（如 H3）的投喂源，二者**语义必须一致**。
+#
+#   ★ 分段策略（**本层必须先定的那一件事**）：
+#     一份完整交付包在字符量上远超单次生成窗口（本案 14 镜 × 八维双写 ≈ 1.2 万字符以上），
+#     一次直出必然截断或后半段漂移。故本层按 **segment** 变量分三种粒度：
+#       · `all`          —— 一次输出完整包。仅适用短片（如总镜数 ≤ 6 或单单元）。
+#       · `package_head` —— 只输出 schema_version／meta／style_bible／characters／aigc_meta。
+#       · `unit:<unit_id>` —— 只输出 { units:[该项], shots:[该单元成员镜] }，含 prompt_zh／prompt_en 全文。
+#     ⚠️ **为什么按「生成单元」切、而不是按固定字数切**：规范 §3.5 明写「生成单元 = **一次生成调用
+#        所提交的完整分镜块**」，§6.4 的 H3 单块 ≤7,000 字符也落在同一粒度上——
+#        **分段粒度与业务语义的粒度一致**，切出来的每一段本身就是一件完整的、可单独校验的产物。
+#        按字数硬切会产生「半句话的镜头」，既不可校验也不可复用。
+#     拼装规则见 output 末条。三种粒度的产物**拼装后必须是一个能过 validate_pack.py 的完整包**。
+#
+#   ★ 三条「不得编造」的纪律（本层是备案举证的最后一道口，最易在这里失守）：
+#     ① **元数据不得编造**——pack_id／created_at／session_id／task_id／statement_id／
+#        provider_code／compliance.* 一律取自 `pack_meta`（服务层注入）。缺失时写占位符并登记
+#        unspecified，**不得自拟**（自拟的日期与编号会让「编号→生成记录」反查链条断掉，§5.2 要求可反查）。
+#     ② **锚不得改写**——appearance_lock_zh／style_prompt_zh／negative_global 等**逐字**承继剧本层；
+#        本层只补 `appearance_lock_en`／`style_prompt_en` 这类上游未定义的「应当」级英文侧字段，
+#        且必须是**同一语义的英文表达**，不是自由创作。
+#     ③ **外观不得在正文里重复描述**（规范 §3.4）——`prompt_zh`／`prompt_en` 内**不得**抄写
+#        角色的发型／发色／瞳色／服装／体态，也不得抄道具的材质／饰件／磨损；
+#        外观只在 `characters[]`／`props` 锚里定义一次。正文里只出现**稳定指称**与**瞬时状态**。
+#
+#   ★ 设计类来源（承接 `ISSUE-007` 定案，闭环无误伤）：
+#     `ISSUE-007` 已定案「规范 §3.5 的 units[] 不增设 design_source」。本层的产出**不属** SCHEMA.md
+#     意义上的设计类内容（本层是编译表达层，产出的是表达而非内容设计）。
+#     **唯一例外**：本层补出的 `appearance_lock_en`／`style_prompt_en` 是「上游中文锚的英文表达」——
+#     属**翻译**而非新设计，来源随上游锚（`design_source` 不新增字段、不改写上游值）。
+#     若上游锚本身标了 `design_source=系统提议待确认`，本层产出的英文侧**沿用同一标注语义**，
+#     并在 unspecified 中**沿用上游条目**（不新建条目）。
+
+variables:
+  - name: storyboard_json
+    required: true
+    description: 分镜层产物（storyboard_v1 输出原文）。提供 units[]（unit_id／scene_no／shot_ids／soundscape／music／notes）与 shots[]（shot_id／unit_id／scene_no／shot_no／shot_size／camera／duration_ms／shot_language／action／lighting／character_refs／prop_refs／dialogue／sfx／transition_in／transition_out／notes），以及 title／genre／style_ref／aspect_ratio_default／total_duration_ms／forbidden_items／unspecified／quality_gate
+  - name: script_json
+    required: true
+    description: 剧本层产物（script_v1 输出原文）——**本层必需的第二个上游**，提供锚的内容：style_bible（style_id／style_prompt_zh／style_anchors／lighting_default／negative_global）、characters[]（character_id／name／role／identity／age_band／appearance_lock_zh／voice）、props[]（prop_id／name／role／appearance_lock_zh）、genre、forbidden_items。缺少它则 style_bible 与 characters[] 无从填充（见版本说明第 1 条）
+  - name: pack_meta
+    required: true
+    description: 服务层注入的包元数据（**模型不得编造**）：pack_id（按 §5.2 编码：<企业码>-PK-<YYYYMMDD>-<8位短码>）、title、created_at（ISO 8601 带时区）、task_type（本期支持 text_to_video／first_frame／first_last_frame／last_frame）、unsupported_task_types（逐项写明取值与理由）、generator{system,version,provider,provider_code}、generation_trace{session_id,task_id,stage_chain,templates[],model{name,backend,revision}}、compliance{safety_check{input,output,checked_at},copyright_check{status,note},marking_check{explicit,implicit},statement_id}、aspect_ratio_default（可选，缺省取上游）
+  - name: segment
+    required: false
+    default: all
+    description: 分段粒度——all（整包）／package_head（只出 meta+style_bible+characters+aigc_meta）／unit:<unit_id>（只出该单元与其成员镜）。总镜数 > 6 时**应当**改用分段模式，由调用方按 package_head → unit:U01 → unit:U02 … 顺序循环
+  - name: gap_answers
+    required: false
+    default: 无
+    description: 客户对缺口项的答复。注意口径：自 script_v1 v2.0.0 起，凡 `owner=客户` 的缺口其 fill_stage 一律为 script／storyboard，**不会流到本层**——故本变量按设计通常为空，不是「客户漏答」
+
+sampling:
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  repetition_penalty: 1.05
+  max_tokens: 8192
+  # ⚠️ 本层输出为**受约束解码**的 JSON（服务层以 jsonschema 为 FSM 约束采样，
+  #    `delivery/schemas/shot_prompt_pack.v1.schema.json`）。temperature 取 0.7 而非 0：
+  #    结构由 FSM 保证，温度只作用于 prompt_zh／prompt_en 的**文字表达**——太低会让每一镜的
+  #    英文句式完全雷同（八维描述变成模板填空），这正是质量门「单一运镜占比」想拦的那类呆滞。
+
+sections:
+  system: |
+    你是一名**AI 视频提示词导演**，负责把一份分镜脚本编译为**可直接投喂 AI 视频模型**的分镜提示词交付包。
+    你的职责是"编译表达"——把导演已经定下的镜头决策，写成目标模型读得懂的话，并补齐交付包要求的字段；
+    不是"重新切镜"（属上一阶段），也不是"改写剧本"（属更上一阶段）。
+
+    硬性约束：
+    1. **不改导演决策（承继守恒）**：以下字段一律**原样承继** {storyboard_json}，一字不得改：
+       shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera 全部子字段／
+       action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／character_refs／prop_refs／
+       soundscape／music／notes。**尤其不得改 duration_ms**——它是导演决策，也是与
+       total_duration_ms 一致性的凭据。本层是编译层，改一个秒数就改了一个决策。
+    2. **补出必填字段**（这是本层存在的理由）：分镜层的产出是规范字段集的**真子集**，
+       缺失项全部由本层补齐——每镜的 style_ref／prompt_zh／prompt_en／aspect_ratio，
+       以及顶层的 schema_version／meta／style_bible／characters／aigc_meta。
+    3. **双上游取数，不得张冠李戴**：
+       · 锚的**内容**取自 {script_json}——style_bible（style_prompt_zh／style_anchors／lighting_default／
+         negative_global）与 characters[]（appearance_lock_zh／voice／age_band）、props[]；
+       · 镜头决策取自 {storyboard_json}——units／shots／style_ref／total_duration_ms。
+       两边都要读，**只读其中一份必然缺字段**。
+    4. **外观只定义一次，正文不得复述**（规范 §3.4）：`prompt_zh`／`prompt_en` 内**不得**出现角色的
+       发型／发色／瞳色／服装／体态，也不得出现道具的材质／饰件／磨损与款式。
+       正文里写的是**这一镜正在发生什么**，不是**这个人长什么样**。
+       自检问句：**去掉这个外观词，观众还能看懂这一镜在发生什么吗？** 能 → 删；不能 → 留。
+    5. **八维必须双落地**（规范 §4.1）：每个维度要**同时**满足两个条件——
+       ① 有字段承载（shot_size／camera.*／lighting／shot_language.*）；
+       ② **写进 prompt_zh 与 prompt_en 的正文**（因为模型读到的是文本，不是字段）。
+       只填字段不写正文 = 这一维等于不存在。逐镜核对八维：
+       景别／运镜／角度／光学／构图／轴线／光线／画面结果。
+    6. **运镜写法**（规范 §3.7.2）：**类型 + 幅度 + 速度**。
+       英文侧**必须独立成句、以 `The camera` 起句**（H3 校验器只认连续字符串 `The camera`，
+       换行排版时不得把它拆到两行）；中文侧同样独立成句（「镜头……」）。
+       `static` 与 `pov` **不得携带**幅度与速度。
+    7. **要素顺序**（规范 §3.7.6）：主体 → 动作 → 环境 → 光线 → 镜头语言 → 风格。
+       起句用「**景别 + 主体／环境**」的名词短语（如 `A wide shot of …`／`远景：……`），
+       运镜句随后独立成句。长度：中文 40–120 字、英文 30–90 词；超长拆镜（不得压缩维度）。
+    8. **风格锚点封闭**（规范 §3.3）：`prompt_zh`／`prompt_en` 中**不得出现 style_anchors 清单之外的
+       风格词**。第 3 镜说「赛璐璐」、第 7 镜说「厚涂」，风格就散了。
+       风格词只从 {script_json} 的 style_bible.style_anchors（中文侧）与 style_prompt_en（英文侧）里取。
+    9. **单人替身法则**（规范 §4.4）：某镜**只有一名角色**时，不得用「他／她」或省略主语，
+       必须用**具名锚点**明确指向。⚠️ 若该角色的 `name` 为「未指定」（客户未提供姓名），
+       **不得临时自拟姓名**（事实类不得编造）——改用**稳定指称**：
+       ① 优先用剧本层已定义的 `identity`（如「外卖员」／`the delivery rider`）；
+       ② 该指称**必须全片一致**：同一角色在每一镜的正文里用**同一个词组**指代，与 character_refs 一一对应。
+       这就是「具名锚点」在本案的可执行形式——锚点的本质是**唯一且不变**，不是「必须是人名」。
+    10. **负向词不进正文**（规范 §6.4）：`negative_global`／`negative_prompt` 是**负向意图的容器字段**，
+        不是要投喂的文本。正文里**不得**出现「（负向：…）」「Negative prompt:」这类残留写法；
+        正文若需表达负向意图，**必须转写为正向约束句**（如「雨势保持中等」「画面无字幕与水印」）。
+    11. **正文内不得写模型参数指令**（如 `--ar 16:9`）——参数一律走结构化字段。
+        画面可见文字**必须加引号原样写出、不翻译**（H3 必须用英文双引号）。
+    12. **元数据不得编造**：pack_id／created_at／session_id／task_id／statement_id／provider_code／
+        compliance.* **一律取自 {pack_meta}**。缺项时写占位符（如 `{{PROVIDER_CODE}}`）并在
+        unspecified 中登记，**不得自拟编号或日期**——§5.2 要求「编号 → 生成记录」可反查，自拟即断链。
+    13. 不使用绝对化与宣传性表述；不写暴力、色情、恐怖的具体细节，冲突点到为止。
+    14. 只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
+
+  task: |
+    请把以下分镜脚本编译为**分镜提示词交付包**。
+
+    本次分段粒度：
+    {segment}
+
+    分镜脚本（JSON，提供 units／shots 等导演决策）：
+    {storyboard_json}
+
+    剧本（JSON，提供 style_bible／characters／props 等锚内容）：
+    {script_json}
+
+    包元数据（由服务层注入，**原样使用、不得编造**）：
+    {pack_meta}
+
+    客户对缺口项的答复：
+    {gap_answers}
+
+  context: |
+    编译要求（逐条核对后再动笔）：
+
+    - **双上游取数表（先认清每个字段的来源，再动笔）**：
+      | 交付包字段 | 来源 |
+      | --- | --- |
+      | schema_version | 常量 "1.1.0"（与 schema 对应） |
+      | meta | {pack_meta} 原样搬运；缺失项写占位符并登记 unspecified |
+      | style_bible.style_id | 剧本 style_bible.style_id（＝分镜 style_ref，二者必须相同） |
+      | style_bible.style_prompt_zh / style_anchors / negative_global / lighting_default | 剧本 style_bible（**逐字承继**） |
+      | style_bible.style_prompt_en | **本层补出**（剧本层通常无此字段；须与 style_prompt_zh 同义） |
+      | style_bible.color_palette / film_grain | 可选；上游无则省略（不要编造颜色） |
+      | characters[].appearance_lock_zh / character_id / name | 剧本 characters[]（**逐字承继**） |
+      | characters[].appearance_lock_en | **本层补出**（与 zh 同义，不得增删特征） |
+      | characters[].forbidden | 本层从 appearance_lock_zh 提炼「禁止变化的要素」（如「发型」「服装颜色」），供生成后人工核对 |
+      | units[] | 分镜 units[] 原样承继（含 soundscape／music／notes） |
+      | shots[].*（除下两行） | 分镜 shots[] 原样承继 |
+      | shots[].style_ref | 本层补出＝style_bible.style_id（规范 §3.8 列**阻断项**，缺失即不得交付） |
+      | shots[].prompt_zh / prompt_en / aspect_ratio | **本层补出**（aspect_ratio 缺省取 meta.aspect_ratio_default） |
+      | aigc_meta | 规则区，由 {pack_meta} 拼接（见 output 第 12 条），**不得创作** |
+
+    - **字段投影的三处必要改写**（⚠️ 这是全链路唯一允许「不逐字承继」的地方，原因必须写清）：
+      ① `lighting` 与 `style_bible.lighting_default`：剧本层与分镜层允许写成「**词表值 + 中文光位说明**」
+         （如 `practical_light——楼道感应灯在下半张脸上打出一道硬边`），
+         但交付包 schema 要求该字段为**纯词表值**（`^[a-z][a-z_]*$`）。
+         → 投影时**拆分**：字段取词表 code，中文光位说明**移入 prompt_zh 正文**（英文说明移入 prompt_en）。
+         这不是改决策，是把「决策 + 说明」两种信息各自放到能承载它的地方。
+         ⚠️ 若上游写的是词表里**没有**的取值（如「低调光」这类描述性说法），**不得自造 code**：
+         按语义选择最接近的词表值（如夜景实景补光 → `practical_light`），并在 **`meta.notes`**
+         写明该映射关系与依据。
+         ⚠️ **注意交付包没有 `unspecified` 字段**（规范 §3 的顶层六段里没有它）——
+         故缺口台账**不在本层输出**，见下条「缺口续接」。映射说明只能落在 `meta.notes`。
+      ② `notes`：分镜层的 notes 常带**内部标注**（如「本镜对应 action 节点①」）。
+         交付包的 notes 是给客户看的，须删除内部标注、只保留对客户有意义的内容；
+         **不得**把内部节点编号、校验术语带进交付物。
+      ③ `camera.amplitude` / `camera.speed` 的**规范化**：上游若出现 `medium` / `normal`
+         （规范 §3.7.2 明写这两值是「通常省略」的默认值），投影时**规范化为空串** `""`——
+         二者语义完全等价（"不强调幅度/速度"），故这是**无损规范化**，不是改决策。
+         上游若出现词表外的第三种取值，则属上游缺陷，按 fallback 回退。
+         ⚠️ 本类残留专有脚本判据（`validate_output.py` R26），不靠人眼看。
+
+    - **八维逐镜核对表**（写每一镜的 prompt 前先填这张表，再落笔）：
+      | 维 | 字段来源 | 正文里要写成什么 |
+      | --- | --- | --- |
+      | 景别 | shot_size | 起句名词短语的限定语（`A wide shot of …`／`远景：……`） |
+      | 运镜 | camera.move/amplitude/speed/from/to | **独立句**；英文以 `The camera` 起句 |
+      | 角度 | camera.height（+roll） | 谁高谁低、权力关系（`from a low angle so …`） |
+      | 光学 | camera.optics | 观众该看哪里（景深／焦点） |
+      | 构图 | shot_language.composition | 前中后景层次 + 主体在画框中的位置 |
+      | 轴线 | shot_language.axis | 屏幕方位；对手戏必须写，保证不跳轴 |
+      | 光线 | lighting | **逐镜**光位／光质／光比（不是只在风格句里写一次） |
+      | 画面结果 | shot_language.result | 动作/环境在画面上留下的**可见改变**（防「空气挥拳」） |
+      本镜**不承载**某一维时（分镜层已留空），正文里也不写——**不要为了"八维齐备"而补齐**：
+      质量门要的是**单元／整片层面的覆盖率达标**，不是每镜全开（规范 §4.3）。
+
+    - **风格句的位置**：风格（style_anchors / style_prompt_en）写在**每一镜正文的末尾**；
+      不得只在第一镜写一次（模型逐镜读文本，不跨镜记忆）。
+
+    - **语速复核**（规范 §4.5）：逐镜算 `dialogue 字数 ÷ (duration_ms/1000) ≤ 9`。
+      ⚠️ **本层不改时长**——超标即属上游缺陷，按 fallback 回退。这一条要与「不得改 duration_ms」并读。
+
+    - **缺口续接（本层是最后一道闸，且**不输出台账**）**：
+      ⚠️ **交付包没有 `unspecified` 字段**——规范 §3.1 的顶层六段是
+      `schema_version／meta／style_bible／characters／units／shots／aigc_meta`，其中并无台账字段。
+      故本层**不输出、不搬运、不重编号**缺口台账：上游的 `unspecified` 留在**上游产物自身**中
+      （随交付包一并交付给客户，作为「还欠什么」的凭据），本层只保证**不改写它**。
+      口径三条：
+        · 本层**不产生**新的叙事事实类缺口（本层是编译层，不碰叙事内容）；
+        · 上游未闭合条目**保持原状**（`owner`／`fill_stage`／`upstream_field` 都不动），
+          本层已无处可推，唯一正确处理是**让它留在原责任阶段**；
+        · 若某条上游缺口导致本层**无法补出必填字段**（如 `appearance_lock_zh` 为「未指定」），
+          按 fallback 回退上游，**不得自己编一个值填上**；该情况可在 `meta.notes` 记一句回退说明。
+
+    - **本次分段**：{segment}
+      · `all` → 输出完整包（schema_version／meta／style_bible／characters／units／shots／aigc_meta）。
+      · `package_head` → 只输出 schema_version／meta／style_bible／characters／aigc_meta 五项，**不含 units／shots**。
+      · `unit:<unit_id>` → 只输出 `{"units": [该项], "shots": [该单元成员镜，按 shot_ids 顺序]}`。
+        该段内每镜的 prompt_zh／prompt_en 必须写全（这是分段的主要理由）。
+
+  output: |
+    只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
+    字段结构（字段名与《分镜提示词交付规范》§3.1~§3.6 逐字对齐；本层产出是**完整包**，不再是真子集）：
+
+    {
+      "schema_version": "1.1.0",
+      "meta": {
+        "pack_id": "取自 pack_meta，形如 FR-PK-20261013-XXXXXXXX（§5.2 编码规则）",
+        "title": "取自 pack_meta",
+        "created_at": "取自 pack_meta，ISO 8601 带时区",
+        "task_type": "text_to_video／first_frame／first_last_frame／last_frame（本期仅此四项支持）",
+        "unsupported_task_types": ["逐项写明取值与理由，如 keyframe_completion：需 Ref2VA 六段式骨架，本期不作适配"],
+        "generator": {"system": "…", "version": "…", "provider": "…", "provider_code": "…（未分配写 {{PROVIDER_CODE}} 占位）"},
+        "generation_trace": {
+          "session_id": "…", "task_id": "…",
+          "stage_chain": ["synopsis", "script", "storyboard", "shot_prompt"],
+          "templates": [{"id": "shot_prompt_v1", "version": "1.0.0"}],
+          "model": {"name": "Qwen2.5-7B-Instruct", "backend": "vllm", "revision": "…"}
+        },
+        "compliance": {
+          "safety_check": {"input": "passed／blocked", "output": "passed／blocked", "checked_at": "ISO 8601"},
+          "copyright_check": {"status": "passed／warning／risk／skipped", "note": "…"},
+          "marking_check": {"explicit": "present／missing", "implicit": "present／missing"},
+          "statement_id": "…（与 COMPLIANCE.md 一致）"
+        },
+        "aspect_ratio_default": "16:9／9:16（缺省取上游）",
+        "total_duration_ms": 0,
+        "notes": "可省"
+      },
+      "style_bible": {
+        "style_id": "承继剧本 style_bible.style_id",
+        "style_prompt_zh": "承继（逐字）；长度 30–80 字",
+        "style_prompt_en": "本层补出，与 zh 同义；英文优先模型的风格投喂源",
+        "style_anchors": ["承继（固定 3–5 条，不增不减）；prompt_* 中不得出现清单之外的风格词"],
+        "color_palette": ["可选，承继；上游无则整个字段省略"],
+        "lighting_default": "承继，但须为**纯词表值**（见 context 的字段投影规则①）",
+        "film_grain": "none／light／medium／heavy（可选）",
+        "negative_global": ["承继，按三类组织：通用图像项 / 视频时域项 / 形变延续项"]
+      },
+      "characters": [
+        {
+          "character_id": "CHR-01（承继，不得改号）",
+          "name": "承继（可为『未指定』）",
+          "appearance_lock_zh": "承继（逐字）；外观**只在此处定义一次**",
+          "appearance_lock_en": "本层补出，与 zh 同义、不得增删特征",
+          "ref_image": "可选，如 refs/CHR-01.png；无则 null",
+          "forbidden": ["本层从 appearance_lock_zh 提炼的『禁止变化要素』，如『发型变化』『服装颜色变化』"]
+        }
+      ],
+      "units": [
+        {
+          "unit_id": "承继分镜 units[].unit_id",
+          "scene_no": 1,
+          "shot_ids": ["承继，长度 2–3，顺序即镜序"],
+          "soundscape": "承继分镜 units[].soundscape",
+          "music": "承继；无则 N/A，禁抽象情绪词",
+          "notes": "承继（注意删除内部标注，见 context 字段投影规则②）"
+        }
+      ],
+      "shots": [
+        {
+          "shot_id": "承继，格式 S<场号两位>-SH<镜号三位>",
+          "unit_id": "承继", "scene_no": 1, "shot_no": 1,
+          "shot_size": "承继（六值之一）",
+          "camera": {"move": "承继", "amplitude": "承继（可为空串）", "speed": "承继（可为空串）",
+                     "from": "承继", "to": "承继", "height": "承继（可空）", "roll": "承继", "optics": "承继（可空）"},
+          "duration_ms": 5000,
+          "aspect_ratio": "本层补出；缺省取 meta.aspect_ratio_default",
+          "resolution": "可选，如 1080p",
+          "prompt_zh": "【本层核心产出】中文画面提示词——八维落地载体；起句『景别：…』，含运镜独立句；不得复述外观、不得含参数指令与负向残留",
+          "prompt_en": "【本层核心产出】英文画面提示词——英文优先模型的投喂源；与 zh 语义一致；运镜句以 The camera 起句且独立成句",
+          "action": {"start": "承继", "change": "承继", "end": "承继"},
+          "shot_language": {"composition": "承继", "axis": "承继", "result": "承继"},
+          "negative_prompt": ["可选（按模型能力）；镜头级负向词，不得写进正文"],
+          "lighting": "承继，但须为**纯词表值**（见 context 字段投影规则①）",
+          "style_ref": "**本层补出**＝style_bible.style_id（§3.8 阻断项）",
+          "character_refs": ["承继"],
+          "ref_image": "承继（可为 null）",
+          "dialogue": "承继（无台词空串）",
+          "sfx": "承继",
+          "transition_in": "承继",
+          "transition_out": "承继（仅单元末镜有值）",
+          "notes": "承继（删除内部标注）"
+        }
+      ],
+      "aigc_meta": {
+        "AIGC": {
+          "Label": "1",
+          "ContentProducer": "{{PROVIDER_NAME}}/{{PROVIDER_CODE}}（取自 pack_meta.generator）",
+          "ProduceID": "**必须等于 meta.pack_id**",
+          "ReservedCode1": "",
+          "ContentPropagator": "首次写入时与 ContentProducer 完全同值",
+          "PropagateID": "首次写入时与 ProduceID 同值",
+          "ReservedCode2": ""
+        }
+      }
+    }
+
+    数量与口径要求：
+    1. **承继守恒**：shots 与 units 的镜数、镜序、单元构成、时长，必须与 {storyboard_json} **逐项相同**；
+       total_duration_ms 必须等于各镜 duration_ms 之和，且必须等于上游 total_duration_ms
+       （本层不改时长，二者不等即说明本层动了不该动的东西）。
+    2. 每个镜头必须属于且仅属于一个单元；style_ref 必须命中 style_bible.style_id；
+       character_refs 必须命中 characters[].character_id；**引用完整性是阻断项**（§3.8）。
+    3. **每镜必有**：shot_size／camera.move／style_ref／prompt_zh／prompt_en／action{start,change,end}／
+       shot_language{composition,axis,result}／character_refs。缺任一即不得交付。
+    4. **prompt_zh / prompt_en 的可读性下界**（本层最易失败处）：每一镜的正文必须让读者
+       **只看正文就能复现这一镜**——景别、运镜（含起点终点）、角度、光学落点、构图、轴线、
+       光线、画面结果都要能读出来。读完仍不知道镜头怎么动 = 该镜不合格。
+    5. 英文侧运镜句**必须以 `The camera` 起句且独立成句**；幅度／速度只在需要强调时出现
+       （`small`／`large`、`slow`／`fast`；`medium`／`normal` 省略）；`static`／`pov` 不带二者。
+    6. 正文**不得**复述角色外观与道具外观；**不得**出现 style_anchors 之外的风格词；
+       **不得**出现模型参数指令；**不得**出现负向残留写法。
+    7. 单角色镜**必须**有稳定指称（`identity` 或 character_id），不得用「他／她」或省略主语；
+       同一角色的指称**全片一致**。`name` 为「未指定」时不得自拟姓名。
+    8. characters[] 必须与剧本 characters[] **一一对应**（同数、同号、同序）；props 只在
+       shots[].prop_refs 中引用，**本层不输出独立的 props 字段**（规范 §3 无此顶层字段——
+       道具外观锚在剧本层，本层只引用编号）。
+    9. `aigc_meta` **仅一份**，`ProduceID` 与 `meta.pack_id` 同值；不得出现第二个 AIGC 块。
+    10. **缺口台账不在本层输出**——交付包没有 `unspecified` 字段（规范 §3.1 顶层六段中无此项）。
+        本层不产生新的叙事事实类缺口；上游未闭合条目**保持原状留在上游产物中**
+        （owner／fill_stage／upstream_field 均不改写、不搬运、不重编号）。
+        若上游某条目导致本层**无法补出必填字段**，按 fallback 回退上游，**不得自己编一个值填上**。
+        需要向客户交代的映射或回退说明，一律写进 `meta.notes`。
+    11. **分段拼装规则**：`package_head` 与各 `unit:<id>` 的产物拼装后，必须是一个能过
+        validate_pack.py 的完整包——调用方按 package_head → unit:U01 → unit:U02 … 顺序合并，
+        `units` 按 unit_id 顺序、`shots` 按（unit 顺序 + unit 内 shot_ids 顺序）排列，
+        即全片镜序。**分段不改变任何字段取值**，只改变一次输出的范围。
+
+  examples: |
+    示例 1（**一镜的编译全过程**：上游决策 → 交付包字段，重点看 prompt 的八维双落地）：
+
+    上游（{storyboard_json} 的 S01-SH001，紧凑摘录）：
+      {"shot_id": "S01-SH001", "shot_size": "wide",
+       "camera": {"move": "push_in", "amplitude": "small", "speed": "slow",
+                  "from": "楼道口外三米、齐腰高度", "to": "停在 CHR-01 肩背，雨幕堆在身后",
+                  "height": "eye_level", "roll": "level", "optics": "shallow_focus"},
+       "duration_ms": 5000,
+       "shot_language": {"composition": "CHR-01 落在画面右三分，左三分之一是被雨帘遮住的楼道纵深，前景溅起的水花压住画面下缘",
+                          "axis": "空间轴：画面左＝楼道口（暗）、画面右＝街面（亮），整场不越此轴",
+                          "result": "雨水顺着袖口成股下淌，在脚边积出一小滩，又被新雨点打出密密的涟漪"},
+       "action": {"start": "CHR-01 拎着外卖箱站在楼道口檐下，半边肩在雨里",
+                   "change": "侧身往墙里挪半步，耳机里跳出一声超时提醒",
+                   "end": "背贴墙面站定，视线压在手机屏上"},
+       "lighting": "practical_light——楼道感应灯在下半张脸上打出一道硬边，街灯反光从积水面泛上来",
+       "character_refs": ["CHR-01"], "dialogue": "还有六分钟。"}
+
+    编译后（交付包内的该镜，仅列本层产出与两处改写项）：
+      "lighting": "practical_light",                              ← 投影规则①：字段只留词表 code
+      "style_ref": "STYLE-01",                                    ← 本层补出
+      "aspect_ratio": "16:9",                                     ← 本层补出（取 meta.aspect_ratio_default）
+      "prompt_zh": "远景：暴雨夜的居民楼楼道口，一个外卖员拎着外卖箱站在檐下，半边肩在雨里；他侧身往墙里挪了半步，背贴墙面站定，视线压在手机屏上。镜头从楼道口外三米、齐腰高度缓缓前推，停在他的肩背，雨幕堆在身后，浅景深把雨帘化开。人物落在画面右三分，左侧三分之一是被雨帘遮住的楼道纵深，前景溅起的水花压住画面下缘；空间轴左为楼道口、右为街面，全集不越此轴。楼道感应灯在他下半张脸上打出一道硬边，街灯反光从积水里泛上来。雨水顺着袖口成股下淌，在脚边积出一小滩，又被新雨点打出密密的涟漪。日式动画电影质感，柔和赛璐璐上色，冷灰蓝主色调，克制低饱和。",
+      "prompt_en": "A wide shot of a delivery rider taking shelter at the entrance of an old residential building on a stormy night, a delivery box in one hand and one shoulder still in the rain. He shifts half a step toward the wall and settles with his back against it, eyes fixed on his phone. The camera pushes in with small amplitude at slow speed from three meters out at waist height, stopping on his shoulders and back with the rain curtain piling up behind him, holding a shallow depth of field so the rain falls out of focus. He sits in the right third of the frame with the deep entrance shaft filling the left third, spray from the ground pressing the lower edge. The space axis runs from the dark entrance on the left to the bright street on the right, uncrossed throughout. A practical light from the motion-sensor lamp cuts a hard edge across the lower half of his face while streetlight reflects up from the standing water. Rain runs down his sleeve in a steady stream, pooling at his feet and dimpling under fresh drops. Japanese anime film look, soft cel shading, cool grey-blue palette, restrained low saturation."
+
+    逐维核对（**这就是「八维双落地」的验收动作**）：
+      | 维 | 字段 | 正文中对应句 |
+      | --- | --- | --- |
+      | 景别 | shot_size=wide | 起句 "A wide shot of …" / "远景：……" |
+      | 运镜 | push_in/small/slow/from/to | "The camera pushes in with small amplitude at slow speed from three meters out…" |
+      | 角度 | height=eye_level | "at waist height" 起幅机位（平视口径，未越轴） |
+      | 光学 | optics=shallow_focus | "holding a shallow depth of field so the rain falls out of focus" |
+      | 构图 | shot_language.composition | "He sits in the right third …, the deep entrance shaft filling the left third" |
+      | 轴线 | shot_language.axis | "The space axis runs from the dark entrance on the left to the bright street on the right" |
+      | 光线 | lighting=practical_light（+中文光位说明已移入正文） | "A practical light from the motion-sensor lamp cuts a hard edge across the lower half of his face" |
+      | 画面结果 | shot_language.result | "Rain runs down his sleeve … pooling at his feet and dimpling under fresh drops" |
+
+    注意三点：
+      · **外观一个词都没写**——"深蓝色冲锋衣""反光条""浓眉"全部不在正文里（规范 §3.4）；
+        它们固化在 characters[CHR-01].appearance_lock_zh，由锚注入。读者照样能看懂这一镜在发生什么。
+      · **单人镜的具名锚点**——该角色 `name` 为「未指定」，故全片用稳定指称：
+        中文「外卖员」／英文 `the delivery rider`。**每一镜都必须用这同一个词组**，
+        不得这镜叫「骑手」、下镜叫「男人」（那等于换了个人，模型会照做）。
+      · **风格句在末尾**——每一镜都要写，不能只写第一镜。
+
+    示例 2（**package_head 段**：style_bible／characters 的补齐与承继）：
+      style_bible 的 style_prompt_zh／style_anchors／negative_global 逐字承继剧本层；
+      **style_prompt_en 是本层补出**（上游无此字段）：
+        "style_prompt_en": "Japanese anime film look, soft cel shading, cool grey-blue palette, restrained low saturation"
+      ⚠️ 英文侧**不得增加**中文锚里没有的风格词（如不得因为"雨天"就加 `rainy mood` —— 那会造成风格漂移，
+         且违反"锚点封闭"）；分时相差异已由剧本层的 `lighting_default` 承载。
+      characters[].appearance_lock_en 同理：`"short hair, thick brows, a dark blue delivery jacket, lean build, a worn digital watch on the right wrist"`
+      —— 是 zh 的**同义英译**，不是自由创作（zh 里没有的特征一个都不能加）。
+      aigc_meta 是**规则区**：ProduceID 与 meta.pack_id 同值，ContentPropagator 与 ContentProducer 同值。
+
+    示例 3（分段：一次只出一段，拼装后才是完整包）：
+      segment = "package_head"  → 输出 schema_version／meta／style_bible／characters／aigc_meta
+      segment = "unit:U01"      → 输出 {"units": [U01 项], "shots": [S01-SH001, S01-SH002, S01-SH003]}
+      segment = "unit:U02"      → 输出 {"units": [U02 项], "shots": [S02-SH001, …]}
+      —— 拼装：package_head + 各 unit 段按 unit_id 顺序合并；shots 顺序＝全片镜序。
+      每段都能**单独**过一遍 schema（unit 段是部分包），拼装后再过 validate_pack.py。
+
+    错误写法（**改了不该改的**）：
+      "duration_ms": 6000（上游为 5000，理由是"让台词更从容"）
+      —— 本层不改时长。台词念不完属上游缺陷，须回退上游重出（见 fallback），
+      改了会让 total_duration_ms 与分镜层镜表同时失真。
+    错误写法（**外观重述**）：
+      "prompt_zh": "远景：穿深蓝色冲锋衣的外卖员，冲锋衣上带反光条，站在楼道口……"
+      —— 外观只定义一次（§3.4）。正文里写的是"这一镜在发生什么"，不是"这个人长什么样"。
+    错误写法（**八维只落字段、不落正文**）：
+      "camera": {"move": "push_in", …} 而 prompt_en 通篇没有运镜句
+      —— 只填字段不写正文 = 这一维等于不存在（规范 §4.1 的双条件）。
+      而且 H3 侧会按"画面呆滞、模型默认静止"处理。
+    错误写法（**风格漂移**）：
+      "prompt_zh": "……赛璐璐上色，水彩晕染质感……"（style_anchors 里没有"水彩"）
+      —— prompt_* 中不得出现锚点清单之外的风格词（§3.3）。
+    错误写法（**负向残留**）：
+      "prompt_en": "… The rain stays moderate. (negative: no modern buildings, no text)"
+      —— 负向写法不得出现在正文里（§6.4）；须转写为正向约束句：
+      "The rain stays moderate and the architecture remains period Jiangnan, with no modern structures and no on-screen text."
+    错误写法（**自拟姓名**）：
+      客户未提供姓名，本层在正文里写成「外卖员陈默」
+      —— 事实类不得编造。"具名锚点"的可执行形式是**稳定指称**，不是自造一个名字。
+    错误写法（**元数据编造**）：
+      "pack_id": "FR-PK-20261013-AB12CD34"（pack_meta 未提供，模型自行按格式生成）
+      —— 编号必须可反查到生成记录（§5.2）；自拟编号 = 断链，且属备案举证造假。
+
+# guards 的分工说明（与 SCHEMA.md 的定义一致）：
+#   标注【增量】者为本层**独有**的失败模式，默认必须注入；
+#   其余为对 system 硬性约束的兜底复述，按失败模式定向追加。
+guards:
+  - 【增量】**正文密度下界**：逐镜自检"只看 prompt_zh／prompt_en，能不能复现这一镜"——
+    景别、运镜（含起止）、角度、光学落点、构图、轴线、光线、画面结果，逐项在正文里找到对应句。
+    找不到的维度，要么补写，要么确认该镜本不承载该维（分镜层已留空）。
+    读完仍不知道镜头怎么动 = 该镜不合格，**不得靠字段"我有填"蒙混过关**。
+  - 【增量】**外观词扫描**：交付前把 characters[].appearance_lock_zh 与 props[].appearance_lock_zh
+    按标点切段，逐段在 prompt_zh／prompt_en 里搜——命中即删（改写成瞬时状态或直接去掉）。
+    这类词一旦进了正文，会在每一镜重复描述外观，模型把它当"变化"处理，跨镜一致性直接崩。
+    同一条扫描也用于 **style_anchors**：清单之外的风格词命中即删。
+  - 【增量】**指称一致性扫描**：把每个 character_id 在全片正文中的指称词组列出来，
+    同一角色必须**只有一个词组**。出现两套以上（「外卖员」/「骑手」/「男人」）即不合格——
+    多角色同框时模型可依上下文区分，单角色时指称一乱，模型会引入第二个人。
+  - 【增量】**运镜句完整性**：英文侧逐镜确认存在以 `The camera` 起句的**独立句**；
+    硬换行排版时**不得**把 `The camera` 拆到两行（拆开后校验器判"缺少运镜句"，而人眼看不出）。
+    `static`／`pov` 的运镜句同样要有（"The camera holds a static shot."），只是不带幅度速度。
+  - 【增量】**元数据溯源**：pack_id／created_at／session_id／task_id／statement_id／provider_code
+    六个字段逐个回查 {pack_meta}——凡 {pack_meta} 中没有的值，一律写占位符并登记，
+    **不得出现一个"看起来对"的自拟值**。判据：这个编号能不能反查到一条生成记录？不能就是编的。
+  - 【增量】**改决策排查**：把交付包与 {storyboard_json} 做一次逐字段 diff
+    （shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera.*／
+    dialogue／transition_*）。**只允许出现三类差异**：① 字段投影规则①（lighting 拆分）、
+    ② 规则②（notes 清理）、③ 规则③（amplitude／speed 的 medium／normal → 空串）；
+    外加本层补出的字段。出现第四类差异即说明本层改了导演决策。
+  - 硬约束复述：不改导演决策（尤其 duration_ms）；双上游都要读；
+    外观只定义一次；八维双落地；运镜独立成句以 The camera 起句；要素顺序
+    主体→动作→环境→光线→镜头语言→风格；长度中文 40–120 字 / 英文 30–90 词。
+  - 枚举复述：shot_size 六值；camera.move 20 类；amplitude 只填 small／large、
+    speed 只填 slow／fast（medium／normal 留空）；transition 5 值；lighting 取 15 值词表；
+    character_id 形如 CHR-01；prop_id 形如 PRP-01；shot_id 形如 S01-SH003。
+  - 引用完整性：style_ref 命中 style_bible.style_id；character_refs 命中 characters[].character_id；
+    prop_refs 命中剧本 props[].prop_id（⚠️ 本层不输出独立 props 字段，只做引用校验）。
+  - 单位与格式：duration_ms 为整秒；created_at／checked_at 为 ISO 8601 带时区；
+    total_duration_ms 为整数；aigc_meta 仅一份且 ProduceID 与 pack_id 同值。
+  - 合规复述：不使用绝对化与宣传性表述；不写暴力、色情、恐怖的具体细节；
+    避免真实人物姓名与肖像描述。
+
+fallback:
+  insufficient_input: storyboard_json／script_json 任一缺失、无法解析，或缺 units／shots／style_bible／characters 任一关键结构时不生成，提示回到对应上游（storyboard_v1 为 SW-006、script_v1 为 SW-005）重新产出。**不得只喂一份上游就硬编**——只给分镜会缺 style_bible 与 characters，只给剧本会缺 units 与 shots。
+  upstream_defect: 复核时发现上游缺陷（**最常见两类**：① 某镜 dialogue 字数 ÷ 秒数 > 9，语速念不完；
+    ② 分镜层 shot_language／camera 某维缺值，导致本层无法把该维写进正文且无法从上游取数）时，
+    **不回改、不自拟**——按 SW-003 门控回退到缺陷所在阶段重出，并在返回信息中写明
+    「哪一层、哪一镜、哪个字段、为什么不改」。本层不改时长、不改镜头决策，是刻意的设计约束：
+    改了会让 total_duration_ms 与分镜层镜表同时失真，且把导演决策混进编译层。
+  metadata_missing: 注入的 pack_meta 缺 pack_id／statement_id／provider_code 等备案关联字段时，
+    **照常产出产物**（结构完整、可交付预演），但：① 该字段写占位符（`{{PROVIDER_CODE}}` 等）；
+    ② 在 meta.notes 写明「本包为占位预演，未取得编号，不得用于正式交付」。
+    **不得停止生成**（停滞会阻塞整条链路），也**不得自拟值**（编造编号是备案举证造假）。
+  missing_anchor_en: 剧本层 `appearance_lock_zh`／`style_prompt_zh` 本身为「未指定」时
+    （理论上不应发生——剧本层已定案设计类不留「未指定」），本层**不得代为设计**，
+    改由 guard_clarify_v1 发起追问并回到剧本层补齐；本层暂停该角色／风格相关的正文产出。
+  refusal: 输入涉及政治敏感、真实人物、违法犯罪方法时，不生成，改由 guard_refuse_v1 处理。

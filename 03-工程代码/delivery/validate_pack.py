@@ -187,11 +187,20 @@ def quality_gate_for(shots: list[dict]) -> tuple[dict, list[str]]:
                   "构图覆盖", "轴线覆盖", "光线覆盖", "画面结果覆盖"):
         if metrics[label] < GATE[label]:
             bad.append(f"{label} {metrics[label]:.0%} < 门槛 {GATE[label]:.0%}")
-    if metrics["静止镜占比"] > GATE["静止镜占比"]:
-        bad.append(f"静止镜 {static_cnt}/{n} > 允许 {_allow(GATE['静止镜占比'], n)}"
+    # ⚠️ 占比型门槛必须按 **_allow() 的「允许绝对个数」** 比较，**不得**用比例直接比阈值。
+    #    原因（2026-10-13 随 SW-007 自查发现并修正）：小样本下比例会被离散化放大——
+    #    n=2 时「1 个静止镜」的比例是 50%，直接比 40% 必判 FAIL，而容差算法的本意正是
+    #    `max(1, ceil(ratio*n))`：2 镜单元**允许 1 个**静止镜。参照实现 `audit_shots.py`
+    #    与本工程 `prompts/validate_output.py`（R19）用的都是计数比较，唯本处曾用比例 →
+    #    同一产物出现「本脚本 BLOCK、另两个通过」的矛盾结论（实测：U04 2 镜 1 static）。
+    #    本函数 docstring 早已声明「容差算法与 audit_shots.py 一致」，此处为**实现笔误**。
+    st_allow = _allow(GATE["静止镜占比"], n)
+    if static_cnt > st_allow:
+        bad.append(f"静止镜 {static_cnt}/{n} 个 > 允许 {st_allow} 个"
                    f"（上限 {GATE['静止镜占比']:.0%}）")
-    if metrics["单一运镜占比"] > GATE["单一运镜占比"]:
-        bad.append(f"单一运镜（{top_type}）{top_cnt}/{n} > 允许 {_allow(GATE['单一运镜占比'], n)}"
+    top_allow = _allow(GATE["单一运镜占比"], n)
+    if top_cnt > top_allow:
+        bad.append(f"单一运镜（{top_type}）{top_cnt}/{n} 个 > 允许 {top_allow} 个"
                    f"（上限 {GATE['单一运镜占比']:.0%}）")
     need = min(GATE["运镜类型数"], max(2, _ceil(n / 4)))
     if metrics["运镜类型数"] < need:
