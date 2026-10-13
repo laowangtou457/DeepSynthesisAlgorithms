@@ -6,7 +6,7 @@
 | --- | --- |
 | 用例编号 | `CASE-STB-001` |
 | 对应需求 | **SW-006 分镜脚本生成** |
-| 模板 | `storyboard_v1` **v1.0.0** |
+| 模板 | `storyboard_v1` **v2.0.0**（原 v1.0.0；v2.0.0 系随上游 `script_v1` v2.0.0 的 output 契约变更**机械承接**：新增 `shots[].prop_refs` 与 `unspecified` 的 `owner`／`upstream_field`，本层导演决策设计未变动） |
 | 上游用例 | `CASE-SCR-001`（`examples/script-case01.md`）——本用例的输入即该用例输出的**已确认剧本** |
 | 下游 | `shot_prompt_v1`（SW-007）——直接消费本输出的 `units` / `shots` 做格式投影 |
 | 用例来源 | **构造用例**（非真实客户素材；正式交付前须补一组脱敏真实素材） |
@@ -17,9 +17,9 @@
 
 | 变量 | 取值 |
 | --- | --- |
-| `script_json` | 见下方「上游剧本摘要」——取自 `CASE-SCR-001` 的输出（`script_v1` v1.0.0 口径） |
+| `script_json` | 见下方「上游剧本摘要」——取自 `CASE-SCR-001` 的输出（**`script_v1` v2.0.0 口径**；v1.0.0 → v2.0.0 的 output 变更：新增 `props[]` 与 `scenes[].props_present`／`sfx_hint`，`unspecified` 增 `owner`／`upstream_field`） |
 | `duration_bounds` | `4-15`（默认值，MiniMax H3 口径——本项目唯一 `verified` 的目标模型） |
-| `gap_answers` | 无（客户未答复任何缺口项 → 本层按判断自行处理，缺口续接见评测第 10 项） |
+| `gap_answers` | 无。注意口径：自 `script_v1` v2.0.0 起，凡 `owner=客户` 的缺口其 `fill_stage` 一律为 `script`，**不会流到本层**——故本变量按设计应为空，不是「客户漏答」。缺口续接见评测第 17 项 |
 | `shot_density` | 标准 |
 
 ### 上游剧本摘要（`script_json`）
@@ -33,7 +33,7 @@
 | 5 | 5 | 收束 | 客厅窗边沙发一角 · 清晨 | CHR-01、CHR-02 | 15 | 3（对白 2 + 旁白 1） |
 | — | — | — | **合计** | — | **81** | **11 条** |
 
-其他关键下游依赖：`style_bible.style_id = STYLE-01`；`characters` 为 `CHR-01`（外卖员，主角）与 `CHR-02`（住所女主人，情感线）；`forbidden_items = []`；`unspecified` 共 7 项。
+其他关键下游依赖：`style_bible.style_id = STYLE-01`；`characters` 为 `CHR-01`（外卖员，主角）与 `CHR-02`（住所女主人，情感线）；`props` 为 1 项（`PRP-01` 流浪猫，5 场的 `props_present` 均引用之）；`forbidden_items = []`；`unspecified` 共 **8 项**（全部 `owner=客户`、`fill_stage=script`）；各场另有 `sfx_hint` 供本层 `soundscape` 参考。
 
 > **上游状态**：`CASE-SCR-001` 的输出为**人工构造**、未经模型实测（标「未验证」）。本用例沿用同一前提。
 
@@ -119,6 +119,7 @@
       },
       "lighting": "practical_light——楼道感应灯在下半张脸上打出一道硬边，街灯反光从积水面泛上来",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "还有六分钟。",
       "sfx": "雨砸铁皮雨棚声、外卖箱塑料提手摩擦声",
@@ -155,6 +156,7 @@
       },
       "lighting": "rim_light——雨丝在逆光里显形，勾出后颈的潮湿轮廓",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "雨砸在铁皮雨棚上，像有人在替他数秒。",
       "sfx": "雨声压低，一声短促的超时提示音",
@@ -191,6 +193,7 @@
       },
       "lighting": "neon_night——沿街招牌的暖光在湿路面上拖出长条反光，随车速拉长",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "",
       "sfx": "电机声、雨打头盔的密集声",
@@ -227,6 +230,7 @@
       },
       "lighting": "practical_light——手机屏的冷光自下而上打在脸上，与街灯暖光对撞",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "行，扣就扣吧。",
       "sfx": "提示音、雨声",
@@ -263,6 +267,7 @@
       },
       "lighting": "blue_hour 打底、neon_night 补边——雨后夜色的青蓝底子，被商铺霓虹补上暖边",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "他把差评留在了昨天的单里，把猫留在了今天。",
       "sfx": "雨声渐缓、远处车流涉水声",
@@ -299,6 +304,7 @@
       },
       "lighting": "overcast——清晨低饱和漫射光，墙面的潮痕与苔色都显出来",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "送东西的。",
       "sfx": "鸟叫、远处垃圾车、雨后滴水",
@@ -335,6 +341,7 @@
       },
       "lighting": "practical_light——走廊声控灯自上而下，把门框边缘照出一道白线",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "",
       "sfx": "门铃两声、门内无人应答、灯管电流声",
@@ -371,6 +378,7 @@
       },
       "lighting": "side_light——门缝里漏出的室内暖光从侧面切进来，把牌面划痕照出层次",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "门铃响了两声，没有人应，他就按了第三声。",
       "sfx": "门铃第三声、门内脚步声由远及近",
@@ -407,6 +415,7 @@
       },
       "lighting": "practical_light——走廊声控灯从 CHR-01 背后打来，把 CHR-02 的半张脸留在门内暗部",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "……它怎么会在你这儿。",
       "sfx": "门轴轻响、声控灯电流声、室外滴水",
@@ -443,6 +452,7 @@
       },
       "lighting": "rim_light——走廊残光勾出 CHR-01 的侧脸轮廓，正面几乎无光",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "昨晚在楼道里捡的。",
       "sfx": "室内安静、门缝里的空气声",
@@ -479,6 +489,7 @@
       },
       "lighting": "soft_key_light——清晨窗外漫射光从 CHR-01 背后进来，在室内形成大面积柔和过渡",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "坐吧。它认你。",
       "sfx": "挂钟走针、猫爪在坐垫上的窸窣",
@@ -515,6 +526,7 @@
       },
       "lighting": "soft_key_light——窗前光把 CHR-01 的影子投在地板上，随他走动移过猫的身体",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "那……我坐。",
       "sfx": "布料摩擦、挂钟走针",
@@ -551,6 +563,7 @@
       },
       "lighting": "overcast——清晨漫射光均匀铺开，室内没有硬阴影",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "ref_image": null,
       "dialogue": "窗外天亮了，屋里没人急着说话。",
       "sfx": "挂钟、窗外早市远景、猫的呼吸",
@@ -561,14 +574,15 @@
   ],
   "forbidden_items": [],
   "unspecified": [
-    {"field": "characters[0].name", "reason": "客户未提供主角姓名，剧本层未闭合，客户未答复 gap_answers", "fill_stage": "shot_prompt", "fill_fallback": "向客户确认；确认前画面与台词中一律以身份代称（『外卖员』），不得自拟姓名", "blocking": false},
-    {"field": "characters[1].name", "reason": "客户未提供妹妹姓名，剧本层未闭合，客户未答复 gap_answers", "fill_stage": "shot_prompt", "fill_fallback": "同上，确认前以身份代称（『住所女主人』）", "blocking": false},
-    {"field": "ending.resolution（失联的具体年数）", "reason": "客户只说『多年』，未给具体年数", "fill_stage": "shot_prompt", "fill_fallback": "向客户确认；确认前不得写具体数字，台词一律用『好几年』这类模糊说法", "blocking": false},
-    {"field": "conflict.internal（失联原因）", "reason": "客户未说明两人当年为何失联", "fill_stage": "shot_prompt", "fill_fallback": "依人物关系提出候选后请客户确认；确认前只呈现『疏远』的结果、不解释原因", "blocking": false},
-    {"field": "characters[0].appearance_lock_zh", "reason": "客户未提供主角外形，剧本层已提议候选，尚待客户确认", "fill_stage": "shot_prompt", "fill_fallback": "提请客户确认；确认前该值为可用默认，若客户否决须回剧本层重出", "blocking": false},
-    {"field": "characters[1].appearance_lock_zh", "reason": "客户未提供妹妹外形，剧本层已提议候选，尚待客户确认", "fill_stage": "shot_prompt", "fill_fallback": "同上，剧本层所出候选为默认值", "blocking": false},
-    {"field": "style_bible.style_prompt_zh", "reason": "客户未提供全片视觉风格，剧本层已提议候选风格串，尚待客户确认", "fill_stage": "shot_prompt", "fill_fallback": "提请客户确认；确认前该风格串为全片默认锚点", "blocking": false},
-    {"field": "units[4].music", "reason": "客户未提供音乐方案，本层按收束段节奏提议了配乐织体", "fill_stage": "shot_prompt", "fill_fallback": "提请客户确认；确认前按本层所提织体执行，或整片统一填 N/A", "blocking": false}
+    {"field": "shots[].dialogue", "upstream_field": "characters[0].name", "reason": "客户未提供主角姓名，剧本层未闭合；本层仅在对白中以身份代称呈现，未获得可写进台词的姓名", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层向客户追问；确认前对白一律以身份代称（『外卖员』），本层不得自拟姓名——不闭合亦可交付（全片无一处需要写出姓名）", "blocking": false},
+    {"field": "shots[].dialogue", "upstream_field": "characters[1].name", "reason": "客户未提供妹妹姓名，剧本层未闭合；同上", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层向客户追问；确认前对白以身份代称（『住所女主人』）——不闭合亦可交付", "blocking": false},
+    {"field": "shots[].dialogue", "upstream_field": "ending.resolution", "reason": "客户只说『多年』，未给具体年数；剧本层未闭合，本层故未在任何镜的台词中写具体数字", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层向客户追问；确认前对白一律用『好几年』这类模糊说法——不闭合亦可交付", "blocking": false},
+    {"field": "units[].notes", "upstream_field": "conflict.internal", "reason": "客户未说明两人当年为何失联；本层只呈现『疏远』的结果，未在单元注释中解释原因", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层向客户追问；确认前只呈现疏远结果、不解释原因——不闭合亦可交付", "blocking": false},
+    {"field": "shots[].character_refs", "upstream_field": "characters[0].appearance_lock_zh", "reason": "客户未提供主角外形，剧本层已提出候选，尚待客户确认；本层只引用 `CHR-01`、不落外观文字，故确认与否不影响本层产物", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层提请客户确认；确认前剧本层候选即全片默认锚，本层照常引用——不闭合亦可交付；若客户否决须回剧本层重出，届时本用例的 `prop_refs`／`character_refs` 引用不变", "blocking": false},
+    {"field": "shots[].character_refs", "upstream_field": "characters[1].appearance_lock_zh", "reason": "客户未提供妹妹外形，剧本层已提出候选，尚待客户确认；本层同样只引用 `CHR-02`", "owner": "客户", "fill_stage": "script", "fill_fallback": "同上，剧本层候选为该角色默认锚——不闭合亦可交付", "blocking": false},
+    {"field": "style_ref", "upstream_field": "style_bible.style_prompt_zh", "reason": "客户未提供全片视觉风格，剧本层已提出候选风格串，尚待客户确认；本层恒引用 `STYLE-01`，不重述风格内容", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层提请客户确认；确认前该风格串为全片默认锚，本层与 SW-007 均照常引用——不闭合亦可交付", "blocking": false},
+    {"field": "shots[].prop_refs", "upstream_field": "props[0].appearance_lock_zh", "reason": "客户未提供猫的品种与外观，剧本层已提出候选（上游梗概无道具字段，属剧本层新产生的缺口）；本层只引用 `PRP-01`、不描写道具外观", "owner": "客户", "fill_stage": "script", "fill_fallback": "由剧本层提请客户确认；确认前该候选即全片默认道具锚——不闭合亦可交付；若客户否决须回剧本层重出，本层引用关系不变", "blocking": false},
+    {"field": "units[4].music", "upstream_field": "", "reason": "客户未提供音乐方案；剧本层无音乐字段，本项为**本层新产生的缺口**——本层按收束段节奏提议了配乐织体，尚待客户确认", "owner": "客户", "fill_stage": "storyboard", "fill_fallback": "由本层向客户追问；确认前 4 个单元沿用 `N/A`、U05 按本层所提织体（单音符钢琴，间隔 3–4 秒一次）执行；客户若否决，改为整片统一 `N/A` 或替换织体——不闭合亦可交付", "blocking": false}
   ],
   "quality_gate": {
     "shot_count": 13,
@@ -602,28 +616,31 @@
 | 14 | 声音口径 | `soundscape` / `music` 是否有值、`music` 是否含抽象情绪词 | ✅ 5 个单元均有 `soundscape`；`music` 4 个为 `N/A`、1 个为具体织体描述（「单音符钢琴，间隔 3–4 秒一次」），**无抽象情绪词** |
 | 15 | 单人替身法则 | 单人镜是否具名锚点、是否有「无光的镜头／无结果的静止」 | ✅ 4 个单人单元均以具名锚点指向 CHR-01；2 个静止镜（`S04-SH001` / `S05-SH003`）均写了「在动的东西」（门缝与灯光的交替／天色转白），无空镜 |
 | 16 | 禁止项承接 | `forbidden_items` 与剧本比对 | ✅ 剧本为空数组，输出同为 `[]`——**空数组的承接同样算通过** |
-| 17 | 缺口续接 | 剧本 `unspecified`（7 项）逐项追踪 | ✅ 7 项全部保留（剧本中 2 项 `fill_stage=storyboard` 因客户未答复、本层无法闭合，**责任前移至 `shot_prompt`**）；另新增 1 项本层缺口（`units[4].music`），共 **8 项** |
-| 18 | 内容质量 | 人工阅读（镜头语言是否丰富、是否有真重复动作） | ⚠️ 人工判定「丰富且不重复」，但**未脚本化、亦未经模型验证**，不计入通过项 |
+| 17 | **道具承接**（SR-05 新增契约） | ① 剧本 `props` 非空时，`prop_refs` 是否只引用已定义 `prop_id`；② 是否越权描写道具外观；③ 有道具入画的镜是否都标了 | ✅ `prop_refs` 全片只出现 `PRP-01`（剧本已定义，无新增道具、无悬空引用）；13 镜中 6 镜标 `PRP-01`（`S03-SH001`／`S03-SH003`／`S04-SH001`／`S05-SH001`／`S05-SH002`／`S05-SH003`——均为猫入画之镜），其余 7 镜为空数组；全文**未出现任何道具外观描写**（品种／毛色一律不写，只引用 `PRP-01`） |
+| 18 | **缺口续接与责任归属** | ① 剧本 `unspecified`（8 项）逐项追踪；② 每条 `owner` 与 `fill_stage` 是否合规；③ `upstream_field` 是否能映射回剧本真实字段 | ✅ 8 项**全部保留**，且 `owner` 一律为「客户」、`fill_stage` **一律为 `script`**（**不得前移**——客户未提供／未答复的叙事事实与设计确认，本层与 `shot_prompt` 同样办不了）；`upstream_field` 8 条**逐条命中**剧本 `unspecified[].field` 真值（`characters[0].name`／`characters[1].name`／`ending.resolution`／`conflict.internal`／`characters[0].appearance_lock_zh`／`characters[1].appearance_lock_zh`／`style_bible.style_prompt_zh`／`props[0].appearance_lock_zh`），无悬空路径。另新增 **1 项本层缺口**（`units[4].music`，`upstream_field` 为空串、`fill_stage=storyboard`——由本层发起追问），共 **9 项** |
+| 19 | `owner=客户` 不得前移（负向判据） | 逐条断言 `fill_stage != shot_prompt` | ✅ 9 项中 `owner=客户` 者 9 项，`fill_stage` 取值集合为 `{script, storyboard}`，**`shot_prompt` 零出现**（脚本校验：`validate_output.py` R21 的 storyboard 分支） |
+| 20 | 内容质量 | 人工阅读（镜头语言是否丰富、是否有真重复动作） | ⚠️ 人工判定「丰富且不重复」，但**未脚本化、亦未经模型验证**，不计入通过项 |
 
-**本用例的针对性设计**：四项陷阱位。
+**本用例的针对性设计**：五项陷阱位。
 
-1. **越权陷阱**——剧本层已把外观与风格定义完毕，本层最易犯的错是「顺手在每镜里重新描写一遍外观」。用例把「全文不出现外观细节」设成刚性比对项（第 6 项）。
+1. **越权陷阱**——剧本层已把外观、风格与道具定义完毕，本层最易犯的错是「顺手在每镜里重新描写一遍外观／道具」。用例把「全文不出现外观细节」与「道具只引用 `PRP-01`、不描写其外观」设成刚性比对项（第 6、17 项）。
 2. **单元陷阱**——模型天然倾向于按「一个动作一镜」切，容易切出 1 镜单元或 4 镜以上单元；也容易在一个单元里连续用同一种运镜。用例把「2–3 镜」与「单元内不重复」设成刚性项（第 7、8 项）。
 3. **静止陷阱**——收尾镜最容易被写成「空镜」；用例在 `S04-SH001` / `S05-SH003` 刻意用静止镜，验证「静止镜 ≠ 空镜」这条口径被真正执行（第 15 项）。
 4. **覆盖率陷阱**——八维**不是每镜全开**（规范 §4.3「单元级达标」）。用例刻意让 `optics` 只覆盖 7/13、`composition` 覆盖 11/13，用于验证「覆盖率门槛」口径**没有被误读成「每镜必须八维全开」**，也没有被误读成「可以为空」（第 9 项）。
+5. **缺口责任陷阱**（SR-02 新增）——剧本层的 8 项缺口全部是「客户未提供」，最容易被写成「留给下一层去问客户」。用例把 `fill_stage` 的取值集合设成硬判据：**继承的客户缺口必须保持 `script`、本层新产生的客户缺口只能填 `storyboard`，`shot_prompt` 一律不许出现**；并要求每条 `upstream_field` 能映射回剧本真实字段（第 18、19 项）。这一项**专门用于暴露「把责任往下推」这一最省事、也最违规的写法**。
 
 ## 5 验证状态
 
 **未验证。** 理由：
 
 1. 输出为人工构造，未经模型实测 —— 按项目纪律不得标为已通过；
-2. 第 1–17 项目前为人工比对，其中第 2、3、4、7、8、9、10、11、13、14、16 项已可由 `validate_output.py` 自动核查（其中质量门、单元构成、时长为本次新增规则）；
+2. 第 1–19 项目前为人工比对，其中第 2、3、4、7、8、9、10、11、13、14、16、19 项已可由 `validate_output.py` 自动核查（其中质量门、单元构成、时长为 v1.0.0 起的新增规则；第 19 项 `owner` 枚举与「客户侧缺口不得前移」为 v2.0.0 新增 **R21**，其 storyboard 分支即为本用例所依赖的判据）。**第 17 项（道具承接）与第 18 项（缺口续接，含 `upstream_field` 跨层路径映射）暂无脚本判据**，属**待补**项。
 3. 用例来源为构造，非真实客户素材。
 
 **闭环条件**（三项齐备后方可改判「已实测」）：
 
 - [ ] 在 Qwen2.5-7B-Instruct 上跑通本用例，回填真实输出与采样日志（**待模型就绪后统一执行**）
-- [ ] 把第 1、6、12、15、17 项落成校验脚本，产出机器可读报告（与 `validate_output.py` 同源）
+- [ ] 把第 1、6、12、15 项落成校验脚本，产出机器可读报告（与 `validate_output.py` 同源）；第 17 项（`prop_refs` 与剧本 `props` 的一致性、无悬空引用）与第 18 项③（`upstream_field` 能否映射回剧本真值）宜一并补为规则
 - [ ] 补一组脱敏真实客户素材用例（`CASE-STB-002`）
 
 > ⚠️ **一项已知的口径差异（须在实测时留意）**：本用例的覆盖率是按**结构化字段是否有值**判定的；而 `audit_shots.py` 是按**适配投喂文本**（SW-007 的产物）用正则判定的。两者对象不同——本层判定通过**不等于**下游文本判定通过。SW-007 完成后必须对文本再跑一次质量门（规范 §4.8）。

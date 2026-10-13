@@ -38,6 +38,24 @@ JSON_BLOCK_RE = re.compile(r"```json\s*\n(.*?)\n```", re.S)
 _result = {"checks": 0, "errors": [], "warnings": []}
 
 
+def _yaml_hint(exc):
+    """把 YAML 解析异常翻译成可操作的成因提示（本工程已两次踩同一个坑）。
+
+    最常见成因：块标量/纯标量的**行首**写了 `**粗体**`——YAML 会把 `*` 解析为
+    别名引用（alias），报 `expected alphabetic or numeric character, but found '*'`。
+    修法：把强调标记移到句中，或改用中文括号。该错误会**中断整个文件的解析**，
+    使同一文件后续全部检查项无法执行，故必须优先修。
+    """
+    s = str(exc)
+    if "while scanning an alias" in s:
+        return ("　↳ 成因提示：某行的 YAML 标量以 `*` 开头（通常是 `**粗体**` 写在行首），"
+                "被解析为别名引用。请把强调标记移到句中，或改用中文括号；"
+                "该错误会中断本文件后续全部检查项。")
+    if "tab" in s.lower() or "found character '\\t'" in s:
+        return "　↳ 成因提示：YAML 中不得使用制表符缩进，请改为空格。"
+    return ""
+
+
 def _out(msg=""):
     if not _QUIET:
         print(msg)
@@ -75,7 +93,7 @@ def check_manifest():
     try:
         mf = load_yaml(path)
     except Exception as e:
-        err(f"manifest.yaml 解析失败：{e}")
+        err(f"manifest.yaml 解析失败：{e}{_yaml_hint(e)}")
         return []
 
     tpls = mf.get("templates") or []
@@ -116,7 +134,7 @@ def check_template(t):
     try:
         doc = load_yaml(path)
     except Exception as e:
-        err(f"{tid}: YAML 解析失败：{e}")
+        err(f"{tid}: YAML 解析失败：{e}{_yaml_hint(e)}")
         return
     ok(f"YAML 解析成功 v{doc.get('version')}")
 

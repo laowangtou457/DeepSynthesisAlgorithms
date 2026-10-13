@@ -22,6 +22,18 @@
   R5 REQUIRED_KEYS         按产物形态（synopsis／script／storyboard）核对必备顶层字段
   R6 ACT_STRUCTURE         （仅 script）acts 恰为 3 幕，且每场 act_no 与所属幕一致
 
+剧本层补充规则（SW-005 `script_v1` v2.0.0，2026-10-13 依导演视角独立评审 `SR-01`~`SR-11` 新增）：
+  R20 DIALOGUE_TYPE_ENUM   dialogue[].type 仅限「对白／旁白／画外音」（SR-09：该枚举此前未登记）
+  R21 UNSPECIFIED_OWNER    缺口台账 unspecified[].owner 仅限「算法作者／客户／运维」；
+                           且**客户侧缺口不得前移到下游**（SR-02）——下游（分镜／提示词）职责上
+                           无法补叙事事实与设计确认，把「待客户确认」推给下游阶段等于把洞换个位置继续走。
+                           · 剧本层：`owner=客户` 者 `fill_stage` 必须为 `script`（本层发起追问）；
+                           · 分镜层：`owner=客户` 者 `fill_stage` 不得为 `shot_prompt`。
+                           本条把该口径从「靠人记着」变成「跑得出来」。
+  R22 SCENE_DURATION_FLOOR 每场 est_seconds 须 ≥ 8 秒（＝单镜时长下限 4s × 生成单元最少 2 镜）——
+                           SR-08：场时长事实上就是该场的「镜数预算」，低于 8 秒下游切不出任何合规单元。
+                           （纵向求和另有 R4；本规则管的是横向「够不够切」。）
+
 分镜层规则（SW-006 `storyboard_v1`，2026-10-13 新增，依规范 §3.5／§3.6／§4.2）：
   R7  SHOT_ID_FORMAT       shot_id 唯一且形如 S<场号两位>-SH<镜号三位>
   R8  SHOT_NO_SEQ          同一场内 shot_no 从 1 起连续、不跳号
@@ -67,6 +79,14 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 # ---------------- 封闭枚举（唯一真值来源，改动须同步模板与 SCHEMA.md） ----------------
 PURPOSE_ENUM = ["建立", "升级", "转折", "反转", "收束"]
 FILL_STAGE_ENUM = ["synopsis", "script", "storyboard", "shot_prompt"]
+
+# 剧本层封闭枚举（2026-10-13 依 SR-09 / SR-02 新增登记）
+DIALOGUE_TYPE_ENUM = ["对白", "旁白", "画外音"]
+OWNER_ENUM = ["算法作者", "客户", "运维"]      # 缺口台账的闭合责任人
+OWNER_CLIENT = "客户"
+
+# 场时长下限（秒）—— 单镜时长下限 4s × 生成单元最少 2 镜（SR-08：场时长＝该场的镜数预算）
+SCENE_MIN_SECONDS = 8
 
 # 分镜层封闭枚举（规范 §3.7.1 / §3.7.2 / §3.7.5）
 SHOT_SIZE_ENUM = ["extreme_wide", "wide", "full", "medium", "close_up", "extreme_close_up"]
@@ -235,7 +255,7 @@ def rule_required_keys(doc, shape, where):
         "synopsis": ["title", "logline", "protagonist", "supporting", "world",
                      "conflict", "scenes_outline", "ending", "forbidden_items",
                      "total_est_seconds", "unspecified"],
-        "script": ["title", "logline", "genre", "style_bible", "characters", "acts",
+        "script": ["title", "logline", "genre", "style_bible", "characters", "props", "acts",
                    "forbidden_items", "total_est_seconds", "unspecified"],
         "storyboard": ["title", "genre", "style_ref", "aspect_ratio_default",
                        "total_duration_ms", "units", "shots", "forbidden_items",
@@ -270,6 +290,86 @@ def rule_act_structure(doc, where):
         err(f"{where} · R6 ACT_STRUCTURE：{len(bad)} 处不一致 → " + "；".join(bad[:5]))
     else:
         ok(f"{where} · R6 ACT_STRUCTURE：3 幕齐备，各场 act_no 归属一致")
+
+
+# ---------------- 剧本层补充规则（SW-005 · script_v1 v2.0.0 · 依 SR-02 / SR-08 / SR-09） ----------------
+def rule_dialogue_type(doc, where):
+    """R20：dialogue[].type 仅限「对白／旁白／画外音」（SR-09）。"""
+    entries = []
+    for ai, act in enumerate(doc.get("acts") or []):
+        if not isinstance(act, dict):
+            continue
+        for si, sc in enumerate(act.get("scenes") or []):
+            if not isinstance(sc, dict):
+                continue
+            for di, d in enumerate(sc.get("dialogue") or []):
+                if isinstance(d, dict):
+                    entries.append((f"acts[{ai}].scenes[{si}].dialogue[{di}]", d.get("type")))
+    if not entries:
+        warn(f"{where} · R20 DIALOGUE_TYPE_ENUM：无对白条目（跳过）")
+        return
+    bad = [f"{loc}.type = 『{v}』" for loc, v in entries if v not in DIALOGUE_TYPE_ENUM]
+    if bad:
+        err(f"{where} · R20 DIALOGUE_TYPE_ENUM：越界/缺失 {len(bad)} 处 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R20 DIALOGUE_TYPE_ENUM：{len(entries)} 条 dialogue.type 全部落在三值枚举内")
+
+
+def rule_unspecified_owner(doc, shape, where):
+    """R21：缺口台账 owner 枚举；且「客户侧缺口不得前移」（SR-02）。
+
+    shape == script     → owner=客户 者 fill_stage 必须为 script（本层，发起追问的阶段）
+    shape == storyboard → owner=客户 者 fill_stage 不得为 shot_prompt（下游同样无权补）
+    """
+    items = doc.get("unspecified") or []
+    if not isinstance(items, list) or not items:
+        warn(f"{where} · R21 UNSPECIFIED_OWNER：无 unspecified 条目（跳过）")
+        return
+    objs = [it for it in items if isinstance(it, dict)]
+    if not any("owner" in it for it in objs):
+        warn(f"{where} · R21 UNSPECIFIED_OWNER：条目均未含 owner（跳过；synopsis 层未定义该字段）")
+        return
+    bad = []
+    for i, it in enumerate(objs):
+        o = it.get("owner")
+        fs = it.get("fill_stage")
+        if o not in OWNER_ENUM:
+            bad.append(f"unspecified[{i}].owner = 『{o}』")
+        elif o == OWNER_CLIENT:
+            if shape == "script" and fs != "script":
+                bad.append(f"unspecified[{i}] owner=客户 但 fill_stage=『{fs}』"
+                           f"（须为 script——本层发起追问，下游无人能补）")
+            elif shape == "storyboard" and fs == "shot_prompt":
+                bad.append(f"unspecified[{i}] owner=客户 但 fill_stage=『shot_prompt』"
+                           f"（不得前移至下游——下游同样无权补）")
+    if bad:
+        err(f"{where} · R21 UNSPECIFIED_OWNER：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R21 UNSPECIFIED_OWNER：{len(objs)} 条 owner 合规，"
+           f"客户侧缺口均未前移至下游")
+
+
+def rule_scene_duration_floor(doc, shape, where):
+    """R22：每场 est_seconds ≥ SCENE_MIN_SECONDS（场时长＝该场镜数预算，SR-08）。"""
+    bad, seen = [], 0
+    for sc, loc in iter_scenes(doc, shape):
+        if not isinstance(sc, dict):
+            continue
+        v = sc.get("est_seconds")
+        if not isinstance(v, (int, float)):
+            bad.append(f"{loc}.est_seconds 非数值（{v}）")
+            continue
+        seen += 1
+        if v < SCENE_MIN_SECONDS:
+            bad.append(f"{loc}.est_seconds={v} < {SCENE_MIN_SECONDS}")
+    if not seen:
+        warn(f"{where} · R22 SCENE_DURATION_FLOOR：无场次可校（跳过）")
+        return
+    if bad:
+        err(f"{where} · R22 SCENE_DURATION_FLOOR：{len(bad)} 处低于下限 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R22 SCENE_DURATION_FLOOR：{seen} 场 est_seconds 均 ≥ {SCENE_MIN_SECONDS}s"
+           f"（下游单镜下限 4s × 单元最少 2 镜）")
 
 
 # ---------------- 分镜层规则（SW-006 · storyboard_v1） ----------------
@@ -595,12 +695,16 @@ def validate_doc(doc, where):
         rule_static_pov_params(doc, where)
         rule_transition_side(doc, where)
         rule_gate(doc, where)
+        rule_unspecified_owner(doc, shape, where)
         return
     rule_purpose_enum(doc, shape, where)
     rule_scene_no_continuity(doc, shape, where)
     rule_est_seconds_sum(doc, shape, where)
+    rule_scene_duration_floor(doc, shape, where)
     if shape == "script":
         rule_act_structure(doc, where)
+        rule_dialogue_type(doc, where)
+        rule_unspecified_owner(doc, shape, where)
 
 
 def scan_examples():
@@ -649,7 +753,7 @@ def validate_file(path):
 
 def main():
     global QUIET, DURATION_MIN_MS, DURATION_MAX_MS
-    ap = argparse.ArgumentParser(description="输出契约校验器（含 purpose 封闭枚举与分镜层质量门）")
+    ap = argparse.ArgumentParser(description="输出契约校验器（purpose/dialogue.type 封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门）")
     ap.add_argument("--file", help="校验单个 JSON（或含 ```json 块的 .md）文件")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--duration-bounds", metavar="MIN-MAX",
@@ -671,6 +775,9 @@ def main():
         print(f"根目录：{BASE}")
         print(f"purpose 枚举：{'／'.join(PURPOSE_ENUM)}")
         print(f"fill_stage 枚举：{'／'.join(FILL_STAGE_ENUM)}")
+        print(f"dialogue.type 枚举：{'／'.join(DIALOGUE_TYPE_ENUM)} ｜ "
+              f"owner 枚举：{'／'.join(OWNER_ENUM)}（owner=客户 者 fill_stage 须为 script）")
+        print(f"场时长下限：{SCENE_MIN_SECONDS}s（单镜 4s × 单元最少 2 镜）")
         print(f"分镜单镜时长区间：{DURATION_MIN_MS // 1000}–{DURATION_MAX_MS // 1000}s"
               f"（质量门阈值引用 audit_shots.py 的 GATE）")
 
@@ -688,6 +795,9 @@ def main():
             "warnings": RESULT["warnings"],
             "purpose_enum": PURPOSE_ENUM,
             "fill_stage_enum": FILL_STAGE_ENUM,
+            "dialogue_type_enum": DIALOGUE_TYPE_ENUM,
+            "owner_enum": OWNER_ENUM,
+            "scene_min_seconds": SCENE_MIN_SECONDS,
             "shot_size_enum": SHOT_SIZE_ENUM,
             "move_enum": MOVE_ENUM,
             "duration_bounds_ms": [DURATION_MIN_MS, DURATION_MAX_MS],
