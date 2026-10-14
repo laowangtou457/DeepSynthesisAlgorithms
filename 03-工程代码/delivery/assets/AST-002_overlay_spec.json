@@ -1,6 +1,6 @@
 {
-  "spec_version": "1.0.0",
-  "generated_at": "2026-10-12T16:33:08+08:00",
+  "spec_version": "1.1.0",
+  "generated_at": "2026-10-14T10:04:57+08:00",
   "generator": {
     "tool": "gen_overlays.py",
     "style": "dark_pill",
@@ -8,13 +8,13 @@
     "font_file": "C:/Windows/Fonts/msyhbd.ttc",
     "font_name": "微软雅黑 Bold（系统字体，仅预览用）",
     "font_is_licensed": false,
-    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、**NT-04**）"
+    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、NT-04）"
   },
   "compliance": {
     "standard": "GB 45438—2025 §5.4",
     "requirements": {
       "text_contains": "「人工智能」或「AI」+「生成」和/或「合成」",
-      "location": "画面边或角；片头卡位于起始画面",
+      "location": "画面边或角（本项目**采角标常驻** —— SYS-Q15 定案 2026-10-14）",
       "height_ratio_min": 0.05,
       "duration_sec_min": 2
     },
@@ -26,17 +26,34 @@
     "check_result": "pass"
   },
   "usage": {
-    "step_1": "把 overlay_intro_* 置于成片起始画面，展示满 3 秒",
-    "step_2": "把 overlay_corner_* 叠加到画面边角（推荐右下角），建议全片保留",
-    "step_3": "不得缩小、裁切、模糊、遮挡或改变标识文字的可辨识度",
-    "step_4": "避免放在被平台 UI（进度条/按钮）遮挡的区域",
-    "step_5": "发布时按平台要求勾选/声明「AI 生成」相关选项",
+    "form_final": "**角标（边角常驻）** —— SYS-Q15 定案 2026-10-14「使用角标形式」，**不做片头卡**",
+    "step_1": "把 `overlay_corner_short_*` 叠加到画面边角（推荐右下角），**全片常驻**",
+    "step_2": "不得缩小、裁切、模糊、遮挡或改变标识文字的可辨识度",
+    "step_3": "避免放在被平台 UI（进度条/按钮）遮挡的区域",
+    "step_4": "发布时按平台要求勾选/声明「AI 生成」相关选项",
+    "step_5": "完整文案由**交付合规声明**（交付四件套之一）承载，不在画面上重复",
     "forbidden": "不得删除、篡改、隐匿标识（《标识办法》§10）"
   },
   "texts": {
     "full_final": "本文件由AI生成，已经过合规验证",
     "full_suggested": "本文件由人工智能（AI）生成，请注意甄别",
     "short_badge": "AI生成"
+  },
+  "decision": {
+    "issue": "SYS-Q15（标识素材文案与样式）",
+    "decided_at": "2026-10-14",
+    "decided_by": "项目方",
+    "form": "角标（corner badge，边角常驻）",
+    "form_note": "项目方 2026-10-14 定案「**使用角标形式**」——**不做片头卡**；片头卡与长文案角标保留为生成器能力，标 `adopted=false`",
+    "style_final": "dark_pill",
+    "style_note": "项目方未另择视觉样式，取生成器默认 `dark_pill`（深色胶囊 + 白字，通用推荐）",
+    "text_final": "本文件由AI生成，已经过合规验证",
+    "badge_text": "AI生成",
+    "division": "画面标识只用**短文案角标** `AI生成`；完整文案由**交付合规声明**承载，不在画面上重复",
+    "pending": [
+      "替换为**商用授权字体**（现用系统字体 `msyhbd.ttc`，仅作预览；规范 §7.5、NT-04）",
+      "接入适配层时按目标平台**安全区**微调角标边距"
+    ]
   },
   "assets": [
     {
@@ -47,7 +64,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 1,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     },
     {
       "file": "overlay_corner_16x9.png",
@@ -57,7 +75,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 1,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     },
     {
       "file": "overlay_corner_short_16x9.png",
@@ -67,7 +86,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 1,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": true
     },
     {
       "file": "overlay_corner_suggest_16x9.png",
@@ -77,7 +97,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 1,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     },
     {
       "file": "overlay_intro_9x16.png",
@@ -87,7 +108,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 2,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     },
     {
       "file": "overlay_corner_9x16.png",
@@ -97,7 +119,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 2,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     },
     {
       "file": "overlay_corner_short_9x16.png",
@@ -107,7 +130,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 1,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": true
     },
     {
       "file": "overlay_corner_suggest_9x16.png",
@@ -117,7 +141,8 @@
       "font_px": 65,
       "height_ratio": 0.0602,
       "lines": 2,
-      "duration_ms": 3000
+      "duration_ms": 3000,
+      "adopted": false
     }
   ]
 }

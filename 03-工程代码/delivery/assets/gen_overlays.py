@@ -4,6 +4,12 @@
 标识素材生成器（overlay asset generator）
 
 规范依据：NORM-DELIVERY-001《分镜提示词交付规范 v1.3》（现行版）§7（V1.0 为 §6；V1.2／V1.3 未改变章节结构，故章节号继续有效）
+
+★ SYS-Q15 定案（2026-10-14 项目方：**使用角标形式**）：
+  · **形态**：角标（边角常驻）—— **不做片头卡**；片头卡与长文案角标保留为生成器能力，标 `adopted=false`。
+  · **视觉样式**：取生成器默认 `dark_pill`（深色胶囊 + 白字）；未另择他样式。
+  · **文案分工**：画面标识只用短文案 `AI生成`；完整文案由**交付合规声明**承载。
+  · **硬指标不变**：字高 ≥5%（本项目 6%）、持续 ≥2s（本项目 3s）。
 硬指标来源：GB 45438—2025 §5.4
   · 文字须含「人工智能」或「AI」+「生成」和/或「合成」
   · 位于画面边或角（片头卡位于起始画面）
@@ -352,8 +358,13 @@ def main() -> int:
     items = generate(outdir, args.font, args.ratio, args.text, args.text_short,
                      args.style, not args.no_suggest_variant)
 
+    # SYS-Q15 定案（2026-10-14 项目方：**使用角标形式**）——
+    #   采纳件只有「短文案角标」；片头卡与长文案角标保留为生成器能力，标 adopted=false。
+    for it in items:
+        it["adopted"] = (it.get("type") == "corner_badge_short")
+
     spec = {
-        "spec_version": "1.0.0",
+        "spec_version": "1.1.0",
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "generator": {
             "tool": "gen_overlays.py",
@@ -368,7 +379,7 @@ def main() -> int:
             "standard": "GB 45438—2025 §5.4",
             "requirements": {
                 "text_contains": "「人工智能」或「AI」+「生成」和/或「合成」",
-                "location": "画面边或角；片头卡位于起始画面",
+                "location": "画面边或角（本项目**采角标常驻** —— SYS-Q15 定案 2026-10-14）",
                 "height_ratio_min": 0.05,
                 "duration_sec_min": 2,
             },
@@ -380,17 +391,34 @@ def main() -> int:
             "check_result": "pass",
         },
         "usage": {
-            "step_1": "把 overlay_intro_* 置于成片起始画面，展示满 3 秒",
-            "step_2": "把 overlay_corner_* 叠加到画面边角（推荐右下角），建议全片保留",
-            "step_3": "不得缩小、裁切、模糊、遮挡或改变标识文字的可辨识度",
-            "step_4": "避免放在被平台 UI（进度条/按钮）遮挡的区域",
-            "step_5": "发布时按平台要求勾选/声明「AI 生成」相关选项",
+            "form_final": "**角标（边角常驻）** —— SYS-Q15 定案 2026-10-14「使用角标形式」，**不做片头卡**",
+            "step_1": "把 `overlay_corner_short_*` 叠加到画面边角（推荐右下角），**全片常驻**",
+            "step_2": "不得缩小、裁切、模糊、遮挡或改变标识文字的可辨识度",
+            "step_3": "避免放在被平台 UI（进度条/按钮）遮挡的区域",
+            "step_4": "发布时按平台要求勾选/声明「AI 生成」相关选项",
+            "step_5": "完整文案由**交付合规声明**（交付四件套之一）承载，不在画面上重复",
             "forbidden": "不得删除、篡改、隐匿标识（《标识办法》§10）",
         },
         "texts": {
             "full_final": args.text,
             "full_suggested": TEXT_FULL_SUGGEST,
             "short_badge": args.text_short,
+        },
+        "decision": {
+            "issue": "SYS-Q15（标识素材文案与样式）",
+            "decided_at": "2026-10-14",
+            "decided_by": "项目方",
+            "form": "角标（corner badge，边角常驻）",
+            "form_note": "项目方 2026-10-14 定案「**使用角标形式**」——**不做片头卡**；片头卡与长文案角标保留为生成器能力，标 `adopted=false`",
+            "style_final": args.style,
+            "style_note": "项目方未另择视觉样式，取生成器默认 `dark_pill`（深色胶囊 + 白字，通用推荐）",
+            "text_final": args.text,
+            "badge_text": args.text_short,
+            "division": "画面标识只用**短文案角标** `AI生成`；完整文案由**交付合规声明**承载，不在画面上重复",
+            "pending": [
+                "替换为**商用授权字体**（现用系统字体 `msyhbd.ttc`，仅作预览；规范 §7.5、NT-04）",
+                "接入适配层时按目标平台**安全区**微调角标边距",
+            ],
         },
         "assets": items,
     }
