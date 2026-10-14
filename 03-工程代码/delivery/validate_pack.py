@@ -3,7 +3,7 @@
 """
 交付包校验工具（delivery pack validator）
 
-规范依据：NORM-DELIVERY-001《分镜提示词交付规范 v2.0》（现行版；V1.1→V2.0 均未改变章节结构——V2.0 仅以新增子节 §3.1.1／§3.4.1 承载契约扩容，故 §8.3 的**章节号**与 18 项门禁**项数**不变；但 V2.0 的**契约内容**已变——顶层增 `props[]`／`forbidden_items`、镜头增 `prop_refs`、`prompt_en` 上限 900 → 1200，本脚本的 schema 校验随之生效）
+规范依据：NORM-DELIVERY-001《分镜提示词交付规范 v2.2》（现行版；V1.1→V2.2 均未改变章节结构——V2.0 以新增子节 §3.1.1／§3.4.1 承载契约扩容、V2.1 补 `stage_chain` 枚举 `revise` 与 PDF 转正、V2.2 补 §1.4 目录树与 §8.4 留档行，故 §8.3 的**章节号**与 18 项门禁**项数**不变；但 V2.0 的**契约内容**已变——顶层增 `props[]`／`forbidden_items`、镜头增 `prop_refs`、`prompt_en` 上限 900 → 1200，本脚本的 schema 校验随之生效。⚠️ **V2.2 的「缺口台账须随包 ＋ 登记 `manifest.json`」不在本脚本的 `self_check` 项内**——§8.3 项数刻意未增（见规范头部 V2.2 块）；台账形态由 `prompts/validate_output.py` 的 **`R37`** 承担）
           §3.8 校验 / §4.2 质量门 / §4.3 单元划分 / §4.5 语速 / §4.6 动作预算
           §6.4 负向归位 / §6.6 时长上下限 / §8.3 交付前自检（18 项）
 对应需求：SW-007、SW-013、SW-014、SW-022、SW-025、SW-026
@@ -616,7 +616,7 @@ def validate_manifest(path: Path, pack_rep: Report | None) -> Report:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="交付包校验工具（NORM-DELIVERY-001 v2.0 §8.3 门禁）")
+    ap = argparse.ArgumentParser(description="交付包校验工具（NORM-DELIVERY-001 v2.2 §8.3 门禁）")
     ap.add_argument("targets", nargs="*", help="提示词包 JSON 路径；缺省校验 examples/ 下全部")
     ap.add_argument("--no-quality-gate", action="store_true",
                     help="跳过镜头语言质量门（不推荐；仅用于中间态调试）")

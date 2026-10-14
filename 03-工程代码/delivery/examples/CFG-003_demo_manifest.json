@@ -4,7 +4,7 @@
   "statement_id": "FR-ST-20261012-0001",
   "created_at": "2026-10-12T16:31:00+08:00",
   "provider": "{{PROVIDER_NAME}}",
-  "spec_version": "NORM-DELIVERY-001 v2.0",
+  "spec_version": "NORM-DELIVERY-001 v2.2",
   "artifacts": {
     "shot_prompt_pack": {
       "present": true,

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://feixuan.example/schemas/CFG-005_manifest.v1.schema.json",
   "title": "交付清单 (delivery manifest)",
-  "description": "NORM-DELIVERY-001《分镜提示词交付规范 v2.0》（现行版）§1.4 的交付包清单定义（V1.1→V2.0 均未改变章节结构——V2.0 仅以新增子节承载扩容，故 §1.4 编号继续有效；本 Schema 自身的 v1.1.0 修订号不变、内容未改动，V2.0 只影响 `spec_version` 取值与提示词包 Schema）。用于校验交付包完整性与四件套齐备（SW-014 / SW-026）。v1.1.0 变化：新增 quality_gate_report 随包留档项、quality_gate 质量门结论、units 单元摘要、human_review 人工核对记录；自检项 12 → 18；adapters.verify_status 增加 partial；fileEntry 增加 two_section（适配文件两段式）。",
+  "description": "NORM-DELIVERY-001《分镜提示词交付规范 v2.2》（现行版）§1.4 的交付包清单定义（V1.1→V2.2 均未改变章节结构——V2.0 以新增子节承载扩容、V2.1 补 `stage_chain` 枚举与 PDF 转正、**V2.2 在 §1.4 增「条件必须」（`stage_chain` 含 `revise` 时缺口台账须随包并入 `files` 并在 `manifest.json` 登记）**，故 §1.4 编号继续有效；本 Schema 自身的 v1.1.0 修订号不变、内容未改动——`files` 为通用文件列表，**V2.2 的台账要求无需增字段**，V2.0~V2.2 只影响 `spec_version` 取值与提示词包 Schema）。用于校验交付包完整性与四件套齐备（SW-014 / SW-026）。v1.1.0 变化：新增 quality_gate_report 随包留档项、quality_gate 质量门结论、units 单元摘要、human_review 人工核对记录；自检项 12 → 18；adapters.verify_status 增加 partial；fileEntry 增加 two_section（适配文件两段式）。",
   "type": "object",
   "required": ["manifest_version", "pack_id", "statement_id", "created_at", "artifacts"],
   "additionalProperties": false,
