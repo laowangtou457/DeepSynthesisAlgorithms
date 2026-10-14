@@ -1490,7 +1490,7 @@ def validate_doc(doc, where):
     if shape == "pack":
         # 交付包（SW-007）走的是一套**自足**的规则：
         #   · 顶层必备字段由 R27 统一核对（R5 的 need 表不列 pack，避免两处口径打架）；
-        #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层六段无此段），故 R2 不适用——
+        #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层**八段**无此段；v2.0 起为八段／9 键），故 R2 不适用——
         #     上游台账留在上游产物自身，本层不输出、不搬运、不重编号。
         rule_pack_required(doc, where)
         rule_pack_prop_anchor(doc, where)        # R35（v2.0 起为正向：道具锚一致性）
