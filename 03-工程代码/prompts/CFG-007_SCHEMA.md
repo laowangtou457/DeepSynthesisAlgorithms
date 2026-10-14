@@ -10,11 +10,13 @@
 #   task_type   generate | summarize | rewrite | extract | guard
 #   stage       业务链路阶段（仅 AI 漫剧业务链路模板填写，其他模板留空）：
 #                 synopsis | script | storyboard | shot_prompt | revise
-#               —— 与《分镜提示词交付规范 **v2.0**》§3.2 的 stage_chain 枚举对齐
-#                  （2026-10-14 三次更新：v1.1 → v1.2 → v1.3 → **现行版 v2.0**；v2.0 为**结构变更**——
+#               —— 与《分镜提示词交付规范 **v2.1**》§3.2 的 stage_chain 枚举对齐
+#                  （2026-10-14 五次更新：v1.1 → v1.2 → v1.3 → v2.0 → **现行版 v2.1**；v2.0 为**结构变更**——
 #                    §3.1 顶层 六段 → **八段**（增 `props[]`／`forbidden_items`）、§3.6 增 `prop_refs`、
-#                    §3.7.6 长度建议值上修；**§3.2 的 stage_chain 枚举本身未变**。规范正文现由
-#                    `01-架构设计/SPEC-005_分镜提示词交付规范-v2.0.md` 承载，`SPEC-004` v1.3 及更早保留不删），
+#                    §3.7.6 长度建议值上修；**v2.1 为约束变更**——§3.2 的 `stage_chain` 枚举**补齐第 5 值 `revise`**
+#                    （四值 → 五值，`ISSUE-017` 处置 (a)）、§9.1 的 PDF 转正式格式（`ISSUE-016`）、交付包
+#                    `schema_version` 2.0.0 → **2.1.0**。规范正文现由
+#                    `01-架构设计/SPEC-006_分镜提示词交付规范-v2.1.md` 承载，`SPEC-005` v2.0 及更早保留不删），
 #                  用于下游按链路顺序编排模板、并写入交付包的 generation_trace.stage_chain
 #   —— 业务链路模板的「锚点首定义」约定（2026-10-13 定案，经导演视角两轮评审）：
 #       ① 角色外观（age_band / appearance_lock_zh）、全片风格串与道具／关键物件外观（props）
@@ -141,13 +143,14 @@
 #          ⚠️ **`fill_stage` 一律取 `revise`**（本层即台账的责任阶段，**无处可推**，见枚举登记）。
 #          **`stage_chain` 照实填 `["revise"]`、`templates` 只含 `revise_v1`**——
 #            本层没有跑过那四段模板，填它们＝**伪造溯源**。
-#            ⚠️ 由此暴露**契约侧已知缺口 `ISSUE-017`**：交付 schema 的
-#              `stage_chain.items.enum` 只有 `synopsis｜script｜storyboard｜shot_prompt` 四值，
-#              而其 `description` 与规范正文均写「与 SYS-Q11 确认的 **5 段链路**一致」——
-#              **枚举缺 `revise`**。故本层产物会在 `validate_pack.py` 的 schema 校验上留 **1 条 BLOCK**；
-#              **该 BLOCK 是契约缺陷的可见证据、不是本层实现缺陷**，处置口径同 `ISSUE-015`：
-#              **留 BLOCK 可见、改契约而非改产物**（候选 (a) 规范+schema 同批补 `revise`＝规范**次版本**；
-#              (b) 复用 `shot_prompt`＝溯源失真，不推荐）。
+#            ✅ **曾暴露的契约侧缺口 `ISSUE-017` 已闭环（2026-10-14）**：交付 schema 的
+#              `stage_chain.items.enum` 原只有 `synopsis｜script｜storyboard｜shot_prompt` 四值，
+#              而其 `description` 与规范正文均写「与 SYS-Q11 确认的 **5 段链路**一致」——**枚举缺 `revise`**，
+#              故本层产物一度在 `validate_pack.py` 的 schema 校验上留 **1 条 BLOCK**。
+#              **该 BLOCK 是契约缺陷的可见证据、不是本层实现缺陷**；项目方裁决取 **处置 (a)**
+#              （规范 + schema 同批补 `revise`＝规范**次版本**，落地 `T-062`）：规范 **V2.1** 与
+#              `CFG-006` schema **2.1.0** 的枚举已同批补齐 → **本层与用例的 BLOCK 归零、产物零改动**。
+#              ⚠️ 纪律留档：**留 BLOCK 可见、改契约而非改产物**（复用 `shot_prompt` 可让门禁变绿 = 伪造溯源）。
 #          **不做模型适配**（同 SW-007 的刻意边界）：规范 §6.1「基准唯一 + 单向投影」，适配由
 #            `delivery/config/CFG-001_model_adapters.yaml` 配置驱动。
 #          **设计类来源的落点**（与 ④／⑥ 呼应，2026-10-14 订正）：本层「客户提供／系统提议待确认」

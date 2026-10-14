@@ -1347,8 +1347,8 @@ def rule_pack_required(doc, where):
     if miss:
         err(f"{where} · R27 PACK_REQUIRED：顶层缺段 → {miss}")
     sv = doc.get("schema_version")
-    if sv != "2.0.0":
-        warn(f"{where} · R27 PACK_REQUIRED：schema_version=『{sv}』（当前 schema 为 2.0.0）")
+    if sv != "2.1.0":
+        warn(f"{where} · R27 PACK_REQUIRED：schema_version=『{sv}』（当前 schema 为 2.1.0）")
     sb = doc.get("style_bible") if isinstance(doc.get("style_bible"), dict) else {}
     style_id = sb.get("style_id")
     chars = [c for c in (doc.get("characters") or []) if isinstance(c, dict)]

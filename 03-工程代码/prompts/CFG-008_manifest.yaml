@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/TPL-009_shot_prompt_v1.yaml
-    version: "2.0.0"
+    version: "2.1.0"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:
@@ -136,14 +136,14 @@ templates:
       - 本层只产出**通用规范包（基准）**，不做模型适配：适配是第 2 层的「单向投影」，由 delivery/config/CFG-001_model_adapters.yaml 配置驱动（规范 §6.1「基准唯一 + 配置化」）——把适配写进模板等于每接一个模型就要改一次提示词
       - 分段策略：segment 默认 **auto**（按上游镜数自动决定：≤6 镜 all、>6 镜 package_head + 逐单元），因为规范 §3.5 明写「生成单元 = 一次生成调用所提交的完整分镜块」，分段粒度与业务语义粒度一致；输出超单次窗口时进入 fallback.output_too_long；拼装后须能过 validate_pack.py（⚠️ **分段产物本身不可能单独过交付包 schema**——required 六项不齐，只做段级结构自检）
       - 禁止项承接（**v2.0.0 起改为「原样承继」**）：剧本层与分镜层的**顶层** `forbidden_items`（客户侧「禁止出现的元素」，上游输入变量名 `must_avoid`）**须逐条原样写入交付包顶层 `forbidden_items`**——规范 §3.1 自 V2.0 起已增设该独立容器，v1.1 的「不搬运」处置**已撤销**（`ISSUE-012` 闭环）。⚠️ **边界写死**（规范 §3.1.1 三层）：本容器**只承接客户业务层禁忌**，**不得**写入 `A1-0x` 受控词库的分类码或词条（后者属**法定合规层**，由 SW-009/010 双闸承载、结果落 `meta.compliance`，**绝不进包**）。⚠️ 与之区分：`characters[].forbidden`（规范 §3.4）是**角色级**禁忌（本层从 `appearance_lock_zh` 提炼），属交付包字段集的**内建**字段，须照常产出——两者**语义不同、不得合并**。判据 **R36** 从交付 schema 读字段集，机器化「契约外字段禁入」（v2.0 起检查**九处**）
-    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` **2.0.0**，对齐 `03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 **v2.0**》§3（含 §3.1.1 三层禁忌边界／§3.4.1 道具锚点）／§4／§5／§6.1；用例见 examples/CASE-002_shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）。**v2.0.0 依契约升版批次（`T-054`＋`T-055`＋`T-056` 合并为同一次动作，依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015` 定案 (a)）**：① `output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs` → **属 output 字段增删，故为主版本升版**；② 承继列**恢复 `prop_refs`**、`forbidden_items` **进出承继列**（v1.1 的处置随契约补齐**已撤销**）；③ `prompt_en` 上限由 schema 侧 900 → **1200** 字符、§3.7.6 长度建议上修。**`ISSUE-011`／`ISSUE-012` 均已闭环**（契约侧已补齐，非「只登记」）。⚠️ **门禁现状**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` 对 `CASE-002` **BLOCK 1 → 0**（原唯一 BLOCK 系 `prompt_en` 上限，已随契约上修归零）
+    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` **2.1.0**，对齐 `03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 **v2.1**》§3（含 §3.1.1 三层禁忌边界／§3.4.1 道具锚点）／§4／§5／§6.1；用例见 examples/CASE-002_shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）。**v2.0.0 依契约升版批次（`T-054`＋`T-055`＋`T-056` 合并为同一次动作，依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015` 定案 (a)）**：① `output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs` → **属 output 字段增删，故为主版本升版**；② 承继列**恢复 `prop_refs`**、`forbidden_items` **进出承继列**（v1.1 的处置随契约补齐**已撤销**）；③ `prompt_en` 上限由 schema 侧 900 → **1200** 字符、§3.7.6 长度建议上修。**`ISSUE-011`／`ISSUE-012` 均已闭环**（契约侧已补齐，非「只登记」）。⚠️ **门禁现状**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` 对 `CASE-002` **BLOCK 1 → 0**（原唯一 BLOCK 系 `prompt_en` 上限，已随契约上修归零）
 
   - id: revise_v1
     name: 提示词解析重构
     task_type: generate
     stage: revise
     file: templates/TPL-014_revise_v1.yaml
-    version: "1.0.0"
+    version: "1.1.0"
     status: active
     variables: [source_material, source_kind, pack_meta, client_visual_input, segment, gap_answers]
     scenes:
