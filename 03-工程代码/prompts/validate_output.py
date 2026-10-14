@@ -133,6 +133,28 @@
                            每条恰好 7 字段；`blocking` 须为布尔；`fill_stage` 一律为 `revise`
                            （本层即责任阶段，无处可推）。
 
+对话式修改层规则（SW-002 `modify_v1`／`check_consistency_v1`，2026-10-14 新增；形态 modify／drift_report）：
+  R38 MODIFY_SHAPE        **变更说明的形态与内在自洽**（SW-002 的产物＝修订后的完整产物 + 变更说明）——
+                          顶层恰好 6 键；`target_stage` 为封闭 5 值（synopsis｜script｜storyboard｜
+                          shot_prompt｜pack）；`artifact` 必须是**可识别的完整产物**（非 diff 片段），
+                          且其形态须与 `target_stage` 相符；`change_log` 每条恰好 8 键、`op_id` 形如
+                          `MOD-\d{2}` 且唯一不跳号、`op_type`／`upstream_impact` 落在枚举内、
+                          `target_path` 须能在 `artifact` 中解析到（`insert` 除外）；`unresolved` 每条
+                          恰好 4 键、`blocking` 为布尔；`clarification` 恰好 2 键，且 `needed=true` 时
+                          `change_log` 必空、`questions` 为 1~3 条（澄清期间不动手）。
+  R39 DRIFT_REPORT_SHAPE  **漂移报告的形态与三数自洽**（`check_consistency_v1` 的产物＝只报告不修改）——
+                          顶层恰好 4 键；`pair_role` 两值、`category` 四值、`verdict` 三值；
+                          `findings` 非空、每条恰好 8 键、`finding_id` 形如 `DR-\d{2}` 且唯一不跳号，
+                          且**必含 `anchor` 类条目**（锚类「零容忍」要求**证明查过**——空数组与「只有
+                          别的类」都无法区分「锚全部一致」与「根本没查锚」）；`summary` 三数
+                          **互相推导**（`checked_count`＝清单条数、`drift_count`＝非 `consistent` 条数、
+                          `verdict` 随之），复算不一致即判失败。
+  ⚠️ **R38 的能力边界（如实登记）**：本条只判**外层形态与内在自洽**。三项需**外部基准**的事
+     它**判不了**——「未点名处逐字保持」「`before` 逐字性」「牵连是否漏改」（三者都需
+     `current_artifact`，同 R31 需 `--storyboard` 的情形）；**也刻意不递归校验 `artifact` 内部**
+     （它是该阶段的完整产物，须由对应阶段判据另行校验；`target_stage=pack` 时走
+     `delivery/validate_pack.py`）。把「无判据」写成「已覆盖」是本工程反复出现的一类缺陷的根因。
+
   ⚠️ 口径差异（必须知道）：R19 判定的是**结构化字段是否有值**（SW-006 的产物）；
      audit_shots.py 判定的是**适配投喂文本**（SW-007 的产物）。两者对象不同——
      本层判定通过不等于下游文本判定通过，SW-007 完成后须对文本再跑一次（规范 §4.8）。
@@ -142,6 +164,8 @@
   python validate_output.py --file out.json     # 校验单个 JSON 文件（真实模型输出）
   python validate_output.py --file out.json --script script.json   # 附带上游剧本 → 启用 R23/R24
   python validate_output.py --file pack.unspecified.json           # 独立缺口台账（revise 层）→ 启用 R37
+  python validate_output.py --file modify_out.json                 # 变更说明（SW-002 modify_v1）→ 启用 R38
+  python validate_output.py --file drift_report.json               # 漂移报告（SW-002 check_consistency_v1）→ 启用 R39
   python validate_output.py --file pack.json --storyboard sb.json  # 附带上游分镜 → 启用 R31 时长守恒
   python validate_output.py --json              # 机器可读结果
   python validate_output.py --duration-bounds 4-15   # 覆盖单镜时长区间（秒）
@@ -329,6 +353,10 @@ EXAMPLES_UPSTREAM = {
     # → 本层**没有模板上游**（输入是客户素材 + pack_meta）。显式登记为空列表，
     #   意在把「本层无上游」这件事写在有权威性的表里，而不是靠读者自己推断。
     "CASE-005_revise-case01.md": [],
+    # SW-002 `modify_v1`（对话式修改）同理**无模板上游**：它的「上游」是运行时的**可选**
+    #   注入项 `upstream_artifact`（零漂移的比对基准），并非 examples 内的固定用例，
+    #   故此处显式登记为空列表（否则「有没有上游」只能靠缺省行为推断，看不出是刻意还是遗漏）。
+    "CASE-006_modify-case01.md": [],
 }
 
 RESULT = {"checks": 0, "errors": [], "warnings": []}
@@ -376,6 +404,14 @@ def detect_shape(doc):
     if (isinstance(doc.get("unspecified"), list)
             and not any(k in doc for k in ("acts", "shots", "units", "scenes_outline", "aigc_meta"))):
         return "ledger"
+    # 对话式修改层（SW-002，2026-10-14 新增）：`modify_v1` 的变更说明 与 `check_consistency_v1`
+    #   的漂移报告。二者都与链路阶段**正交**，不属任何 stage 分支。
+    #   ⚠️ 与 ledger 同口径：按**签名键**认定，而非「顶层键集完全等于契约键集」——否则一旦
+    #      混装进别的键，形态就变成 None、R38／R39 反而不跑，缺陷刚好躲在判据的盲区里。
+    if "change_log" in doc or "modify_version" in doc:
+        return "modify"
+    if "pair_role" in doc or "check_version" in doc:
+        return "drift_report"
     if "acts" in doc:
         return "script"
     if "shots" in doc and "units" in doc:
@@ -1574,11 +1610,321 @@ def rule_lighting_vocab(doc, where):
         ok(f"{where} · R32 LIGHTING_VOCAB：{n} 镜 lighting 与 lighting_default 均为纯词表值")
 
 
+# ---------------- 对话式修改层（SW-002 · `modify_v1` / `check_consistency_v1`，2026-10-14 新增） ----------------
+#   ⚠️ 本层与链路阶段**正交**（`modify_v1` 刻意不填 `stage`，见 TPL-015 版本说明），故**不属任何
+#      stage 分支**——两条规则各自识别独立的产物形态（R38 形态 modify / R39 形态 drift_report）。
+MODIFY_TOP_KEYS = ["modify_version", "target_stage", "artifact",
+                   "change_log", "unresolved", "clarification"]
+MODIFY_CL_FIELDS = ["op_id", "intent", "target_path", "op_type",
+                    "before", "after", "basis", "upstream_impact"]
+MODIFY_UNRES_FIELDS = ["field", "reason", "need", "blocking"]
+CLARIFY_FIELDS = ["needed", "questions"]
+# `target_stage` 的取值域＝模板 `TPL-015_modify_v1.yaml` variables 原文的封闭枚举
+#   （**取自产物自身的阶段属性**，不是本模板的运行阶段）。⚠️ 与产物形态**不同名的只有一处**：
+#   `shot_prompt` 阶段的产物就是**交付包**（形态 pack），故二者同映射到 pack。
+#   同步：CFG-007_SCHEMA.md 的「封闭枚举登记」块、CFG-008_manifest.yaml（模板变量描述）。
+MODIFY_TARGET_STAGE_ENUM = ["synopsis", "script", "storyboard", "shot_prompt", "pack"]
+TARGET_STAGE_SHAPE = {"synopsis": "synopsis", "script": "script", "storyboard": "storyboard",
+                      "shot_prompt": "pack", "pack": "pack"}
+OP_TYPE_ENUM = ["replace", "normalize", "insert", "delete"]
+UPSTREAM_IMPACT_ENUM = ["none", "duration_sum", "unit_membership", "cross_ref", "other"]
+OP_ID_RE = re.compile(r"^MOD-\d{2}$")
+
+DRIFT_TOP_KEYS = ["check_version", "pair_role", "findings", "summary"]
+DRIFT_FINDING_FIELDS = ["finding_id", "category", "item", "value_a", "value_b",
+                        "location_b", "verdict", "action"]
+DRIFT_SUMMARY_FIELDS = ["checked_count", "drift_count", "verdict"]
+PAIR_ROLE_ENUM = ["before_after", "upstream_downstream"]
+DRIFT_CATEGORY_ENUM = ["number", "proper_noun", "setting", "anchor"]
+DRIFT_VERDICT_ENUM = ["consistent", "drift", "absent"]
+SUMMARY_VERDICT_ENUM = ["clean", "drift"]
+FINDING_ID_RE = re.compile(r"^DR-\d{2}$")
+
+_PATH_SEG_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)((?:\[\d+\])*)$")
+_PATH_IDX_RE = re.compile(r"\[(\d+)\]")
+
+
+def _keyset(obj, want):
+    """返回 (缺键, 多余键)。⚠️ obj 非 dict 时返回 (None, None)——调用方须先判类型。"""
+    if not isinstance(obj, dict):
+        return None, None
+    return [k for k in want if k not in obj], [k for k in obj if k not in want]
+
+
+def _resolve_json_path(root, path):
+    """把 `shots[0].duration_ms` 这类 JSON 路径落到 `root` 上；解析不到返回 False。
+
+    ⚠️ 刻意**不支持** `[*]` 通配：`change_log[].target_path` 的契约要求「能落到产物中
+       **唯一一个**位置」（TPL-015 output 第 3 项）；通配符意味着落点不唯一 → 直接判不通过。
+    """
+    if not isinstance(path, str) or not path:
+        return False
+    cur = root
+    for seg in path.split("."):
+        m = _PATH_SEG_RE.match(seg)
+        if not m:
+            return False
+        if not isinstance(cur, dict) or m.group(1) not in cur:
+            return False
+        cur = cur[m.group(1)]
+        for ix in _PATH_IDX_RE.findall(m.group(2)):
+            if not isinstance(cur, list) or int(ix) >= len(cur):
+                return False
+            cur = cur[int(ix)]
+    return True
+
+
+def _seq_ids(items, key, pattern):
+    """检查「形如 pattern、全表唯一、不跳号」——R38 的 `op_id` 与 R39 的 `finding_id` 共用。"""
+    bad, nums = [], []
+    for i, it in enumerate(items):
+        v = it.get(key) if isinstance(it, dict) else None
+        if not isinstance(v, str) or not pattern.match(v):
+            bad.append(f"[{i}].{key}=『{v}』（须形如 {pattern.pattern}）")
+            continue
+        n = int(v[-2:])
+        if n in nums:
+            bad.append(f"{key}=『{v}』重复")
+        nums.append(n)
+    if nums and sorted(nums) != list(range(1, len(nums) + 1)):
+        bad.append(f"{key} 序号不连续（得到 {sorted(nums)}，应为 1..{len(nums)}）")
+    return bad
+
+
+def rule_modify_shape(doc, where):
+    """R38 MODIFY_SHAPE：对话式修改的变更说明（`modify_v1` 的产物）的形态与内在自洽。
+
+    为什么要有这条：SW-002 的产物**不属任何链路阶段**（`modify_v1` 无 `stage`），
+    顶层是一组链路判据都不认识的键（`artifact`／`change_log`／…）——**不识别其形态，
+    它会掉进「无法识别产物形态，跳过」这一句里**，看起来通过、实则一条都没查。
+
+    判据（形态与内在自洽；边界见文件头「R38 的能力边界」）：
+      ① 顶层**恰好** 6 键：modify_version／target_stage／artifact／change_log／unresolved／clarification；
+      ② `target_stage` 落在封闭 5 值内，且 `artifact` 的形态须与它**相符**
+         （`shot_prompt` 与 `pack` 同映射到交付包形态）；
+      ③ `artifact` 必须是**可识别的完整产物**——「可直接替换原产物」的最低要求是它**像一份产物**；
+      ④ `change_log` 每条恰好 8 键；`op_id` 唯一不跳号；`op_type`／`upstream_impact` 落在枚举内；
+         **`target_path` 必须能在 `artifact` 中解析到**（`insert` 除外——新增的路径尚不存在）——
+         这是「修改点与响应点一一对应」里**唯一可脚本化**的那一半；
+      ⑤ `unresolved` 每条恰好 4 键、`blocking` 为**布尔**（字符串 `"false"` 是真值，同 R37 第 ③ 条）；
+      ⑥ `clarification` 恰好 2 键；`needed=true` 时 `change_log` **必空**且 `questions` 为 1~3 条
+         ——「边问边改」会让客户看到的产物与预期错位，且事后无法分辨哪部分是被猜出来的。
+    """
+    tag, bad = "R38 MODIFY_SHAPE", []
+
+    miss, extra = _keyset(doc, MODIFY_TOP_KEYS)
+    if miss is None:
+        err(f"{where} · {tag}：产物非对象")
+        return
+    if miss:
+        bad.append(f"顶层缺键 {miss}")
+    if extra:
+        bad.append(f"顶层多出契约外键 {extra}（该形态只允许恰好 {len(MODIFY_TOP_KEYS)} 键）")
+
+    ver = doc.get("modify_version")
+    if not isinstance(ver, str) or not ver:
+        bad.append(f"modify_version 非非空字符串（值为 『{ver}』）")
+
+    ts = doc.get("target_stage")
+    if ts not in MODIFY_TARGET_STAGE_ENUM:
+        bad.append(f"target_stage=『{ts}』不在封闭枚举 {'／'.join(MODIFY_TARGET_STAGE_ENUM)} 内")
+
+    art, ashape = doc.get("artifact"), None
+    if not isinstance(art, dict):
+        bad.append(f"artifact 非对象（实际 {type(art).__name__}）"
+                   f"—— 须是修订后的**完整产物**，不是 diff 片段")
+    else:
+        ashape = detect_shape(art)
+        if ashape is None:
+            bad.append("artifact 无法识别为任何已知产物形态（既无 acts／shots 也无 scenes_outline）"
+                       "—— 『可直接替换原产物』的最低要求不成立")
+        else:
+            want = TARGET_STAGE_SHAPE.get(ts)
+            if want is not None and ashape != want:
+                bad.append(f"target_stage=『{ts}』对应的产物形态应为 『{want}』，"
+                           f"而 artifact 实际形态为 『{ashape}』（声明与产物不符）")
+
+    clog = doc.get("change_log")
+    if not isinstance(clog, list):
+        bad.append(f"change_log 非数组（实际 {type(clog).__name__}）")
+        clog = []
+    else:
+        bad += _seq_ids(clog, "op_id", OP_ID_RE)
+        for i, rec in enumerate(clog):
+            m2, e2 = _keyset(rec, MODIFY_CL_FIELDS)
+            if m2 is None:
+                bad.append(f"change_log[{i}] 非对象")
+                continue
+            if m2:
+                bad.append(f"change_log[{i}] 缺键 {m2}")
+                continue                      # 缺键时不往下判，避免重复报同一处的噪声
+            if e2:
+                bad.append(f"change_log[{i}] 多出契约外键 {e2}")
+            if rec.get("op_type") not in OP_TYPE_ENUM:
+                bad.append(f"change_log[{i}].op_type=『{rec.get('op_type')}』"
+                           f"（须在 {'／'.join(OP_TYPE_ENUM)} 内）")
+            if rec.get("upstream_impact") not in UPSTREAM_IMPACT_ENUM:
+                bad.append(f"change_log[{i}].upstream_impact=『{rec.get('upstream_impact')}』"
+                           f"（须在 {'／'.join(UPSTREAM_IMPACT_ENUM)} 内）")
+            tp = rec.get("target_path")
+            if (ashape is not None and rec.get("op_type") != "insert"
+                    and not _resolve_json_path(art, tp)):
+                bad.append(f"change_log[{i}].target_path=『{tp}』在 artifact 中解析不到"
+                           f"（op_type 非 insert 时该路径必须已存在）")
+
+    unres = doc.get("unresolved")
+    if not isinstance(unres, list):
+        bad.append(f"unresolved 非数组（实际 {type(unres).__name__}）")
+        unres = []
+    else:
+        for i, it in enumerate(unres):
+            m3, e3 = _keyset(it, MODIFY_UNRES_FIELDS)
+            if m3 is None:
+                bad.append(f"unresolved[{i}] 非对象")
+                continue
+            if m3:
+                bad.append(f"unresolved[{i}] 缺键 {m3}")
+            if e3:
+                bad.append(f"unresolved[{i}] 多出契约外键 {e3}")
+            if not isinstance(it.get("blocking"), bool):
+                bad.append(f"unresolved[{i}].blocking 非布尔（值为 『{it.get('blocking')}』）"
+                           f"—— 字符串 \"false\" 在多数语言的真值判断下为真")
+
+    cl = doc.get("clarification")
+    if not isinstance(cl, dict):
+        bad.append(f"clarification 非对象（实际 {type(cl).__name__}）")
+    else:
+        m4, e4 = _keyset(cl, CLARIFY_FIELDS)
+        if m4:
+            bad.append(f"clarification 缺键 {m4}")
+        if e4:
+            bad.append(f"clarification 多出契约外键 {e4}")
+        needed, qs = cl.get("needed"), cl.get("questions")
+        if not isinstance(needed, bool):
+            bad.append(f"clarification.needed 非布尔（值为 『{needed}』）")
+        if not isinstance(qs, list) or any(not isinstance(q, str) for q in qs):
+            bad.append(f"clarification.questions 非字符串数组（值为 『{qs}』）")
+        elif needed is True:
+            if not qs:
+                bad.append("clarification.needed=true 但 questions 为空（须 1~3 条、按重要性排序）")
+            elif len(qs) > 3:
+                bad.append(f"clarification.needed=true 但 questions 有 {len(qs)} 条（一次最多 3 项）")
+            if clog:
+                bad.append(f"clarification.needed=true 但 change_log 非空（{len(clog)} 条）"
+                           f"—— 澄清期间不得动手")
+        elif needed is False and qs:
+            bad.append("clarification.needed=false 但 questions 非空（须为空数组）")
+
+    if bad:
+        err(f"{where} · {tag}：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · {tag}：变更说明形态合规（顶层 6 键；artifact 形态＝{ashape}，"
+           f"与 target_stage=『{ts}』相符；{len(clog)} 条 change_log 的 target_path 均可解析；"
+           f"{len(unres)} 条 unresolved 的 blocking 均为布尔）")
+
+
+def rule_drift_report_shape(doc, where):
+    """R39 DRIFT_REPORT_SHAPE：跨阶段一致性校验报告（`check_consistency_v1` 的产物）的形态与三数自洽。
+
+    与 R38 同理：本产物不属任何链路阶段，不识别形态就会掉进「跳过」。
+    两条最容易蒙混的失败模式各配一条判据：
+      · `findings` 给空数组——**空数组无法区分「查过没问题」与「根本没查」**，
+        故契约要求它非空且**必含 `anchor` 类条目**（锚类「零容忍」的落点是「必须证明查过」）；
+      · `summary` 三数填得好看但不自洽——三个数**互相推导**，此处**复算**（同 R25 的口径）。
+    """
+    tag, bad = "R39 DRIFT_REPORT_SHAPE", []
+
+    miss, extra = _keyset(doc, DRIFT_TOP_KEYS)
+    if miss is None:
+        err(f"{where} · {tag}：产物非对象")
+        return
+    if miss:
+        bad.append(f"顶层缺键 {miss}")
+    if extra:
+        bad.append(f"顶层多出契约外键 {extra}（该形态只允许恰好 {len(DRIFT_TOP_KEYS)} 键）")
+
+    ver = doc.get("check_version")
+    if not isinstance(ver, str) or not ver:
+        bad.append(f"check_version 非非空字符串（值为 『{ver}』）")
+
+    pr = doc.get("pair_role")
+    if pr not in PAIR_ROLE_ENUM:
+        bad.append(f"pair_role=『{pr}』不在封闭枚举 {'／'.join(PAIR_ROLE_ENUM)} 内")
+
+    finds = doc.get("findings")
+    if not isinstance(finds, list):
+        bad.append(f"findings 非数组（实际 {type(finds).__name__}）")
+        finds = []
+    elif not finds:
+        bad.append("findings 为空数组 —— 空数组无法区分「查过没问题」与「根本没查」，"
+                   "契约要求至少含 anchor 类的汇总条目")
+    else:
+        bad += _seq_ids(finds, "finding_id", FINDING_ID_RE)
+        for i, fd in enumerate(finds):
+            m, e = _keyset(fd, DRIFT_FINDING_FIELDS)
+            if m is None:
+                bad.append(f"findings[{i}] 非对象")
+                continue
+            if m:
+                bad.append(f"findings[{i}] 缺键 {m}")
+                continue
+            if e:
+                bad.append(f"findings[{i}] 多出契约外键 {e}")
+            if fd.get("category") not in DRIFT_CATEGORY_ENUM:
+                bad.append(f"findings[{i}].category=『{fd.get('category')}』"
+                           f"（须在 {'／'.join(DRIFT_CATEGORY_ENUM)} 内）")
+            if fd.get("verdict") not in DRIFT_VERDICT_ENUM:
+                bad.append(f"findings[{i}].verdict=『{fd.get('verdict')}』"
+                           f"（须在 {'／'.join(DRIFT_VERDICT_ENUM)} 内）")
+        if not any(isinstance(fd, dict) and fd.get("category") == "anchor" for fd in finds):
+            bad.append("findings 中无任何 category=anchor 的条目（锚类「零容忍」要求**证明查过**；"
+                       "缺此条则无法区分「锚全部一致」与「根本没查锚」）")
+
+    # 复算（与清单**同一份数据**，故口径必定一致）
+    drift_cnt = sum(1 for fd in finds
+                    if isinstance(fd, dict) and fd.get("verdict") != "consistent")
+    summ = doc.get("summary")
+    if not isinstance(summ, dict):
+        bad.append(f"summary 非对象（实际 {type(summ).__name__}）")
+    else:
+        m, e = _keyset(summ, DRIFT_SUMMARY_FIELDS)
+        if m:
+            bad.append(f"summary 缺键 {m}")
+        if e:
+            bad.append(f"summary 多出契约外键 {e}")
+        if not m:
+            cc, dc, sv = summ.get("checked_count"), summ.get("drift_count"), summ.get("verdict")
+            # ⚠️ bool 是 int 的子类：`True` 会骗过 isinstance(x, int)，故须显式排除。
+            if not isinstance(cc, int) or isinstance(cc, bool):
+                bad.append(f"summary.checked_count 非整数（值为 『{cc}』）")
+            elif cc != len(finds):
+                bad.append(f"summary.checked_count={cc} ≠ 清单实际 {len(finds)} 条")
+            if not isinstance(dc, int) or isinstance(dc, bool):
+                bad.append(f"summary.drift_count 非整数（值为 『{dc}』）")
+            elif dc != drift_cnt:
+                bad.append(f"summary.drift_count={dc} ≠ verdict 非 consistent 的实际条数 {drift_cnt}")
+            if sv not in SUMMARY_VERDICT_ENUM:
+                bad.append(f"summary.verdict=『{sv}』不在 {'／'.join(SUMMARY_VERDICT_ENUM)} 内")
+            else:
+                want = "clean" if drift_cnt == 0 else "drift"
+                if sv != want:
+                    bad.append(f"summary.verdict=『{sv}』与复算结果 『{want}』不符"
+                               f"（drift_count={drift_cnt}）")
+
+    if bad:
+        err(f"{where} · {tag}：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · {tag}：漂移报告形态合规（顶层 4 键；{len(finds)} 条 findings 的 "
+           f"finding_id 唯一不跳号、含 anchor 类条目；summary "
+           f"{summ.get('checked_count')}／{summ.get('drift_count')}／『{summ.get('verdict')}』复算自洽）")
+
+
 # ---------------- 调度 ----------------
 def validate_doc(doc, where):
     shape = detect_shape(doc)
     if shape is None:
-        warn(f"{where}：无法识别产物形态（既无 acts／shots 也无 scenes_outline），跳过")
+        warn(f"{where}：无法识别产物形态（非 acts／shots+units／scenes_outline／"
+             f"unspecified 台账／change_log／findings 任一种），跳过")
         return
     out(f"\n--- {where}（形态：{shape}）---")
     if shape == "pack":
@@ -1605,6 +1951,17 @@ def validate_doc(doc, where):
         rule_ledger_shape(doc, where)
         rule_fill_stage_enum(doc, where)
         rule_unspecified_owner(doc, shape, where)
+        return
+    if shape == "modify":
+        # 对话式修改层（SW-002）——形态与内在自洽由 R38 管。
+        #   ⚠️ 刻意**不递归校验 `artifact` 内部**：它是该阶段的完整产物，须由对应阶段判据另行校验
+        #      （`target_stage=pack` 时走 `delivery/validate_pack.py`）。理由与边界见 R38 的说明——
+        #      把「无判据」写成「已覆盖」是本工程反复出现的一类缺陷的根因。
+        rule_modify_shape(doc, where)
+        return
+    if shape == "drift_report":
+        # 漂移报告（SW-002 `check_consistency_v1`）是**只报告不修改**的产物，自成一套形态。
+        rule_drift_report_shape(doc, where)
         return
     rule_required_keys(doc, shape, where)
     rule_fill_stage_enum(doc, where)
@@ -1733,7 +2090,7 @@ def validate_file(path):
 
 def main():
     global QUIET, DURATION_MIN_MS, DURATION_MAX_MS
-    ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门与跨层锚/道具比对）")
+    ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门、跨层锚/道具比对、变更说明与漂移报告形态）")
     ap.add_argument("--file", help="校验单个 JSON（或含 ```json 块的 .md）文件")
     ap.add_argument("--script", help="上游剧本产物（script_v1 的输出）——提供后启用跨层规则 R23（外观锚重述）与 R24（道具覆盖）")
     ap.add_argument("--storyboard", help="上游分镜产物（storyboard_v1 的输出）——校验交付包时提供，启用 R31 的逐镜纪律（镜数/镜序/duration_ms 逐项相同）")
@@ -1779,6 +2136,9 @@ def main():
         print(f"跨层规则：R23 外观锚重述 / R24 道具覆盖 / R31 逐镜时长守恒 —— "
               f"剧本上游：{'已载入 ' + str(UPSTREAM['src']) if UPSTREAM['doc'] else '未提供（--script），跨层规则将跳过并告警'}；"
               f"分镜上游：{'已载入 ' + str(UPSTREAM['sb_src']) if UPSTREAM['sb_doc'] else '未提供（--storyboard）'}")
+        print(f"对话式修改层：R38 变更说明（形态 modify，target_stage ∈ "
+              f"{'／'.join(MODIFY_TARGET_STAGE_ENUM)}）／R39 漂移报告（形态 drift_report，"
+              f"pair_role ∈ {'／'.join(PAIR_ROLE_ENUM)}）—— SW-002 支撑产物，与链路阶段**正交**")
 
     if args.file:
         validate_file(args.file)
@@ -1796,6 +2156,12 @@ def main():
             "fill_stage_enum": FILL_STAGE_ENUM,
             "dialogue_type_enum": DIALOGUE_TYPE_ENUM,
             "owner_enum": OWNER_ENUM,
+            "modify_target_stage_enum": MODIFY_TARGET_STAGE_ENUM,
+            "op_type_enum": OP_TYPE_ENUM,
+            "upstream_impact_enum": UPSTREAM_IMPACT_ENUM,
+            "pair_role_enum": PAIR_ROLE_ENUM,
+            "drift_category_enum": DRIFT_CATEGORY_ENUM,
+            "drift_verdict_enum": DRIFT_VERDICT_ENUM,
             "scene_min_seconds": SCENE_MIN_SECONDS,
             "shot_size_enum": SHOT_SIZE_ENUM,
             "move_enum": MOVE_ENUM,
