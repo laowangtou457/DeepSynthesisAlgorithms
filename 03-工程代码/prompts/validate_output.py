@@ -110,6 +110,28 @@
                            交付包的 `shots[].lighting` 与 `style_bible.lighting_default` 必须是**纯词表值**
                            （`^[a-z][a-z_]*$`，且命中 15 值词表）。上游允许写成「词表值——中文光位说明」，
                            但交付包 schema 不允许；本层须拆分（说明移入 prompt 正文）。
+  R33 PACK_NO_EMPTY_STRING **留空口径：可选字段不得为空串**（规范 §3.7.3）——
+                           留空一律「**省略该键**」；覆盖 camera.amplitude/speed/height/roll/optics、
+                           transition_in/out 与 lighting；`characters[].ref_image` 为 `type:string`，
+                           `null` 亦不合法，须省略键。JSON Schema 里「键缺失」与「值为空」是两件事。
+  R34 EN_CAMERA_SENTENCE   **英文运镜句**——`prompt_en` 须含**以 `The camera` 起句的独立句**；
+                           `static`／`pov` 也须有运镜句，只是不带幅度速度。
+                           （这类失败人眼看不出来：把小写 `as the camera …` 并入起句读起来很自然。）
+  R35 PROP_ANCH_CONSISTENCY **道具锚一致性**（v2.0 起为**正向**判据，取代 v1.1~v1.3 的
+                           「交付包不得出现 prop_refs」）——每镜 `prop_refs` 须存在且逐项命中
+                           `props[].prop_id`。
+  R36 NO_EXTRA_KEY         **契约外字段禁入**——顶层／`shots[]`／`units[]`／`characters[]`／
+                           `props[]`／顶层 `forbidden_items`／`meta`／`style_bible`／`aigc_meta`
+                           九处只允许契约字段集内的键。字段集**直接读交付 schema**（不另立会陈旧的清单）。
+
+独立台账层规则（SW-008 `revise_v1`，2026-10-14 新增；形态 ledger）：
+  R37 LEDGER_SHAPE         **独立缺口台账的形态与责任阶段**——
+                           `revise_v1` 是链路**第二个起点**（客户自带素材时不跑前四段），
+                           **没有上游产物可承载台账**，故台账必须**另行产出**为独立产物
+                           `<pack_id>.unspecified.json`。它是本层**唯一的独有产物**，
+                           不识别其形态就会掉在全部门禁之外。判据：顶层只允许 `unspecified`；
+                           每条恰好 7 字段；`blocking` 须为布尔；`fill_stage` 一律为 `revise`
+                           （本层即责任阶段，无处可推）。
 
   ⚠️ 口径差异（必须知道）：R19 判定的是**结构化字段是否有值**（SW-006 的产物）；
      audit_shots.py 判定的是**适配投喂文本**（SW-007 的产物）。两者对象不同——
@@ -119,6 +141,7 @@
   python validate_output.py                     # 扫描 examples/*.md 内全部 JSON 块（自动配对上/下游）
   python validate_output.py --file out.json     # 校验单个 JSON 文件（真实模型输出）
   python validate_output.py --file out.json --script script.json   # 附带上游剧本 → 启用 R23/R24
+  python validate_output.py --file pack.unspecified.json           # 独立缺口台账（revise 层）→ 启用 R37
   python validate_output.py --file pack.json --storyboard sb.json  # 附带上游分镜 → 启用 R31 时长守恒
   python validate_output.py --json              # 机器可读结果
   python validate_output.py --duration-bounds 4-15   # 覆盖单镜时长区间（秒）
@@ -140,7 +163,10 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------- 封闭枚举（唯一真值来源，改动须同步模板与 CFG-007_SCHEMA.md） ----------------
 PURPOSE_ENUM = ["建立", "升级", "转折", "反转", "收束"]
-FILL_STAGE_ENUM = ["synopsis", "script", "storyboard", "shot_prompt"]
+# ⚠️ 2026-10-14 增 `revise`（SW-008）：`revise_v1` 是链路第二个起点——客户自带素材时
+#    前四段一次不跑，故本层台账的 `fill_stage` 只能是它自己。同步：CFG-007_SCHEMA.md 的
+#    「封闭枚举登记」块、templates/TPL-014_revise_v1.yaml、examples/CASE-005_revise-case01.md。
+FILL_STAGE_ENUM = ["synopsis", "script", "storyboard", "shot_prompt", "revise"]
 
 # 剧本层封闭枚举（2026-10-13 依 SR-09 / SR-02 新增登记）
 DIALOGUE_TYPE_ENUM = ["对白", "旁白", "画外音"]
@@ -299,6 +325,10 @@ EXAMPLES_UPSTREAM = {
     "CASE-001_script-case01.md": ["CASE-004_synopsis-case01.md"],
     "CASE-003_storyboard-case01.md": ["CASE-001_script-case01.md"],
     "CASE-002_shot-prompt-case01.md": ["CASE-001_script-case01.md", "CASE-003_storyboard-case01.md"],
+    # SW-008 `revise_v1` 是**链路的第二个起点**：客户自带素材，前四段一次不跑
+    # → 本层**没有模板上游**（输入是客户素材 + pack_meta）。显式登记为空列表，
+    #   意在把「本层无上游」这件事写在有权威性的表里，而不是靠读者自己推断。
+    "CASE-005_revise-case01.md": [],
 }
 
 RESULT = {"checks": 0, "errors": [], "warnings": []}
@@ -339,6 +369,13 @@ def detect_shape(doc):
         return None
     if "aigc_meta" in doc and "schema_version" in doc:
         return "pack"
+    # 独立缺口台账（revise 层独有产物，2026-10-14 随 SW-008 新增）：
+    #   ⚠️ 判据刻意**不看「顶层只有 unspecified」**——那样一旦混装进别的键，形态就变成 None、
+    #      R37 反而永远不跑，缺陷刚好藏在判据的盲区里。此处以「有 unspecified 数组 + 无任何
+    #      其他形态的标识键」认定，使**混装**也能被 R37 抓出来。
+    if (isinstance(doc.get("unspecified"), list)
+            and not any(k in doc for k in ("acts", "shots", "units", "scenes_outline", "aigc_meta"))):
+        return "ledger"
     if "acts" in doc:
         return "script"
     if "shots" in doc and "units" in doc:
@@ -398,7 +435,7 @@ def rule_fill_stage_enum(doc, where):
     if bad:
         err(f"{where} · R2 FILL_STAGE_ENUM：越界/缺失 {len(bad)} 处 → " + "；".join(bad[:6]))
     else:
-        ok(f"{where} · R2 FILL_STAGE_ENUM：{len(items)} 条 fill_stage 全部落在四值枚举内")
+        ok(f"{where} · R2 FILL_STAGE_ENUM：{len(items)} 条 fill_stage 全部落在五值枚举内")
 
 
 def rule_scene_no_continuity(doc, shape, where):
@@ -511,6 +548,60 @@ def rule_dialogue_type(doc, where):
         ok(f"{where} · R20 DIALOGUE_TYPE_ENUM：{len(entries)} 条 dialogue.type 全部落在三值枚举内")
 
 
+LEDGER_FIELDS = ["field", "upstream_field", "reason", "owner",
+                 "fill_stage", "fill_fallback", "blocking"]
+
+
+def rule_ledger_shape(doc, where):
+    """R37 LEDGER_SHAPE：独立缺口台账（`revise` 层独有产物）的形态与责任阶段。
+
+    为什么**必须**有这条：`revise_v1`（SW-008）是链路的**第二个起点**——客户自带素材时
+    前四段（synopsis→script→storyboard→shot_prompt）**一次都不跑**，于是本层**没有上游产物
+    可承载台账**（链路前段的台账「留在上游产物自身、随交付包一并交付」，而本层没有上游）。
+    台账因此必须**另行产出**为独立文件 `<pack_id>.unspecified.json`——它是本层**唯一的独有
+    产物**，不识别其形态就会掉在全部门禁之外。
+
+    判据（七字段与链路前段同构，见 `CFG-007_SCHEMA.md` 的「封闭枚举登记」）：
+      ① 顶层**只允许** `unspecified` 一个键——独立产物多出别的键，说明混装了别的东西；
+      ② 每条**恰好** 7 键：field／upstream_field／reason／owner／fill_stage／fill_fallback／blocking；
+      ③ `blocking` 必须为**布尔**——字符串 `"false"` 是真值，这是最隐蔽的一类错；
+      ④ `fill_stage` **一律** 为 `revise`——本层即台账的责任阶段，**无处可推**；
+         写成别值等于把责任推给一个在本路径上根本没跑过的层（对照 R21 的「不得前移」）。
+    """
+    extra = [k for k in doc if k != "unspecified"]
+    if extra:
+        err(f"{where} · R37 LEDGER_SHAPE：顶层出现契约外键 → {extra}"
+            f"（独立台账只允许 unspecified 一个键）")
+    items = doc.get("unspecified")
+    if not isinstance(items, list) or not items:
+        err(f"{where} · R37 LEDGER_SHAPE：unspecified 缺失或为空")
+        return
+    bad = []
+    for i, it in enumerate(items):
+        if not isinstance(it, dict):
+            bad.append(f"unspecified[{i}] 非对象")
+            continue
+        miss = [k for k in LEDGER_FIELDS if k not in it]
+        if miss:
+            bad.append(f"unspecified[{i}] 缺字段 {miss}")
+            continue
+        ex = [k for k in it if k not in LEDGER_FIELDS]
+        if ex:
+            bad.append(f"unspecified[{i}] 多出字段 {ex}")
+        b = it.get("blocking")
+        if not isinstance(b, bool):
+            bad.append(f"unspecified[{i}].blocking 非布尔（值为 『{b}』）")
+        fs = it.get("fill_stage")
+        if fs != "revise":
+            bad.append(f"unspecified[{i}].fill_stage=『{fs}』"
+                       f"（本层台账须为 revise——无处可推）")
+    if bad:
+        err(f"{where} · R37 LEDGER_SHAPE：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R37 LEDGER_SHAPE：独立台账形态合规（{len(items)} 条，7 字段齐备、"
+           f"blocking 均为布尔、fill_stage 均为 revise）")
+
+
 def rule_unspecified_owner(doc, shape, where):
     """R21：缺口台账 owner 枚举；且「客户侧缺口不得前移」（SR-02）。
 
@@ -522,6 +613,9 @@ def rule_unspecified_owner(doc, shape, where):
                             `fill_stage` 应为 `storyboard`；
                           · 两者共同底线：**`fill_stage` 一律不得为 `shot_prompt`**
                             （下游同样无权补叙事事实与设计确认）。
+    shape == ledger（`revise` 层独立台账，2026-10-14 随 SW-008 新增）→ 本条的 `owner`
+                          枚举同样适用（台账条目仍需指明闭合责任人）；`fill_stage` 由
+                          **R37** 统一管（本层即责任阶段，一律为 `revise`），本条不重复判。
     """
     items = doc.get("unspecified") or []
     if not isinstance(items, list) or not items:
@@ -1504,6 +1598,14 @@ def validate_doc(doc, where):
         rule_pack_duration_lock(doc, where)
         rule_lighting_vocab(doc, where)
         return
+    if shape == "ledger":
+        # 独立缺口台账（`revise` 层独有产物）——自带一套最小而自足的规则：
+        #   形态与责任阶段由 R37 管；`fill_stage` 枚举由 R2 管；`owner` 枚举由 R21 管。
+        #   （台账**不在**交付包内，故不跑任何 pack 规则。）
+        rule_ledger_shape(doc, where)
+        rule_fill_stage_enum(doc, where)
+        rule_unspecified_owner(doc, shape, where)
+        return
     rule_required_keys(doc, shape, where)
     rule_fill_stage_enum(doc, where)
     if shape == "storyboard":
@@ -1568,6 +1670,14 @@ def scan_examples():
         warn("examples/ 下无可校验样例")
         return
     for fn in files:
+        # ⚠️ 每个文件开始时**必须重置** UPSTREAM（2026-10-14 随 SW-008 首跑发现并修复）：
+        #    否则后一个文件会**静默继承**前一个文件的上游，把跨层规则（R23／R24／R31）
+        #    套到不相干的产物上。实测：`CASE-005_revise-case01.md` **没有上游**（revise 层是
+        #    链路的第二个起点），却因继承了前一文件 `CASE-002` 的分镜上游，
+        #    被 R31 判「时长不守恒 3 处」——一条纯净的产物报出一条纯属继承的错。
+        #    这类缺陷只在「新增用例」时才暴露，因为此前四个文件里最后一个（CASE-004）是
+        #    synopsis 形态，根本不跑 R23／R24／R31。
+        UPSTREAM.update({"doc": None, "src": None, "sb_doc": None, "sb_src": None})
         # 自动配对上游（仅 examples 目录内），以启用跨层规则 R23 / R24 / R31。
         # ⚠️ SW-007 的交付包是**双上游**（剧本出锚 + 分镜出决策），故本表的值是**列表**：
         #    列表里按形态自动分流——script 形态进 UPSTREAM["doc"]（供 R23/R24），

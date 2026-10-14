@@ -6,7 +6,9 @@
       「规则不误报」，**不证明规则有效**（把判据写反、条件永不成立、字段名拼错，
       都会让正向照样全绿）。本脚本**逐条构造越界样本**，断言对应规则真的触发（EXIT=1）。
 
-覆盖：交付包层 R26~R36（2026-10-13 随 SW-007 `shot_prompt_v1` 建立；R35 于 v2.0 由「禁入」反转为「道具锚一致性」）。
+覆盖：交付包层 R26~R36（2026-10-13 随 SW-007 `shot_prompt_v1` 建立；R35 于 v2.0 由「禁入」反转为「道具锚一致性」）
+      ＋ **独立台账层 R37**（2026-10-14 随 SW-008 `revise_v1` 建立——`revise` 是链路第二个起点，
+      台账必须**另行产出**为独立产物，其形态与交付包不同，故**另有一套基础样本与样本表**）。
 
 用法：
     python tests/negtest_pack_rules.py            # 跑全部样本
@@ -37,6 +39,8 @@ EX = os.path.join(BASE, "examples")
 JSON_BLOCK = re.compile(r"```json\s*\n(.*?)\n```", re.S)
 UP_CASE = "CASE-002_shot-prompt-case01.md"
 UP_SB = "CASE-003_storyboard-case01.md"
+LEDGER_CASE = "CASE-005_revise-case01.md"      # revise 层的**独立缺口台账**样本来源
+UP_REVISE = "CASE-005_revise-case01.md"        # revise 层的交付包样本来源（可用于 R36 等）
 
 
 # --------------------------------------------------------------------------
@@ -44,6 +48,8 @@ UP_SB = "CASE-003_storyboard-case01.md"
 # --------------------------------------------------------------------------
 CASES = []          # (名称, 期望命中的规则码, 变异函数, 是否需上游分镜)
 BLINDSPOTS = []     # (名称, 变异函数, 为何不触发)
+LEDGER_CASES = []   # R37 专用：台账样本（形态与交付包不同，故独立成表）
+LEDGER_BLINDSPOTS = []
 _SB = {}
 
 
@@ -54,6 +60,15 @@ def _load_base():
         if "aigc_meta" in j and "schema_version" in j:
             return j
     raise SystemExit(f"[FATAL] {UP_CASE} 中未找到交付包 JSON 块（含 aigc_meta + schema_version）")
+
+
+def _load_ledger():
+    t = open(os.path.join(EX, LEDGER_CASE), encoding="utf-8").read()
+    for b in JSON_BLOCK.findall(t):
+        j = json.loads(b)
+        if set(j.keys()) == {"unspecified"}:
+            return j
+    raise SystemExit(f"[FATAL] {LEDGER_CASE} 中未找到独立台账 JSON 块（顶层仅 unspecified）")
 
 
 def case(name, rule, need_sb=False):
@@ -278,6 +293,56 @@ def _(d):
     put(d, "meta.director_intent", "全片以冷调压迫感为主")
 
 
+# ---- R37 独立缺口台账的形态与责任阶段（★ 2026-10-14 随 SW-008 `revise_v1` 新增）----
+#  ⚠️ 台账是 `revise` 层的**独有产物**（本层无上游可承载台账，故必须另行产出）。
+#     它是本层唯一的新增产物品类，若不识别其形态就会**掉在全部门禁之外**——故须自带越界样本。
+def ledger_case(name, rule):
+    def deco(fn):
+        LEDGER_CASES.append((name, rule, fn))
+        return fn
+    return deco
+
+
+def ledger_blindspot(name, fn, why):
+    LEDGER_BLINDSPOTS.append((name, fn, why))
+    return fn
+
+
+@ledger_case("R37 顶层混装契约外键（独立台账只允许 unspecified）", "R37")
+def _(d):
+    d["pack_id"] = "FR-PK-20261014-XXXX0001"
+
+
+@ledger_case("R37 某条缺 fill_fallback 字段（7 字段不齐）", "R37")
+def _(d):
+    d["unspecified"][0].pop("fill_fallback", None)
+
+
+@ledger_case("R37 某条缺 upstream_field 字段", "R37")
+def _(d):
+    d["unspecified"][2].pop("upstream_field", None)
+
+
+@ledger_case('R37 blocking 写成字符串 "false"（字符串非布尔，且 "false" 是真值）', "R37")
+def _(d):
+    d["unspecified"][1]["blocking"] = "false"
+
+
+@ledger_case("R37 fill_stage 写成 storyboard（把责任推给本路径上没跑过的层）", "R37")
+def _(d):
+    d["unspecified"][3]["fill_stage"] = "storyboard"
+
+
+@ledger_case("R37 某条多出契约外字段 design_source（交付包无此键，台账也不携带）", "R37")
+def _(d):
+    d["unspecified"][4]["design_source"] = "系统提议待确认"
+
+
+@ledger_case("R37 unspecified 为空数组（台账必须非空）", "R37")
+def _(d):
+    d["unspecified"] = []
+
+
 # ---- 已知盲区（预期**不**触发；登记在案，防止日后误以为规则更强）---------
 def _bs_selfconsistent(d):
     add(d, "shots.7.duration_ms", 1000)
@@ -305,6 +370,18 @@ blindspot("shots[].ref_image = null", _bs_shot_ref_null,
           "（type:string）与枚举／vocabRef 的空串——与门禁**严格对齐**，不写比契约更严的私有口径")
 
 
+def _lbs_free_text(d):
+    d["unspecified"][0]["reason"] = ""
+    d["unspecified"][0]["fill_fallback"] = ""
+
+
+ledger_blindspot("台账条目的 reason／fill_fallback 写成空串", _lbs_free_text,
+                 "这两项是**自由文本**，契约未给长度下限——空串在语义上是缺陷、在契约上是合法值。"
+                 "R37 只管「形态与责任阶段」（7 字段齐备／blocking 为布尔／fill_stage 为 revise），"
+                 "**刻意不判**文本质量；把它判成错误等于自造比契约更严的私有口径（同 R33 的取舍）。"
+                 "文本质量由模板 guards 的「台账完整性」自检项与人工复核承担。")
+
+
 # --------------------------------------------------------------------------
 # 执行
 # --------------------------------------------------------------------------
@@ -321,7 +398,7 @@ def _run(doc, need_sb, tmpdir):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="交付包规则 R26~R36 负向验证")
+    ap = argparse.ArgumentParser(description="交付包规则 R26~R36 与台账规则 R37 负向验证")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--keep", action="store_true", help="保留临时样本目录（排查用）")
     args = ap.parse_args()
@@ -341,8 +418,28 @@ def main():
             rows.append({"case": name, "rule": rule, "expect": "EXIT=1 命中 " + rule,
                          "exit": code, "hit": exact, "ok": good,
                          "fails": fails[:3]})
+        # ---- R37：独立缺口台账（形态与交付包不同 → 另起基础样本）----
+        lbase = _load_ledger()
+        for name, rule, mutate in LEDGER_CASES:
+            d = copy.deepcopy(lbase)
+            mutate(d)
+            code, out = _run(d, False, tmpdir)
+            fails = [ln for ln in out.splitlines() if "[FAIL]" in ln]
+            exact = any(rule in ln for ln in fails)
+            good = (code == 1 and exact)
+            bad += 0 if good else 1
+            rows.append({"case": name, "rule": rule, "expect": "EXIT=1 命中 " + rule,
+                         "exit": code, "hit": exact, "ok": good, "fails": fails[:3]})
         for name, mutate, why in BLINDSPOTS:
             d = copy.deepcopy(base)
+            mutate(d)
+            code, out = _run(d, False, tmpdir)
+            good = (code == 0)
+            bad += 0 if good else 1
+            rows.append({"case": name, "rule": "（已知盲区）", "expect": "EXIT=0",
+                         "exit": code, "hit": None, "ok": good, "why": why})
+        for name, mutate, why in LEDGER_BLINDSPOTS:
+            d = copy.deepcopy(lbase)          # ⚠️ 台账盲区用**台账**基础样本
             mutate(d)
             code, out = _run(d, False, tmpdir)
             good = (code == 0)
@@ -356,7 +453,9 @@ def main():
         print(json.dumps({"passed": bad == 0, "total": len(rows), "failed": bad,
                           "rows": rows}, ensure_ascii=False, indent=2))
     else:
-        print(f"交付包规则负向验证 · R26~R36 · {len(CASES)} 个越界样本 + {len(BLINDSPOTS)} 个已知盲区")
+        print(f"交付包规则负向验证 · R26~R36 ＋ 台账规则 R37 · "
+              f"{len(CASES) + len(LEDGER_CASES)} 个越界样本 + "
+              f"{len(BLINDSPOTS) + len(LEDGER_BLINDSPOTS)} 个已知盲区")
         print("=" * 66)
         for r in rows:
             print(f"[{'OK ' if r['ok'] else 'BAD'}] exit={r['exit']} {r['expect']} · {r['case']}")

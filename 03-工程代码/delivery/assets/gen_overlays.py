@@ -10,6 +10,7 @@
   · **视觉样式**：取生成器默认 `dark_pill`（深色胶囊 + 白字）；未另择他样式。
   · **文案分工**：画面标识只用短文案 `AI生成`；完整文案由**交付合规声明**承载。
   · **硬指标不变**：字高 ≥5%（本项目 6%）、持续 ≥2s（本项目 3s）。
+  · **字体**：系统字体已替换为**开放授权字体** Noto Sans SC（见文末「字体授权」段）。
 硬指标来源：GB 45438—2025 §5.4
   · 文字须含「人工智能」或「AI」+「生成」和/或「合成」
   · 位于画面边或角（片头卡位于起始画面）
@@ -23,15 +24,17 @@
     # 指定样式 / 字号比例 / 文案 / 授权字体
     python gen_overlays.py --style light_card --ratio 0.06 \
         --text "本文件由人工智能（AI）生成，请注意甄别" \
-        --font "C:/Windows/Fonts/SourceHanSansSC-Bold.otf"
+        --font "C:/Windows/Fonts/NotoSansSC-VF.ttf" --font-weight 700
 
     # 生成样式对照预览图（供选型）
     python gen_overlays.py --preview
 
-★ 正式交付前注意（规范 §7.5）：
-  默认字体 C:/Windows/Fonts/msyhbd.ttc（微软雅黑）为系统字体，仅用于视觉预览。
-  正式素材必须替换为已获商用授权的字体（推荐：思源黑体 / 阿里巴巴普惠体）。
-  生成后本工具会在 AST-002_overlay_spec.json 中记录实际使用的字体，便于核查。
+★ 字体授权（规范 §7.5 / NT-04）—— 2026-10-14 已落实（`SYS-Q15` 定案的必办项）：
+  默认字体由系统字体（msyhbd.ttc）**替换为开放授权字体** Noto Sans SC
+  （`C:/Windows/Fonts/NotoSansSC-VF.ttf`，与「思源黑体」同源，**SIL OFL 1.1**，允许商用与再分发）。
+  该文件是**可变字体**，本工具默认按 `wght=700`（Bold）实例化，以保持角标视觉字重；
+  可用 `--font` / `--font-weight` 覆盖（`--font-weight 0` 表示不施加字重轴）。
+  生成后本工具会在 AST-002_overlay_spec.json 中记录实际字体、字重与许可，便于核查。
 """
 from __future__ import annotations
 
@@ -91,7 +94,38 @@ STYLES = {
 }
 
 
+# 默认字体（SYS-Q15 定案必办项：开放授权字体，见文件头注释）
+DEFAULT_FONT = "C:/Windows/Fonts/NotoSansSC-VF.ttf"
+DEFAULT_FONT_NAME = "Noto Sans SC（与「思源黑体」同源；SIL OFL 1.1，可商用、可再分发）"
+DEFAULT_FONT_WEIGHT = 700          # 可变字体 wght 轴；0 表示不施加
+
+FONT_WEIGHT = DEFAULT_FONT_WEIGHT  # 运行期由 --font-weight 覆盖
+
+
 # ────────────────────────── 字体处理 ──────────────────────────
+def _truetype(path: str, size: int) -> ImageFont.FreeTypeFont:
+    """创建字体实例；若为可变字体则按 FONT_WEIGHT 实例化到指定字重（默认 700 Bold）。"""
+    font = ImageFont.truetype(path, size)
+    if FONT_WEIGHT:
+        try:
+            axes = font.get_variation_axes()
+        except Exception:
+            axes = None
+        if axes:
+            vals = []
+            for ax in axes:
+                name = (ax.get("name") or b"")
+                if isinstance(name, bytes):
+                    name = name.decode("utf-8", "ignore")
+                vals.append(FONT_WEIGHT if str(name).lower() in ("weight", "wght")
+                            else ax.get("default", ax.get("minimum", 0)))
+            try:
+                font.set_variation_by_axes(vals)
+            except Exception:
+                pass
+    return font
+
+
 def char_height(font: ImageFont.FreeTypeFont) -> int:
     bbox = font.getbbox("测")
     return bbox[3] - bbox[1]
@@ -100,7 +134,7 @@ def char_height(font: ImageFont.FreeTypeFont) -> int:
 def fit_font(font_path: str, target_h: int) -> ImageFont.FreeTypeFont:
     """求使汉字实际字形高度最接近 target_h 的字体尺寸。"""
     size = max(8, int(round(target_h * 1.4)))
-    font = ImageFont.truetype(font_path, size)
+    font = _truetype(font_path, size)
     for _ in range(40):
         h = char_height(font)
         if abs(h - target_h) <= 1:
@@ -109,7 +143,7 @@ def fit_font(font_path: str, target_h: int) -> ImageFont.FreeTypeFont:
         if new_size == size:
             return font
         size = new_size
-        font = ImageFont.truetype(font_path, size)
+        font = _truetype(font_path, size)
     return font
 
 
@@ -225,7 +259,7 @@ def make_intro(ratio, text, font_path, target_h, style):
     canvas.alpha_composite(badge, (x, y))
 
     # 底部辅助说明（小字，非标识主体）
-    sub_font = ImageFont.truetype(font_path, max(12, int(real_h * 0.42)))
+    sub_font = _truetype(font_path, max(12, int(real_h * 0.42)))
     sub = "AI-generated content ｜ 依据《人工智能生成合成内容标识办法》标识"
     sub_w = ImageDraw.Draw(canvas).textlength(sub, font=sub_font)
     ImageDraw.Draw(canvas).text(((W - sub_w) / 2, int(H * 0.5 + badge.height / 2 + real_h * 0.9)),
@@ -315,7 +349,7 @@ def generate_preview(outdir: Path, font_path: str, ratio_of_short_side: float, t
                 d.rectangle([x, y, x + 39, y + 39], fill=(58, 70, 92))
 
     y = gap
-    label_font = ImageFont.truetype(font_path, 26)
+    label_font = _truetype(font_path, 26)
     for style, badge in rows:
         d.rectangle([40, y - 8, W - 40, y + badge.height + 8], fill=(20, 26, 40))
         d.text((52, y + badge.height / 2 - 14), STYLES[style]["desc"], font=label_font,
@@ -331,8 +365,10 @@ def generate_preview(outdir: Path, font_path: str, ratio_of_short_side: float, t
 def main() -> int:
     ap = argparse.ArgumentParser(description="标识素材生成器（NORM-DELIVERY-001 §6）")
     ap.add_argument("--outdir", default=str(HERE))
-    ap.add_argument("--font", default="C:/Windows/Fonts/msyhbd.ttc")
-    ap.add_argument("--font-name", default="微软雅黑 Bold（系统字体，仅预览用）")
+    ap.add_argument("--font", default=DEFAULT_FONT)
+    ap.add_argument("--font-name", default=DEFAULT_FONT_NAME)
+    ap.add_argument("--font-weight", type=int, default=DEFAULT_FONT_WEIGHT,
+                    help="可变字体字重（wght 轴）；0 表示不施加，默认 700（Bold）")
     ap.add_argument("--ratio", type=float, default=0.06,
                     help="字高相对画面最短边比例，法规下限 0.05，默认 0.06（留余量）")
     ap.add_argument("--text", default=TEXT_FULL)
@@ -341,6 +377,9 @@ def main() -> int:
     ap.add_argument("--no-suggest-variant", action="store_true")
     ap.add_argument("--preview", action="store_true")
     args = ap.parse_args()
+
+    global FONT_WEIGHT
+    FONT_WEIGHT = args.font_weight or None
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -364,7 +403,7 @@ def main() -> int:
         it["adopted"] = (it.get("type") == "corner_badge_short")
 
     spec = {
-        "spec_version": "1.1.0",
+        "spec_version": "1.2.0",
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "generator": {
             "tool": "gen_overlays.py",
@@ -372,8 +411,10 @@ def main() -> int:
             "style_desc": STYLES[args.style]["desc"],
             "font_file": args.font,
             "font_name": args.font_name,
-            "font_is_licensed": False,
-            "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、NT-04）",
+            "font_is_licensed": True,
+            "font_license": "SIL Open Font License 1.1（允许商用、允许再分发）",
+            "font_weight": args.font_weight,
+            "font_note": "开放授权字体（与「思源黑体」同源）；可变字体按 wght 轴实例化到指定字重。NT-04 已于 2026-10-14 落实（规范 §7.5）",
         },
         "compliance": {
             "standard": "GB 45438—2025 §5.4",
@@ -415,8 +456,10 @@ def main() -> int:
             "text_final": args.text,
             "badge_text": args.text_short,
             "division": "画面标识只用**短文案角标** `AI生成`；完整文案由**交付合规声明**承载，不在画面上重复",
+            "resolved": [
+                "✅ **字体授权（规范 §7.5 / NT-04）**：2026-10-14 已由系统字体 `msyhbd.ttc` 替换为开放授权字体 **Noto Sans SC**（`C:/Windows/Fonts/NotoSansSC-VF.ttf`，与「思源黑体」同源，**SIL OFL 1.1**，允许商用与再分发），并按 `wght=700` 实例化以保持字重",
+            ],
             "pending": [
-                "替换为**商用授权字体**（现用系统字体 `msyhbd.ttc`，仅作预览；规范 §7.5、NT-04）",
                 "接入适配层时按目标平台**安全区**微调角标边距",
             ],
         },

@@ -138,6 +138,31 @@ templates:
       - 禁止项承接（**v2.0.0 起改为「原样承继」**）：剧本层与分镜层的**顶层** `forbidden_items`（客户侧「禁止出现的元素」，上游输入变量名 `must_avoid`）**须逐条原样写入交付包顶层 `forbidden_items`**——规范 §3.1 自 V2.0 起已增设该独立容器，v1.1 的「不搬运」处置**已撤销**（`ISSUE-012` 闭环）。⚠️ **边界写死**（规范 §3.1.1 三层）：本容器**只承接客户业务层禁忌**，**不得**写入 `A1-0x` 受控词库的分类码或词条（后者属**法定合规层**，由 SW-009/010 双闸承载、结果落 `meta.compliance`，**绝不进包**）。⚠️ 与之区分：`characters[].forbidden`（规范 §3.4）是**角色级**禁忌（本层从 `appearance_lock_zh` 提炼），属交付包字段集的**内建**字段，须照常产出——两者**语义不同、不得合并**。判据 **R36** 从交付 schema 读字段集，机器化「契约外字段禁入」（v2.0 起检查**九处**）
     notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` **2.0.0**，对齐 `03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 **v2.0**》§3（含 §3.1.1 三层禁忌边界／§3.4.1 道具锚点）／§4／§5／§6.1；用例见 examples/CASE-002_shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）。**v2.0.0 依契约升版批次（`T-054`＋`T-055`＋`T-056` 合并为同一次动作，依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015` 定案 (a)）**：① `output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs` → **属 output 字段增删，故为主版本升版**；② 承继列**恢复 `prop_refs`**、`forbidden_items` **进出承继列**（v1.1 的处置随契约补齐**已撤销**）；③ `prompt_en` 上限由 schema 侧 900 → **1200** 字符、§3.7.6 长度建议上修。**`ISSUE-011`／`ISSUE-012` 均已闭环**（契约侧已补齐，非「只登记」）。⚠️ **门禁现状**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` 对 `CASE-002` **BLOCK 1 → 0**（原唯一 BLOCK 系 `prompt_en` 上限，已随契约上修归零）
 
+  - id: revise_v1
+    name: 提示词解析重构
+    task_type: generate
+    stage: revise
+    file: templates/TPL-014_revise_v1.yaml
+    version: "1.0.0"
+    status: active
+    variables: [source_material, source_kind, pack_meta, client_visual_input, segment, gap_answers]
+    scenes:
+      - AI 漫剧链路第 5 段（链尾，**并行入口**）：客户已有素材（提示词清单／剧本／旧交付包／混合）→ 标准分镜提示词交付包
+      - 存量内容的规范化改造：把别家格式或自由文本重构为本系统交付契约
+    constraints:
+      - 定位是**重构入口层**：客户带着素材来时，链路前四段（synopsis→script→storyboard→shot_prompt）**全部不跑**——本层在一次调用内承担了它们的全部职责（解析→锚定→决策→编译→组装），故其硬性约束是**前四段纪律的并集**，任何一段失守都会在交付门禁上暴露
+      - 上游为空：本层是全链路唯一**没有模板上游**的一段（另一个起点是 synopsis_v1）；输入只有客户素材与 pack_meta。⚠️ 由此产生一条**结构性后果**——缺口台账**必须由本层自己产出**（链路前段的台账留在上游产物自身，本层无上游可依附），见下条
+      - 素材守恒（**第一条纪律**，对应其他层的「承继守恒」）：素材中已明确者**只结构化、不改写**——事实类（人名／地名／机构名／年代／数值／**台词原文**）一字不改；镜头意图（已写的景别／运镜／时序／时长）原样承接为决策字段；风格描述原样承继为 style_bible 的锚
+      - 粒度守恒（**第二条纪律**）：**不得改变素材已定的镜头数量与时序**，不得重写台词与结局；仅 `source_kind=script`（素材未切镜）时可由本层补切镜，并在 meta.notes 留痕「补切镜：素材未给镜头划分」。⚠️ 改客户的故事不是「重构」而是「另做」，属新需求、须走前四段
+      - 锚的二分（同链路口径）：设计类（角色外观／全片风格／道具外观／声线）素材已写明者按「客户提供」承继、未写明者由本层**提议具体候选**并标「系统提议待确认」（不得留「未指定」）；事实类素材未给者**不得编造**，标「未指定」并登记台账。⚠️ **二分不落在交付包字段上**——交付包契约**无 design_source 键**（characters[]／props[] 均 additionalProperties=false，写入即被 R36 拒收），故落点为**缺口台账 + meta.notes**（系统提议者逐条入台账，客户提供者不入）
+      - 五类必改：**本层允许「不照抄素材」的全部情形**（比 SW-007 多一类，因输入是自由文本而非结构化 JSON）：① 形态改写（文本→字段，本层存在的理由）② 规范化（取值归一词表，如「推镜头」→`push_in`；词表外说法按语义映射最近值并在 meta.notes 写明依据，**禁自造 code**）③ 拆分（「决策+说明」同句 → 字段取 code、说明移入正文）④ 删冗余（制作备注／内部批注／平台参数指令如 `--ar 16:9` **不得进正文**）⑤ 补缺口（设计类由本层提议）——**不属这五类的改写一律禁止**
+      - 台账另行产出、绝不进包：交付包无 `unspecified` 段（规范 §3.1 顶层八段），而本层无上游可承载台账 → 必须**另行产出**独立产物 `<pack_id>.unspecified.json`（七项字段，`fill_stage` 一律 `revise`）；`segment` 为此**独有一个粒度 `gap_ledger`**。⚠️ 塞进交付包会被判据 **R36** 与 schema 的 `additionalProperties:false` 拒收
+      - stage_chain 照实填 `["revise"]`（本层一段直出完整包，templates 只含 revise_v1 v1.0.0）。⚠️ **契约侧已知缺口（`ISSUE-017`）**：交付 schema 的 `stage_chain.items.enum` 只有四值而规范与该处 description 均写「5 段链路」→ 本层产物会在 validate_pack.py 的 schema 校验上留 **1 条 BLOCK**；**该 BLOCK 是契约缺陷的可见证据、不是本层实现缺陷**，处置口径同 `ISSUE-015`（留 BLOCK 可见、改契约而非改产物）
+      - 八维双落地（规范 §4.1）：每维须**同时** ① 有字段承载 ② 写进 prompt_zh 与 prompt_en **正文**；只填字段不写正文等于该维不存在。本层既做决策又做表达，故八维落点由其自行设计（不像 SW-007 承自上游）
+      - 其余纪律与 SW-007 **同口径**：外观只定义一次（正文不得复述角色与道具外观）· 风格锚点封闭（正文不得出现 style_anchors 之外的风格词）· 负向词不进正文（须转写为正向约束句且全片同句式）· 单人替身法则（稳定指称、name 为「未指定」时不得自拟姓名、全片一致）· 英文侧运镜句须以 `The camera` **起句且独立成句** · 元数据不得编造（一律取自 pack_meta）· **不做模型适配**（规范 §6.1「基准唯一 + 单向投影」）
+      - 单元划分（每单元 2–3 镜、同场、单元内运镜类型不得重复）与单镜时长（4–15s 整秒）同 SW-006/SW-007 口径；素材已定者原样承接、未定者由本层按动作量裁定
+    notes: 业务链路**第 5 段（链尾）**，`revise`／SW-008 `v1.0.0`；**本层是链路的第二个起点**（客户自带素材的并行入口），不是下游续接——它把「客户已经有东西」这条路径也接入同一份交付契约。产物＝交付包（经 validate_pack.py 门禁）＋ 缺口台账（独立产物）。**链路口径的两处已知缺口均登记在案**：① `ISSUE-017`（stage_chain 枚举缺 revise，本层产物留 1 条 BLOCK 为其可见证据）；② 规范 §3.2 与 CFG-007 对「5 段链路」的读法差异（SYS-Q11 的 5 节点 vs 本工程 5 模板），随 ISSUE-017 一并裁决。用例见 examples/CASE-005_revise-case01.md
+
   - id: gen_article_v1
     name: 长文内容生成
     task_type: generate
@@ -285,11 +310,11 @@ templates:
 
 # ========== 统计 ==========
 summary:
-  total: 13
-  active: 13
+  total: 14
+  active: 14
   deprecated: 0
   by_task_type:
-    generate: 6
+    generate: 7
     summarize: 2
     rewrite: 2
     extract: 1
@@ -299,5 +324,5 @@ summary:
     script: 1
     storyboard: 1
     shot_prompt: 1
-    revise: 0
-  business_chain_note: "AI 漫剧业务链路 5 个模板建设中（与 CFG-007_SCHEMA.md 的 stage 枚举 5 值一一对应）：已建 4（synopsis_v1 / script_v1 / storyboard_v1 / shot_prompt_v1），待建 1（revise）"
+    revise: 1
+  business_chain_note: "AI 漫剧业务链路 5 个模板**已建齐 5/5**（与 CFG-007_SCHEMA.md 的 stage 枚举 5 值一一对应）：synopsis_v1（SW-004）→ script_v1（SW-005）→ storyboard_v1（SW-006）→ shot_prompt_v1（SW-007）→ revise_v1（SW-008，**并行入口**：客户自带素材时不跑前四段，由本段一次直出交付包）。⚠️ 链路评审覆盖率仍为 4/5——`revise_v1` 的独立评审（`REV-SW-008-01`~`-03`）尚未出具"

@@ -1,14 +1,16 @@
 {
-  "spec_version": "1.1.0",
-  "generated_at": "2026-10-14T10:04:57+08:00",
+  "spec_version": "1.2.0",
+  "generated_at": "2026-10-14T11:47:55+08:00",
   "generator": {
     "tool": "gen_overlays.py",
     "style": "dark_pill",
     "style_desc": "深色半透明圆角胶囊底衬 + 白色文字（适配任意画面，推荐）",
-    "font_file": "C:/Windows/Fonts/msyhbd.ttc",
-    "font_name": "微软雅黑 Bold（系统字体，仅预览用）",
-    "font_is_licensed": false,
-    "font_note": "系统字体，仅作视觉预览；正式交付前须替换为商用授权字体（规范 §7.5、NT-04）"
+    "font_file": "C:/Windows/Fonts/NotoSansSC-VF.ttf",
+    "font_name": "Noto Sans SC（与「思源黑体」同源；SIL OFL 1.1，可商用、可再分发）",
+    "font_is_licensed": true,
+    "font_license": "SIL Open Font License 1.1（允许商用、允许再分发）",
+    "font_weight": 700,
+    "font_note": "开放授权字体（与「思源黑体」同源）；可变字体按 wght 轴实例化到指定字重。NT-04 已于 2026-10-14 落实（规范 §7.5）"
   },
   "compliance": {
     "standard": "GB 45438—2025 §5.4",
@@ -50,8 +52,10 @@
     "text_final": "本文件由AI生成，已经过合规验证",
     "badge_text": "AI生成",
     "division": "画面标识只用**短文案角标** `AI生成`；完整文案由**交付合规声明**承载，不在画面上重复",
+    "resolved": [
+      "✅ **字体授权（规范 §7.5 / NT-04）**：2026-10-14 已由系统字体 `msyhbd.ttc` 替换为开放授权字体 **Noto Sans SC**（`C:/Windows/Fonts/NotoSansSC-VF.ttf`，与「思源黑体」同源，**SIL OFL 1.1**，允许商用与再分发），并按 `wght=700` 实例化以保持字重"
+    ],
     "pending": [
-      "替换为**商用授权字体**（现用系统字体 `msyhbd.ttc`，仅作预览；规范 §7.5、NT-04）",
       "接入适配层时按目标平台**安全区**微调角标边距"
     ]
   },
@@ -70,7 +74,7 @@
     {
       "file": "overlay_corner_16x9.png",
       "type": "corner_badge",
-      "canvas": "1080x117",
+      "canvas": "1103x117",
       "text": "本文件由AI生成，已经过合规验证",
       "font_px": 65,
       "height_ratio": 0.0602,
@@ -81,7 +85,7 @@
     {
       "file": "overlay_corner_short_16x9.png",
       "type": "corner_badge_short",
-      "canvas": "276x117",
+      "canvas": "275x117",
       "text": "AI生成",
       "font_px": 65,
       "height_ratio": 0.0602,
@@ -92,7 +96,7 @@
     {
       "file": "overlay_corner_suggest_16x9.png",
       "type": "corner_badge_suggest",
-      "canvas": "1348x117",
+      "canvas": "1379x117",
       "text": "本文件由人工智能（AI）生成，请注意甄别",
       "font_px": 65,
       "height_ratio": 0.0602,
@@ -114,7 +118,7 @@
     {
       "file": "overlay_corner_9x16.png",
       "type": "corner_badge",
-      "canvas": "611x204",
+      "canvas": "620x204",
       "text": "本文件由AI生成，已经过合规验证",
       "font_px": 65,
       "height_ratio": 0.0602,
@@ -125,7 +129,7 @@
     {
       "file": "overlay_corner_short_9x16.png",
       "type": "corner_badge_short",
-      "canvas": "276x117",
+      "canvas": "275x117",
       "text": "AI生成",
       "font_px": 65,
       "height_ratio": 0.0602,
@@ -136,7 +140,7 @@
     {
       "file": "overlay_corner_suggest_9x16.png",
       "type": "corner_badge_suggest",
-      "canvas": "1013x204",
+      "canvas": "1034x204",
       "text": "本文件由人工智能（AI）生成，请注意甄别",
       "font_px": 65,
       "height_ratio": 0.0602,
