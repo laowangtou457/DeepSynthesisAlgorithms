@@ -74,7 +74,7 @@
 
 ## 七、自检结论
 
-> 依据规范 NORM-DELIVERY-001 **v1.1 §8.3**（交付前自检 **18 项**，逐项必须通过）。
+> 依据规范 NORM-DELIVERY-001 **v2.0 §8.3**（交付前自检 **18 项**，逐项必须通过；v2.0 未改变章节结构，故 §8.3 编号继续有效）。
 
 | # | 检查项 | 结果 | 检查时间 | 检查人 |
 | --- | --- | --- | --- | --- |
@@ -108,4 +108,4 @@
 
 ---
 
-*模板文件：`03-工程代码/delivery/templates/AST-004_compliance_statement_v1.md` ｜规范依据：NORM-DELIVERY-001 v1.1 §8*
+*模板文件：`03-工程代码/delivery/templates/AST-004_compliance_statement_v1.md` ｜规范依据：NORM-DELIVERY-001 v2.0 §8*

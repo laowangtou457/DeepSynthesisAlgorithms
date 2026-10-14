@@ -6,7 +6,7 @@
 | --- | --- |
 | 用例编号 | `CASE-SHP-001` |
 | 对应需求 | **SW-007 分镜提示词生成**（编译表达层） |
-| 模板 | `shot_prompt_v1` **v1.1.0**（v1.1.0 系依**导演视角独立评审 `PR-01`~`PR-15`** 修订；该评审因**会话隔离未满足**而**降级使用**，只作设计期参考、不作独立背书。**无 output 字段增删**故属次版本） |
+| 模板 | `shot_prompt_v1` **v2.0.0**（**v2.0.0 系依契约升版批次 `T-054`／`T-055`／`T-056` 合并为同一次动作**——`output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs`，**属 output 字段增删，故升主版本**。历史：v1.1.0 系依**导演视角独立评审 `PR-01`~`PR-15`** 修订，该评审因**会话隔离未满足**而**降级使用**，只作设计期参考、不作独立背书） |
 | 上游用例（双上游） | `CASE-SCR-001`（`examples/CASE-001_script-case01.md`，**出锚**：`style_bible`／`characters`／`props`）＋ `CASE-STB-001`（`examples/CASE-003_storyboard-case01.md`，**出决策**：`units`／`shots`／`total_duration_ms`） |
 | 用例来源 | **构造用例**（非真实客户素材；正式交付前须补一组脱敏真实素材） |
 | 采样参数 | temperature 0.7 / top_p 0.9 / max_tokens 8192（**受约束解码**，FSM = `delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`） |
@@ -34,7 +34,7 @@
 | `style_bible.lighting_default` | 夜景：低调光，湿地面反光补光；清晨：低饱和漫射光（**分时相差异写在此处**） |
 | `style_bible.style_prompt_en` | ⚠️ **上游无此字段**（规范 §3.3 标「应当」）→ **由本层补出** |
 | `characters` | `CHR-01`（name **未指定**／identity 外卖员）· `CHR-02`（name **未指定**／identity 住所女主人） |
-| `props` | `PRP-01`（流浪猫，仅由 `shots[].prop_refs` 引用；交付包**无独立 props 顶层字段**） |
+| `props` | `PRP-01`（流浪猫。**v2.0 起由交付包顶层 `props[]` 承载**，并逐镜以 `prop_refs` 引用：`prop_id`／`name`／`role`／`appearance_lock_zh` **原样承继**、`appearance_lock_en` 由本层补出；上游台账字段 `design_source` **不入包**） |
 
 **② 决策（来自 `storyboard_json`，`CASE-STB-001`）**
 
@@ -53,12 +53,12 @@
 
 > **状态：待回填。** 本节为目标输出样例（人工构造），用于固化字段结构与写法基线；**尚未经 Qwen2.5-7B-Instruct 实测**。实测后须替换为模型真实输出并保留原始采样日志。
 >
-> ⚠️ **本包已过「产物侧静态门禁」**（`validate_output.py` **52/0/0**），但**交付门禁 `validate_pack.py` 仍有 1 条 BLOCK**（`S01-SH001` 的 `prompt_en` 超 schema 上限 900 字符）——该条**属契约级缺陷**（上限值本身待复核，评审 PR-07），**本层不压缩维度**，故如实留痕而**不假装通过**（详见 §4 第 27 项、§6 第 4 项）。
-> 本包**仍是人工构造的结构基线**，**不是模型实测产物**——「脚本全绿／接近全绿」只证明结构与规则自洽，**不证明模型能生成**。真正可交付的包必须在模型就绪后由 `shot_prompt_v1` **v1.1.0** 产出、再过同一套门禁。详见 §6。
+> ✅ **本包已过「产物侧静态门禁」**（`validate_output.py` **53/0/0**），**且交付门禁 `validate_pack.py` 为 0 BLOCK**（**v2.0 起**）。原本唯一一条 BLOCK 是 `S01-SH001` 的 `prompt_en` 超 schema 上限 900 字符——**该条属契约级缺陷**（上限值本身待复核，评审 `PR-07`），已随 **`T-056` 把上限上修至 1200 字符**而归零（**本层始终不压缩维度**——压缩会违反 §4.1 八维双落地）。详见 §4 第 27 项、§6 第 4 项。
+> 本包**仍是人工构造的结构基线**，**不是模型实测产物**——「脚本全绿」只证明结构与规则自洽，**不证明模型能生成**。真正可交付的包必须在模型就绪后由 `shot_prompt_v1` **v2.0.0** 产出、再过同一套门禁。详见 §6。
 
 ```json
 {
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "meta": {
     "pack_id": "FR-PK-20261013-CASE0001",
     "title": "雨夜的猫",
@@ -86,7 +86,7 @@
         { "id": "synopsis_v1", "version": "2.0.0" },
         { "id": "script_v1", "version": "2.0.0" },
         { "id": "storyboard_v1", "version": "2.1.0" },
-        { "id": "shot_prompt_v1", "version": "1.1.0" }
+        { "id": "shot_prompt_v1", "version": "2.0.0" }
       ],
       "model": { "name": "Qwen2.5-7B-Instruct", "backend": "vllm", "revision": "main" }
     },
@@ -98,7 +98,7 @@
     },
     "aspect_ratio_default": "16:9",
     "total_duration_ms": 81000,
-    "notes": "【未验证包 · 人工构造 · v1.1 依评审修订】① 字段投影（规则①）：上游 style_bible.lighting_default 为描述性串（含分时相差异），交付包该字段要求纯词表值，已按语义映射为 practical_light（雨夜实景补光为全片统一光质基底）；因逐镜 lighting 均已给出真值，该默认值实际不被引用。上游 12 处 lighting 的「词表值——中文光位说明」已拆分：字段只留词表 code，中文光位说明移入 prompt_zh、英文说明移入 prompt_en。② 【v1.1 更正 · 评审 PR-02】原口径「amplitude／speed 的 medium／normal 规范化为空串」**已废止**——交付 schema 的枚举不含空串，写空串会被门禁判 `'' is not one of [...]`（实测 23 条 BLOCK）。新口径：**所有留空一律省略该键**（amplitude／speed／optics／transition_in／transition_out／ref_image），本包已按此重出。上游 S03-SH002 的 camera 幅度已按 storyboard_v1 v2.1.0 硬性约束 6 留空，本层即省略 amplitude 键。③ 【条件改写留痕 · 规则④ · 评审 PR-03】全包唯一一处：S02-SH003 的 shot_language.composition 上游留空、而交付 schema 该字段 required 且 minLength 1，已**仅从本镜已有字段派生**（依 shot_size=full、本镜 action 与 camera.from／to 推得「人与车停在路口的侧影整个入画，路口灯柱在画面右缘」）。另 S02-SH001 的 shot_language.result 曾有无依据措辞改写（『反光带』→『路面反光』），已按评审 PR-03 **回退上游原文**。④ 【缺口可见性登记 · 评审 §3-B】本包所依据的上游未闭合缺口共 9 条，按可机器读形式逐条登记（本层不搬运、不改写、不重编号上游台账——规范 §3.1 顶层六段无台账字段）：[GAP] shots[].character_refs ← characters[0].appearance_lock_zh | owner=客户 | fill_stage=script | 客户未提供主角外形，剧本层已提候选待确认，确认前候选即全片默认锚。[GAP] shots[].character_refs ← characters[1].appearance_lock_zh | owner=客户 | fill_stage=script | 同上（CHR-02）。[GAP] style_ref ← style_bible.style_prompt_zh | owner=客户 | fill_stage=script | 客户未提供全片视觉风格，剧本层已提候选待确认，确认前该串为全片默认锚。[GAP] shots[].prop_refs ← props[0].appearance_lock_zh | owner=客户 | fill_stage=script | 客户未提供猫的品种与外观，剧本层已提候选待确认（注：本层已不输出 prop_refs 结构键，见评审 PR-01）。[GAP] units[4].music ← 无上游字段 | owner=客户 | fill_stage=storyboard | 客户未提供音乐方案，本层按收束段节奏提议织体（单音符钢琴，间隔 3–4 秒一次）待确认，否决则改。[GAP] shots[].dialogue ← characters[*].name／ending.resolution | owner=客户 | fill_stage=script | 主角姓名、妹妹姓名、具体年数、失联原因四项未闭合，对白一律以身份代称与模糊说法处理，不阻塞交付。⑤ 【契约级提醒 · 评审 PR-07】prompt_en 的 schema 上限 900 字符与「八维必须写进正文」在中长镜上不可兼得：本包 S01-SH001 = 1113 字符超限。本层**不压缩维度**（压缩会违反 §4.1 八维双落地），该上限已提请契约责任方复核。⑥ 【契约级提醒 · 自查发现 · ISSUE-012】上游**顶层** `forbidden_items` 在交付包**无对应容器**——规范 §3.1 顶层六段无此段；§3.3 `negative_global` 的四类组织覆盖的是**画质与伪影**（通用图像项／视频时域项／形变延续项／场景专属项），**不是「内容层禁忌」**（如「禁止出现真实人名」）；`meta.compliance` 只含 safety／copyright／marking／statement，亦非其容器。故本层**不搬运该字段**，已登记规范层缺口 `ISSUE-012` 提请契约责任方定案（候选处置见复查记录）。⚠️ 与 `characters[].forbidden` 区分——后者是交付包字段集的**内建**字段（规范 §3.4），本包已照常产出。本条由新增判据 **R36**（字段集**直接读交付 schema**）机器化：交付包任一层的契约外键均会被拦下。"
+    "notes": "【未验证包 · 人工构造 · v2.0 依契约升版修订】① 字段投影（规则①）：上游 style_bible.lighting_default 为描述性串（含分时相差异），交付包该字段要求纯词表值，已按语义映射为 practical_light（雨夜实景补光为全片统一光质基底）；因逐镜 lighting 均已给出真值，该默认值实际不被引用。上游 12 处 lighting 的「词表值——中文光位说明」已拆分：字段只留词表 code，中文光位说明移入 prompt_zh、英文说明移入 prompt_en。② 【v1.1 更正 · 评审 PR-02】原口径「amplitude／speed 的 medium／normal 规范化为空串」**已废止**——交付 schema 的枚举不含空串，写空串会被门禁判 `'' is not one of [...]`（实测 23 条 BLOCK）。新口径：**所有留空一律省略该键**（amplitude／speed／optics／transition_in／transition_out／ref_image），本包已按此重出。上游 S03-SH002 的 camera 幅度已按 storyboard_v1 v2.1.0 硬性约束 6 留空，本层即省略 amplitude 键。③ 【条件改写留痕 · 规则④ · 评审 PR-03】全包唯一一处：S02-SH003 的 shot_language.composition 上游留空、而交付 schema 该字段 required 且 minLength 1，已**仅从本镜已有字段派生**（依 shot_size=full、本镜 action 与 camera.from／to 推得「人与车停在路口的侧影整个入画，路口灯柱在画面右缘」）。另 S02-SH001 的 shot_language.result 曾有无依据措辞改写（『反光带』→『路面反光』），已按评审 PR-03 **回退上游原文**。④ 【缺口可见性登记 · 评审 §3-B】本包所依据的上游未闭合缺口共 9 条，按可机器读形式逐条登记（本层不搬运、不改写、不重编号上游台账——规范 §3.1 顶层八段无台账字段）：[GAP] shots[].character_refs ← characters[0].appearance_lock_zh | owner=客户 | fill_stage=script | 客户未提供主角外形，剧本层已提候选待确认，确认前候选即全片默认锚。[GAP] shots[].character_refs ← characters[1].appearance_lock_zh | owner=客户 | fill_stage=script | 同上（CHR-02）。[GAP] style_ref ← style_bible.style_prompt_zh | owner=客户 | fill_stage=script | 客户未提供全片视觉风格，剧本层已提候选待确认，确认前该串为全片默认锚。[GAP] shots[].prop_refs ← props[0].appearance_lock_zh | owner=客户 | fill_stage=script | 客户未提供猫的品种与外观，剧本层已提候选待确认；候选即全片默认锚。**v2.0 起本层已输出顶层 props[] 与逐镜 prop_refs**（见 ⑦），该缺口不再是「无处落地」。[GAP] units[4].music ← 无上游字段 | owner=客户 | fill_stage=storyboard | 客户未提供音乐方案，本层按收束段节奏提议织体（单音符钢琴，间隔 3–4 秒一次）待确认，否决则改。[GAP] shots[].dialogue ← characters[*].name／ending.resolution | owner=客户 | fill_stage=script | 主角姓名、妹妹姓名、具体年数、失联原因四项未闭合，对白一律以身份代称与模糊说法处理，不阻塞交付。⑤ 【v2.0 已解 · 原评审 PR-07 提示】prompt_en 的 schema 上限原为 900 字符，与「八维必须写进正文」在中长镜上不可兼得（本包 S01-SH001 = 1113 字符超限）。**v2.0 已把上限上修至 1200 字符**（定值依据见规范 §3.7.6：实测最长 1113 ／ p95 941 ／ 均值 778），本包 1113 已在限内——该条 BLOCK 随之归零。⑥ 【v2.0 已解 · 原自查发现 ISSUE-012】上游**顶层** `forbidden_items` 原在交付包**无对应容器**，本层曾不搬运该字段。**v2.0 起交付契约已增顶层 `forbidden_items`**（规范 §3.1.1 三层边界：客户业务层 `forbidden_items` 进包／质量层 `negative_global` 管画质伪影／法定合规层 `A1-0x` 分类码与词条**绝不进包**）——本包已按契约产出该段（上游三处均为空数组，故本段为 `[]`）。⚠️ 与 `characters[].forbidden` **语义不同**：后者是**角色级**禁忌（防角色外观漂移），前者是**全片内容级**禁忌。R36 仍机器化「契约外键禁入」（检查九处）。⑦ 【v2.0 契约升版 · 本包已随升】三处结构变更合并为同一次动作：① 新增顶层 `props[]`（道具锚）与逐镜 `prop_refs`（14 镜中 10 镜为 [\"PRP-01\"]、4 镜为空数组 []，与上游 CASE-STB-001 逐镜一致）；② 新增顶层 `forbidden_items`（承接客户侧禁忌；本包为空数组 []）；③ `prompt_en` 上限 900 → 1200 字符。`schema_version` 1.1.0 → 2.0.0，模板 `shot_prompt_v1` 1.1.0 → 2.0.0。**`prop_refs` 恢复承继列、`forbidden_items` 进入承继列**——v1.1 的「不输出」处置随契约补齐**已撤销**（`ISSUE-011`／`ISSUE-012` 闭环）。"
   },
   "style_bible": {
     "style_id": "STYLE-01",
@@ -126,6 +126,15 @@
       "appearance_lock_zh": "齐肩黑发随手挽起，素色米白家居开衫，身形偏瘦，左手无名指有一道旧疤",
       "appearance_lock_en": "shoulder-length black hair pinned up loosely, a plain off-white cardigan, slim build, an old scar on the ring finger of the left hand",
       "forbidden": ["发型变化", "服装颜色变化"]
+    }
+  ],
+  "props": [
+    {
+      "prop_id": "PRP-01",
+      "name": "流浪猫",
+      "role": "核心道具：串联主角与妹妹的信物，全片唯一把两人连起来的物件",
+      "appearance_lock_zh": "中华田园猫，橘白相间，左后腿有一道旧伤，颈上系一条磨花的皮质项圈，项圈上挂一枚磨花的金属宠物牌",
+      "appearance_lock_en": "a Chinese rural cat, orange and white, an old wound on the left hind leg, a scuffed leather collar with a worn metal tag"
     }
   ],
   "units": [
@@ -203,6 +212,7 @@
       "lighting": "practical_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "dialogue": "还有六分钟。",
       "sfx": "雨砸铁皮雨棚声、外卖箱塑料提手摩擦声",
       "transition_in": "fade_in",
@@ -241,6 +251,7 @@
       "lighting": "rim_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "sfx": "纸箱里细弱的猫叫、雨声转低",
       "transition_in": "cut",
       "notes": "道具 PRP-01 本镜入画；本镜不承载角度以外的额外处理"
@@ -278,6 +289,7 @@
       "lighting": "practical_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "雨砸在铁皮雨棚上，像有人在替他数秒。",
       "sfx": "雨声、纸箱刮过水泥地的摩擦声",
       "transition_in": "cut",
@@ -315,6 +327,7 @@
       "lighting": "neon_night",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "sfx": "电机声、雨打头盔的密集声",
       "transition_in": "fade_in",
       "notes": "单人镜；speed 取 fast 是强调加速，amplitude 为默认值故留空"
@@ -352,6 +365,7 @@
       "lighting": "practical_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "dialogue": "行，扣就扣吧。",
       "sfx": "提示音、雨声",
       "transition_in": "cut",
@@ -388,6 +402,7 @@
       "lighting": "blue_hour",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "他把差评留在了昨天的单里，把猫留在了今天。",
       "sfx": "雨声渐缓、远处车流涉水声",
       "transition_in": "cut",
@@ -427,6 +442,7 @@
       "lighting": "overcast",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "送东西的。",
       "sfx": "鸟叫、远处垃圾车、雨后滴水",
       "transition_in": "dissolve",
@@ -463,6 +479,7 @@
       "lighting": "practical_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "sfx": "门铃两声、门内无人应答、灯管电流声",
       "transition_in": "cut",
       "notes": "单人镜；荷兰角外化「按铃时的失衡感」，move 未取滚转类故 roll 可填"
@@ -500,6 +517,7 @@
       "lighting": "side_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "门铃响了两声，没有人应，他就按了第三声。",
       "sfx": "门铃第三声、门内脚步声由远及近",
       "transition_in": "cut",
@@ -537,6 +555,7 @@
       "lighting": "practical_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "……它怎么会在你这儿。",
       "sfx": "门轴轻响、声控灯电流声、室外滴水",
       "transition_in": "fade_in",
@@ -575,6 +594,7 @@
       "lighting": "rim_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": [],
       "dialogue": "昨晚在楼道里捡的。",
       "sfx": "室内安静、门缝里的空气声",
       "transition_in": "cut",
@@ -614,6 +634,7 @@
       "lighting": "soft_key_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "坐吧。它认你。",
       "sfx": "挂钟走针、猫爪在坐垫上的窸窣",
       "transition_in": "cut",
@@ -651,6 +672,7 @@
       "lighting": "soft_key_light",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "那……我坐。",
       "sfx": "布料摩擦、挂钟走针",
       "transition_in": "cut",
@@ -686,6 +708,7 @@
       "lighting": "overcast",
       "style_ref": "STYLE-01",
       "character_refs": ["CHR-01", "CHR-02"],
+      "prop_refs": ["PRP-01"],
       "dialogue": "窗外天亮了，屋里没人急着说话。",
       "sfx": "挂钟、窗外早市远景、猫的呼吸",
       "transition_in": "cut",
@@ -693,6 +716,7 @@
       "notes": "单元末镜兼全片末镜；静止镜内有光在变，不违「禁无结果的静止」；本镜不承载光学维"
     }
   ],
+  "forbidden_items": [],
   "aigc_meta": {
     "AIGC": {
       "Label": "1",
@@ -713,12 +737,12 @@
 
 | # | 评测项 | 手段 | 结论 |
 | --- | --- | --- | --- |
-| 1 | 交付包结构完整 | 顶层六段（`schema_version`／`meta`／`style_bible`／`characters`／`units`／`shots`／`aigc_meta`）逐段核对 | ✅ 七项齐备；每镜 13 个必备字段齐备 |
-| 2 | **承继守恒（不改导演决策）** | 交付包与 `CASE-STB-001` 逐字段 diff | ✅ 14 镜的 `shot_id`／`unit_id`／`scene_no`／`shot_no`／`duration_ms`／`shot_size`／`camera.*`／`action.*`／`shot_language.*`／`dialogue`／`sfx`／`transition_*`／`character_refs` **逐项相同**；差异仅**三类必改 + 一类条件改写** + 本层补出字段。⚠️ **v1.1 更正（评审 PR-01／PR-14）**：上游 `shots[].prop_refs` **不在承继列**——交付规范 §3.6 与交付 schema 均无该字段（规范全文无「道具」二字），本层不输出该结构键。原自评把它列进「逐项相同」是**口径错误**（本层当时本就未输出该键，该项 diff 实为零，「承继」二字不成立） |
+| 1 | 交付包结构完整 | 顶层**八段**（`schema_version`／`meta`／`style_bible`／`characters`／**`props`**／`units`／`shots`／**`forbidden_items`**／`aigc_meta`）逐段核对 | ✅ **9 个顶层键**齐备（必备 6 段 + 可选段 `characters`／`props`／`forbidden_items`）；每镜 **14 个**必备字段齐备（**v2.0 起**，新增 `prop_refs`） |
+| 2 | **承继守恒（不改导演决策）** | 交付包与 `CASE-STB-001` 逐字段 diff | ✅ 14 镜的 `shot_id`／`unit_id`／`scene_no`／`shot_no`／`duration_ms`／`shot_size`／`camera.*`／`action.*`／`shot_language.*`／`dialogue`／`sfx`／`transition_*`／`character_refs`／**`prop_refs`** **逐项相同**；差异仅**三类必改 + 一类条件改写** + 本层补出字段。⚠️ **v2.0 更正（`ISSUE-011` 闭环）**：上游 `shots[].prop_refs` **回到承继列**——v1.1 把它移出的两条理由（「交付规范 §3.6 无该字段」「交付 schema `shot.properties` 无该键」）**随 V2.0 契约补齐而全部消失**；本包 14 镜 `prop_refs` 与上游 `CASE-STB-001` **逐项相同**（10 镜 `["PRP-01"]`、4 镜 `[]`）。同理上游**顶层** `forbidden_items` 自 v2.0 起**原样承继**（本包与上游同为 `[]`）。 |
 | 3 | 镜数与镜序守恒 | `shots` 数、`units[].shot_ids` 顺序 | ✅ 同为 14 镜 / 5 单元（3+3+3+2+3）；镜序不变 |
 | 4 | 时长守恒 | Σ`duration_ms` 与 `meta.total_duration_ms`、上游 `total_duration_ms` 三方比对 | ✅ 均为 **81000ms**，三方一致（本层未改时长） |
-| 5 | **补出的必填字段**（本层存在的理由） | 逐镜核对 `style_ref`／`prompt_zh`／`prompt_en`／`aspect_ratio` | ✅ 14 镜全部补出；`style_ref` 恒为 `STYLE-01`（§3.8 阻断项已满足） |
-| 6 | 顶层锚补齐 | `style_bible` / `characters[]` 完整性 | ✅ `style_prompt_en`（上游缺）与 `appearance_lock_en` ×2 均由本层补出且与中文同义 |
+| 5 | **补出的必填字段**（本层存在的理由） | 逐镜核对 `style_ref`／`prompt_zh`／`prompt_en`／`aspect_ratio` | ✅ 14 镜全部补出；`style_ref` 恒为 `STYLE-01`（§3.8 阻断项已满足）。⚠️ 另 **`prop_refs`** 属 `shot.required`（v2.0 起）但**由本层承继、非补出**——见第 2 项与第 20 项 |
+| 6 | 顶层锚补齐 | `style_bible` / `characters[]` / **`props[]`** 完整性 | ✅ `style_prompt_en`（上游缺）与 `appearance_lock_en` ×2（角色）+ ×1（道具）均由本层补出且与中文同义；**`props[]`** 的 `prop_id`／`name`／`role`／`appearance_lock_zh` 与上游**逐字一致**（上游台账字段 `design_source` **不入包**） |
 | 7 | **八维双落地** | 14 镜 × 8 维 = 112 格，逐格在正文中找出对应句 | ✅ 112 格全部有字段承载且能定位到正文句（详见 §5 陷阱位 1） |
 | 8 | 外观只定义一次 | 把 `appearance_lock_zh` 与 `appearance_lock_en` 的特征词在 14 镜正文中扫描 | ✅ **0 命中**——正文无「短发／浓眉／深蓝色／冲锋衣／反光条／齐肩黑发／米白／开衫／旧疤」等特征词 |
 | 9 | **单人替身法则** | 逐镜判定主体数，核查单角色镜是否有稳定指称 | ⚠️→✅ **v1.1 更正并整改（评审 PR-05）**：原自评「单人镜每镜都出现稳定指称」**失实**——实测英文侧 6/9 镜用简写 `the rider`、`S03-SH003` **中英双侧皆无**（仅 `his`／「他」）。**已整改**：JSON 块内 4 处 `the rider` → `the delivery rider`；`S03-SH003`、`S03-SH002` 的起句补具名锚点。**复验：9 个单人镜中英双侧均有稳定指称，`the rider` 残留 0 处** |
@@ -732,20 +756,20 @@
 | 17 | 负向词不进正文 | 扫描「（负向：…）」「Negative prompt:」「no …」类残留 | ✅ 0 命中；负向意图一律承载在 `negative_global`，未写进 `prompt_*` |
 | 18 | 正文不含模型参数指令 | 扫描 `--ar`／`--v`／`--style` 等 | ✅ 0 命中；画幅走 `aspect_ratio` 结构字段 |
 | 19 | 要素顺序与运镜独立成句 | 逐镜核对顺序；英文侧找 `The camera` 独立句（**v1.1 起由 R34 脚本判据兜底**） | ⚠️ **v1.1 更正（评审 PR-04）**：原自评「（14 镜中 8 镜有运镜）全部独立成句」**失实**——实测 **`S01-SH002` 违反**（`as the camera tilts down…` 为**小写从句、并入起句**）。已修该镜中英正文（起句改「景别 + 主体／环境」名词短语、运镜另起独立句），并新增 **R34** 使该形态**可脚本核查**——这类失败**人眼看不出来**（句子读起来很自然），无判据必漏。要素顺序本身合规 |
-| 20 | 引用完整性（§3.8 阻断项） | `style_ref`／`character_refs` 命中校验 | ✅ `STYLE-01` 命中；`CHR-01`／`CHR-02` 命中。**v1.1 更正（评审 PR-01）**：原自评「`prop_refs` 引用 `PRP-01` 的镜头数 = 10」**不成立**——交付包**不含 `prop_refs` 字段**（不在 §3.6 与 schema 的字段集内），该引用关系只在上游校验。**R35** 已脚本化「本层不得输出该键」 |
+| 20 | 引用完整性（§3.8 阻断项） | `style_ref`／`character_refs`／**`prop_refs`** 命中校验 | ✅ `STYLE-01` 命中；`CHR-01`／`CHR-02` 命中；`PRP-01` 命中——**引用它的镜头数 = 10**（与上游一致）。⚠️ **v2.0 更正**：该结论在 v1.1 下**不成立**（当时交付包不含该字段），随契约补齐**现已成立**；**R35** 自 v2.0 起由「本层不得输出该键」**反转为正向「道具锚一致性」**（每镜必备该键 + 逐项命中 `props[].prop_id`） |
 | 21 | `units` 约束 | 单元镜数 ∈[2,3]、单元内运镜不重复 | ✅ 3/3/3/2/3；各单元内 `camera.move` 无重复 |
 | 22 | AIGC 元数据块 | 唯一性、`ProduceID` 与 `pack_id` 同值、字段齐全 | ✅ 仅一份；`ProduceID = PropagateID = meta.pack_id`；`ContentPropagator` 首次写入与 `ContentProducer` 同值；7 字段齐全 |
 | 23 | 元数据非编造 | `pack_id`／`created_at`／`session_id`／`task_id`／`statement_id` 回查 `pack_meta` | ✅ 六项均为注入值或占位符；**无自拟值** |
-| 24 | 缺口台账未越权 **+ 缺口可见性** | 交付包是否出现 `unspecified`；`meta.notes` 是否登记所依据的上游缺口 | ✅ 未出现 `unspecified`（规范 §3.1 顶层无此字段）；上游台账保持原状、未改写未搬运。**v1.1 补（评审 §3-B）**：`meta.notes` 已按**可机器读**形式逐条登记 **9 条上游未闭合缺口**（`[GAP] 字段路径 \| owner \| fill_stage \| fill_fallback 摘要`）——把「交付后不可见」降为「可见但仍不动台账」 |
-| 25 | **本层规则脚本化并逐条负向验证** | `validate_output.py` 的交付包形态规则 **R26~R36** 全跑 | ✅ 正向：**53 项通过 / 0 失败 / 0 警告**（整工程 4 个用例）；负向（`tests/negtest_pack_rules.py`）：**31 个越界样本全部 `EXIT=1`**（R26×2 / R27×3 / R28×2 / R29×3 / R30×3 / R31×4 / R32×2 / **R33×6 / R34×2 / R35×1 / R36×3**）；另 **3 个已知盲区**如预期不触发（登记于 `../../03-工程代码/prompts/CFG-007_SCHEMA.md` 与脚本内盲区段） |
+| 24 | 缺口台账未越权 **+ 缺口可见性** | 交付包是否出现 `unspecified`；`meta.notes` 是否登记所依据的上游缺口 | ✅ 未出现 `unspecified`（规范 §3.1 顶层**八段**无此字段）；上游台账保持原状、未改写未搬运。**v1.1 补（评审 §3-B）**：`meta.notes` 已按**可机器读**形式逐条登记 **9 条上游未闭合缺口**（`[GAP] 字段路径 \| owner \| fill_stage \| fill_fallback 摘要`）——把「交付后不可见」降为「可见但仍不动台账」 |
+| 25 | **本层规则脚本化并逐条负向验证** | `validate_output.py` 的交付包形态规则 **R26~R36** 全跑 | ✅ 正向：**53 项通过 / 0 失败 / 0 警告**（整工程 4 个用例）；负向（`tests/negtest_pack_rules.py`）：**32 个越界样本全部 `EXIT=1`**（R26×2 / R27×3 / R28×2 / R29×3 / R30×3 / R31×4 / R32×2 / **R33×6 / R34×2 / R35×2 / R36×3**）；另 **3 个已知盲区**如预期不触发（登记于 `../../03-工程代码/prompts/CFG-007_SCHEMA.md` 与脚本内盲区段） |
 | 26 | **与交付门禁脚本结论一致（双脚本对拍）** | 同一份包分别投喂 `prompts/validate_output.py`（R19 质量门）与 `delivery/validate_pack.py`（门禁⑫），比对结论 | ✅ **修正后一致**：两脚本均判「整片 + 5 个单元 11 项全通过」。⚠️ **修正前不一致**：门禁脚本对 **U04（2 镜 / 1 static）** 报 BLOCK，而另两处（`validate_output.py` R19 与参照实现 `audit_shots.py`）判通过——根因是门禁脚本**判据用比例直接比阈值**、废弃了自带 `_allow()` 的容差算法（详见 §5 陷阱位 12）。现两脚本均为「门禁 BLOCK 0」，与 `CFG-004_demo_pack.json` 回归结果一并留档 |
-| 27 | **与交付契约的四个冲突点是否「可见」** | 门禁脚本带 schema 全量跑；逐条对照评审 PR-01／PR-02／PR-07 | ⚠️ **v1.1 新增**。① **PR-02 留空口径** → **本层内解**（全包 41 处留空改「省略键」），门禁 BLOCK **24 → 1**；② **PR-01 `prop_refs` 无落点** → 本层不输出该键 + 登记规范层缺口 `ISSUE-011`（**须契约责任方定案**，本轮不改契约）；③ **PR-07 `prompt_en` 上限 900 字符** → **剩余的唯一 BLOCK**（`S01-SH001` = 1113），本层**不压缩维度**、登记 `meta.notes`（**须契约侧定案**）；④ **上游顶层 `forbidden_items` 无容器**（**自查发现**，见陷阱位 16）→ 本层不搬运 + 登记 `ISSUE-012`，并由 **R36** 机器化「契约外字段禁入」。**结论：剩余 BLOCK 是契约缺陷的可见证据，不是本层实现缺陷**——把「假装通过」换成「如实留痕」 |
+| 27 | **与交付契约的四个冲突点：v2.0 起全部清除** | 门禁脚本带 schema 全量跑；逐条对照评审 PR-01／PR-02／PR-07／自查 `ISSUE-012` | ✅ **v2.0 起四项全解**。① **PR-02 留空口径** → **本层内解**（全包 41 处留空改「省略键」，v1.1 已完成），门禁 BLOCK **24 → 1**；② **PR-01 `prop_refs` 无落点** → **契约侧补齐**（规范 §3.6 增 `prop_refs` + 顶层增 `props[]`），本层恢复承继，`ISSUE-011` **闭环**；③ **PR-07 `prompt_en` 上限 900 字符** → **契约侧上修**（900 → **1200**，实测 1113 已在内），`ISSUE-015` **闭环**，该 BLOCK **归零**；④ **上游顶层 `forbidden_items` 无容器**（**自查发现**，见陷阱位 16）→ **契约侧增设容器**，本层原样承继，`ISSUE-012` **闭环**；**R36** 仍机器化「契约外字段禁入」。**结论：交付门禁 0 BLOCK 是契约缺陷被真正修好后的结果，不是把产物改到「看起来能过」** |
 
 ## 5 陷阱位（本用例专门埋设的失败模式）
 
 | # | 陷阱 | 说明 | 本用例的正确处理 |
 | --- | --- | --- | --- |
-| 1 | **八维双落地 vs 「40–120 字」长度建议** | 规范 §4.1 要求八维**同时**写进正文，§3.7.6 又建议单镜 40–120 字（中文）。八维全承载的镜头实测下不来——1 个镜头要写清景别＋运镜（含起止）＋角度＋光学落点＋构图＋轴线＋光线＋画面结果＋风格，中文普遍在 **150–200 字** | 本用例**按八维优先**书写（150–200 字），并**如实标注超出建议上限**——`CFG-006_shot_prompt_pack.v1.schema.json` 的 `prompt_zh` 上限为 600 字，容纳无碍。**两条规范条款在长镜头上的张力是真实存在的**，已列入 SW-007 评审请求书的待议项（§3.7.6 的「建议」是否应随八维口径上修） |
+| 1 | **八维双落地 vs 长度建议（v2.0 已化解）** | 规范 §4.1 要求八维**同时**写进正文，**v1.3 及更早**的 §3.7.6 又建议单镜 40–120 字（中文）。八维全承载的镜头实测下不来——1 个镜头要写清景别＋运镜（含起止）＋角度＋光学落点＋构图＋轴线＋光线＋画面结果＋风格，中文普遍在 **150–200 字** | 本用例**按八维优先**书写（150–200 字）。**v2.0 已把 §3.7.6 的建议值上修为中文 90–280 字／英文 450–1200 字符**（`T-056`），本用例全部镜头**落在新建议区间内**——**该张力是规范自身的缺陷，已随契约升版一并修正**；`CFG-006` schema 的 `prompt_zh` 上限 600、`prompt_en` 上限 1200，容纳无碍 |
 | 2 | **上游字段值形态与交付包 schema 冲突** | 上游 `lighting` 与 `style_bible.lighting_default` 允许「词表值 + 中文光位说明」（如 `practical_light——楼道感应灯在下半张脸上打出一道硬边`），而交付包 schema 要求该字段匹配 `^[a-z][a-z_]*$` | **拆分**：字段只留词表 code，中文光位说明移入 `prompt_zh`、英文移入 `prompt_en`（见 S01-SH001 的光线句）。这是**投影规则①**，属「三类必改 + 一类条件改写」中的一类（v1.1 起表述统一，原写「唯一允许不逐字承继的两处之一」不够准确） |
 | 3 | **上游取值不在词表内** | `style_bible.lighting_default` = 「夜景：低调光，湿地面反光补光；清晨：低饱和漫射光」——**词表 15 值里没有「低调光」** | 按语义映射为 `practical_light`（雨夜实景补光为全片光质基底），并在 `meta.notes` **写明映射依据与「该默认值实际不被引用」**；**不得自造 code**。上游的分时相差异已由 14 镜的逐镜 `lighting` 分别承载 |
 | 4 | **`name` 为「未指定」时如何满足单人替身法则** | 规范 §4.4 要求单角色镜用「**具名锚点**」，但本案两名角色的 `name` 都是「未指定」，而事实类信息**不得编造**（不能自拟「陈默」） | 给出**可执行替代口径**：用剧本层已定义的 `identity` 作**稳定指称**（中文「外卖员」／英文 `the delivery rider`），且**全片一致**。锚点的本质是**唯一且不变**，不是「必须是人名」——这是评估第 9/10 项的依据 |
@@ -757,23 +781,23 @@
 | 10 | **上游 12 处 `lighting` 的中文说明未丢失** | 拆字段时最容易把中文光位说明直接删掉（删了就等于丢了「光在干什么」——而这正是 §4.4「禁无光的镜头」要防的） | 逐处**移入正文**而非丢弃：中文说明进 `prompt_zh` 的光线句、英文进 `prompt_en`；字段侧只留 code。评估第 15 项与第 7 项共同覆盖 |
 | 11 | **中英判据的语义尺度错配**（R28 首跑实测） | 外观复用检测若对**中英锚串统一取 3 字符**：中文 3 字已是语义单位，英文 3 字符只是**词内片段**——`the`（来自 "the right wrist"）、`old`（来自 "an old scar"）会在**任何一段英文正文**里命中。首跑即报 **773 处命中**，规则形同失效（14 镜几乎每镜都被判「复述外观」） | **两侧判据分别定义**：中文取**连续 3 字**、英文取**连续 3 个实词**（先剔停用词）。修正后本用例 14 镜正文 **0 命中**，且评估第 8 项的「反向扫描 0 命中」结论才真正成立。教训：**跨语言规则的阈值不能按字符数平移** |
 | 12 | **小样本下的占比门槛离散化**（门禁脚本既有缺陷，本轮自查发现） | `delivery/validate_pack.py` 的门禁⑫对「静止镜占比 40%」「单一运镜占比 35%」两条**用了比例直接比阈值**，而**报错文案却引用 `_allow(...)` 的绝对个数**——n=2 时 1/2 = 50% > 40% 必判 FAIL，但容差算法的本意正是 `max(1, ceil(ratio*n))`，2 镜单元**允许 1 个**。后果：同一份包，门禁脚本报 **BLOCK** 而 `validate_output.py` R19 与参照实现 `audit_shots.py` 都判**通过**——**两个校验器对同一产物结论相反**（实测 U04：2 镜 / 1 static） | 按参照实现修正判据为**计数比较**（`static_cnt > _allow(...)`）并统一文案；修正后门禁 **BLOCK 1 → 0**，与另两处一致，`CFG-004_demo_pack.json` 回归不变。该缺陷只在**短单元**暴露（整片 14 镜时比例判定凑巧同结果），说明**边界样本必须进回归**。本脚本 docstring 早已声明「容差算法与 `audit_shots.py` 一致」，此处属**实现与自述不符**——与本轮 R26 的「口径写了却没判据」同一性质：**依赖人记住的口径等于没有口径** |
-| 13 | **「留空」的两种表达：空串 vs 省略键**（P0 · 评审 PR-02） | 上游把「不强调／不适用」表达为**空串**（`amplitude: ""`、`transition_out: ""`），本层原投影规则③也「规范化为空串」。但交付 schema 的**枚举与 vocabRef 不含空串**（`amplitude` 三值、`speed` 三值、`optics` 五值、`transition_in/out` 五值；`lighting` pattern `^[a-z][a-z_]*$`），`characters[].ref_image` 亦为 `type:string` 不允 `null` | **改「留空即省略该键」**——JSON Schema 里「键缺失」与「值为空」是两件事，且**可选字段的键缺失天然合法**。全包 41 处留空改省略键后，门禁 BLOCK **24 → 1**（余 1 条见陷阱位 14 之外的 PR-07）。**教训：把「语义上的空」映射成「字符串上的空」，会在契约边界上翻车**；新增判据 **R33** 兜底 |
-| 14 | **上游有、交付契约无的字段**（P0 · 评审 PR-01） | 上游 `storyboard_v1` 的 `shots[].prop_refs`（道具锚引用）**不在交付规范 §3.6 的镜头字段集**里（规范全文无「道具」二字，已逐字核对），而交付 schema 的 `shot` 是 `additionalProperties:false`——**承继它会被门禁判「多余属性」**，不承继则道具锚的结构化落地在最后一公里断掉 | 本层处置：**不输出该结构键**（`system`／`guards`／`output` 三处清单**统一更正**），道具的可见信息由**正文**承载（不重述外观）；同时把「规范 §3.6 缺道具维度」登记为 **`ISSUE-011`**，提请契约责任方定案。**与陷阱位 6 同源：模板承诺了契约不接受的字段，等于给自己埋了一个必爆的雷**；新增判据 **R35** 兜底 |
+| 13 | **「留空」的两种表达：空串 vs 省略键**（P0 · 评审 PR-02） | 上游把「不强调／不适用」表达为**空串**（`amplitude: ""`、`transition_out: ""`），本层原投影规则③也「规范化为空串」。但交付 schema 的**枚举与 vocabRef 不含空串**（`amplitude` 三值、`speed` 三值、`optics` 五值、`transition_in/out` 五值；`lighting` pattern `^[a-z][a-z_]*$`），`characters[].ref_image` 亦为 `type:string` 不允 `null` | **改「留空即省略该键」**——JSON Schema 里「键缺失」与「值为空」是两件事，且**可选字段的键缺失天然合法**。全包 41 处留空改省略键后，门禁 BLOCK **24 → 1**（余 1 条为 `prompt_en` 上限，**v2.0 已上修至 1200、现已归零**）。**教训：把「语义上的空」映射成「字符串上的空」，会在契约边界上翻车**；新增判据 **R33** 兜底 |
+| 14 | **上游有、交付契约无的字段 —— v2.0 契约侧补齐**（P0 · 评审 PR-01 → `ISSUE-011`） | **v1.1 时的困境**：上游 `storyboard_v1` 的 `shots[].prop_refs`（道具锚引用）**不在交付规范 §3.6 的镜头字段集**里（当时规范全文无「道具」二字，已逐字核对），而交付 schema 的 `shot` 是 `additionalProperties:false`——**承继它会被门禁判「多余属性」**，不承继则道具锚的结构化落地在最后一公里断掉 | **v1.1 的临时处置**（**现已撤销**）：本层不输出该结构键，道具信息只由正文承载；同时登记 `ISSUE-011` 提请定案。**v2.0 的正式解法**（`T-054`）：契约侧**三项同改**——规范 §3.6 增 `prop_refs`、§3.4.1 增顶层 `props[]`（与 `characters[]` 同构）、schema 同步（`prop_refs` 进 `shot.required` 13 → 14）。**本层随之恢复承继，R35 由「禁入」反转为正向「道具锚一致性」**。**与陷阱位 6 同源：模板承诺了契约不接受的字段，等于给自己埋了一个必爆的雷**——这次拆掉的是雷本身，不是绕着走 |
 | 15 | **门禁脚本的风格漂移误报：子串包含 ≠ 词元匹配**（本轮自查发现） | `delivery/validate_pack.py` 门禁⑯ 用 `w in v` 判「正文是否出现锚点清单外的风格词」；而词表 `style_tags` 含「赛璐璐上色」、本片锚点是「**柔和**赛璐璐上色」→ 正文**逐字复述锚点**反被判「清单外风格词」（**9 镜误报**） | 判据修两条：① 清单词若被任一锚点**包含**，则不视为「清单外」；② 比对前先把正文里的**锚点原文剔除**，再在剩余文本里找清单外词。修正后误报归零。这与本层 **R28 的中英尺度错配同源**——都是「**字符串粒度 ≠ 语义粒度**」：R28 是「3 字符 ≠ 3 个词」，本条是「子串 ≠ 词元」 |
-| 16 | **判据只查「必备」不查「多余」：清单外字段无人管**（本轮自查发现 · 承接评审 PR-14） | 评审 PR-14 指出「两处清单不一致会留下『清单外字段无人管』的漏洞」。顺着这条**去查模板自身**，发现**第 6 处**不一致——模板头部注释的承继清单列 `forbidden_items` 而漏 `notes`，与 `system` 硬性约束 1／`guards` 的 diff 清单**不符**；再往下查**判据侧**：`R27` 只校「必备字段是否齐备」，**不校「是否多出契约外字段」** → 任何上游带来的、规范里没有的字段都能悄悄进入交付包，**到门禁才被 `additionalProperties:false` 拦下（拦得太晚，且只看得到一条汇总报错）** | 两侧都补：① 模板三处清单**逐项对齐**（并显式写明「上游顶层字段按投影表处理，不在承继清单内」）；② 新增 **R36 NO_EXTRA_KEY**——检查顶层／`shots[]`／`units[]`／`characters[]`／`meta`／`style_bible`／`aigc_meta` **七处**是否出现契约外键，且字段集**直接读交付 schema**（`single source of truth`，刻意不另写一份会陈旧的清单）。**顺带查出 `ISSUE-012`**：上游顶层 `forbidden_items` 在交付包**本就无容器**（规范 §3.1 顶层六段无它；§3.3 `negative_global` 的四类组织覆盖的是**画质与伪影**，不是「内容层禁忌」；`meta.compliance` 亦非其容器），而 `CFG-008_manifest.yaml` 却写「**须原样承继**」→ 一并更正为「不搬运 + 登记缺口」。**教训：判据只管「该有的在不在」，不管「不该有的在不在」，漏洞就一定从后门进来** |
+| 16 | **判据只查「必备」不查「多余」：清单外字段无人管**（本轮自查发现 · 承接评审 PR-14） | 评审 PR-14 指出「两处清单不一致会留下『清单外字段无人管』的漏洞」。顺着这条**去查模板自身**，发现**第 6 处**不一致——模板头部注释的承继清单列 `forbidden_items` 而漏 `notes`，与 `system` 硬性约束 1／`guards` 的 diff 清单**不符**；再往下查**判据侧**：`R27` 只校「必备字段是否齐备」，**不校「是否多出契约外字段」** → 任何上游带来的、规范里没有的字段都能悄悄进入交付包，**到门禁才被 `additionalProperties:false` 拦下（拦得太晚，且只看得到一条汇总报错）** | 两侧都补：① 模板三处清单**逐项对齐**（并显式写明「上游顶层字段按投影表处理，不在承继清单内」）；② 新增 **R36 NO_EXTRA_KEY**——检查顶层／`shots[]`／`units[]`／`characters[]`／**`props[]`**／**顶层 `forbidden_items`**／`meta`／`style_bible`／`aigc_meta` **九处**（v2.0 起）是否出现契约外键，且字段集**直接读交付 schema**（`single source of truth`，刻意不另写一份会陈旧的清单）——**这正是它的设计价值：v2.0 契约扩容时本条零改动**（它不持有清单，只持有「读 schema」这一个动作）。**顺带查出 `ISSUE-012`**：上游顶层 `forbidden_items` 在交付包**当时无容器**（规范 §3.1 顶层六段无它；§3.3 `negative_global` 覆盖的是**画质与伪影**、非「内容层禁忌」；`meta.compliance` 亦非其容器），而 `CFG-008_manifest.yaml` 却写「**须原样承继**」→ v1.1 一并更正为「不搬运 + 登记缺口」；**v2.0 契约侧增设该容器后，本层改为原样承继（`ISSUE-012` 闭环）**。**教训：判据只管「该有的在不在」，不管「不该有的在不在」，漏洞就一定从后门进来** |
 
 ## 6 验证状态
 
 | # | 项 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| 1 | 模板 `shot_prompt_v1` **v1.1.0** 结构自检 | ✅ 通过 | `validate_templates.py`：YAML 解析、五节齐备、变量引用一致（声明 5 / 引用 5）。整目录口径：**57 通过 / 8 失败 / 2 警告**，8 项失败全属既有 `T-036`（通用模板缺 `context` 节），**本轮零新增**。⚠️ v1.1.0 修订后模板由 533 → **660 行**，YAML 解析经复验通过 |
-| 2 | 产物 JSON 静态契约自检 | ✅ **通过（2026-10-13 补测；v1.1.0 复验）** | `validate_output.py`（交付包形态 **R26~R36**）**53 项通过 / 0 失败 / 0 警告**。⚠️ 此项为**静态契约**校验，**不等于**「模型能生成合规产物」 |
-| 3 | 规则有效性（负向验证） | ✅ **通过（2026-10-13 补测；v1.1.0 扩样）** | 逐条构造越界样本（`tests/negtest_pack_rules.py`）：**31 个样本全部 `EXIT=1`**（R26×2 / R27×3 / R28×2 / R29×3 / R30×3 / R31×4 / R32×2 / R33×6 / R34×2 / R35×1 / **R36×3**）；另 **3 个已知盲区**如预期不触发并登记在案。只跑通过样本证明不了校验器有效——此步不可省 |
-| 4 | 交付门禁脚本 `validate_pack.py` | ⚠️ **BLOCK 1 / WARN 7（2026-10-13 带 schema 复跑）——剩余 1 条属契约级缺陷** | 本包**已能直接投喂**该门禁脚本（这正是 SW-007 输出形态定为「直接产出交付包 JSON」的收益）。**v1.1 修订把 BLOCK 由 24 条压到 1 条**（留空口径 21 条 + `characters[].ref_image` 2 条已在本层内解）。**剩余 1 条**：`shots/0/prompt_en is too long`（`S01-SH001` = 1113 > schema 上限 900 字符）——**本层不压缩维度**（压缩违反 §4.1 八维双落地），已按评审 PR-07 提请契约责任方复核上限。WARN 7 条均可解释：`provider.code`（占位符未回填，正式交付前须补）+ 6 条 `gate.pass`（质量门通过的**信息性** WARN，非问题）。⚠️ 首跑曾另报 1 个 BLOCK（U04 小样本占比离散化）——经裁定为**门禁脚本自身缺陷**并已修正，见 §5 陷阱位 12 与评估第 26 项 |
+| 1 | 模板 `shot_prompt_v1` **v2.0.0** 结构自检 | ✅ 通过 | `validate_templates.py`：YAML 解析、五节齐备、变量引用一致（声明 5 / 引用 5）。整目录口径：**57 通过 / 8 失败 / 2 警告**，8 项失败全属既有 `T-036`（通用模板缺 `context` 节），**本轮零新增**。⚠️ 行数沿革：533（v1.0.0）→ **660**（v1.1.0）→ **716 行**（v2.0.0），各版 YAML 解析均复验通过 |
+| 2 | 产物 JSON 静态契约自检 | ✅ **通过（2026-10-13 补测；v2.0.0 复验）** | `validate_output.py`（交付包形态 **R26~R36**）**53 项通过 / 0 失败 / 0 警告**。⚠️ 此项为**静态契约**校验，**不等于**「模型能生成合规产物」 |
+| 3 | 规则有效性（负向验证） | ✅ **通过（2026-10-13 补测；v2.0.0 扩样）** | 逐条构造越界样本（`tests/negtest_pack_rules.py`）：**32 个样本全部 `EXIT=1`**（R26×2 / R27×3 / R28×2 / R29×3 / R30×3 / R31×4 / R32×2 / R33×6 / R34×2 / **R35×2** / R36×3）；另 **3 个已知盲区**如预期不触发并登记在案（**合计 35 项全符合预期**）。只跑通过样本证明不了校验器有效——此步不可省 |
+| 4 | 交付门禁脚本 `validate_pack.py` | ✅ **BLOCK 0（2026-10-14 带 schema 复跑）——v2.0 起归零** | 本包**可直接投喂**该门禁脚本（这正是 SW-007 输出形态定为「直接产出交付包 JSON」的收益）。**BLOCK 24 → 1（v1.1 本层内解留空口径）→ 0（v2.0 契约侧上修 `prompt_en` 上限至 1200 字符）**。原剩余 1 条为 `shots/0/prompt_en is too long`（`S01-SH001` = 1113 > 旧上限 900）——**本层不压缩维度**（压缩违反 §4.1 八维双落地），由**契约责任方按 `T-056` 上修**后归零。WARN 均可解释：`provider.code`（占位符未回填，正式交付前须补）+ `gate.pass`（质量门通过的**信息性** WARN，非问题）。⚠️ 首跑曾另报 1 个 BLOCK（U04 小样本占比离散化）——经裁定为**门禁脚本自身缺陷**并已修正，见 §5 陷阱位 12 与评估第 26 项 |
 | 5 | 本用例作为「**模型实测**证据」 | ❌ **不成立** | 本节输出为**人工构造的结构基线**，非模型产物。**不得**把「结构看起来对」或「脚本全绿」当成「模型已能生成」——§3 的 14 镜 JSON 是**目标形态**，不是 Qwen2.5-7B-Instruct 的真实输出 |
 | 6 | 模型实测（Qwen2.5-7B-Instruct） | ⏳ **待做** | 需 GPU 环境（T-012 已解锁）；实测后须替换 §3 为本模型的**真实输出**并保留原始采样日志 |
-| 7 | 与上游零偏差 | ✅ 结构层面成立（**但「与上游一致」的范围须扣除交付契约外的字段**） | 镜数 / 镜序 / 时长 / 角色引用与 `CASE-STB-001` 逐项一致（评估第 2~4 项）；R31 已脚本化镜数／镜序／时长三条不变量。⚠️ **v1.1 说明**：上游 `shots[].prop_refs` **不属于**「应与上游一致」的范围——交付契约无该字段，本层不输出（见 §5 陷阱位 14、`ISSUE-011`）。同理，上游**顶层** `forbidden_items` 亦不属于「应与上游一致」的范围——交付包无该字段的容器（见 §5 陷阱位 16、`ISSUE-012`） |
+| 7 | 与上游零偏差 | ✅ 结构层面成立（**v2.0 起不再需要「扣除契约外字段」的例外**） | 镜数 / 镜序 / 时长 / 角色引用 / **道具引用**与 `CASE-STB-001` 逐项一致（评估第 2~4、20 项）；R31 已脚本化镜数／镜序／时长三条不变量，R35 脚本化 `prop_refs` 的「齐备 + 命中」。⚠️ **v1.1 说明（已作废）**：当时上游 `shots[].prop_refs` 与**顶层** `forbidden_items` 均**不属于**「应与上游一致」的范围（交付契约无对应容器）——**v2.0 契约补齐后两者均已进承继列**（`ISSUE-011`／`ISSUE-012` 闭环），故本项**回归朴素口径：上游有的锚与禁忌容器，本层逐项一致** |
 
-**闭环条件**：① 模型就绪后由 `shot_prompt_v1`（**v1.1.0**）产出真实包；② 真实包过 `validate_output.py`（交付包形态 **R26~R36** 全通过）**且** `validate_pack.py` **0 BLOCK**；③ 对 H3 适配投喂文本跑 `audit_shots.py --gate`。**三项齐备后方可从「未验证」改为「已验证」。** 当前状态：② 的**第一半**成立（53/0/0），**第二半不成立**（门禁 BLOCK 1，根因是 `prompt_en` 上限这一**契约缺陷**，须契约责任方定案后方可归零）；① ③ 均未做。故整体仍标 **未验证**。
+**闭环条件**：① 模型就绪后由 `shot_prompt_v1`（**v2.0.0**）产出真实包；② 真实包过 `validate_output.py`（交付包形态 **R26~R36** 全通过）**且** `validate_pack.py` **0 BLOCK**；③ 对 H3 适配投喂文本跑 `audit_shots.py --gate`。**三项齐备后方可从「未验证」改为「已验证」。** 当前状态：**② 两半均已成立**（53/0/0 且门禁 0 BLOCK，基于本人工构造基线）；① ③ 均未做。故整体仍标 **未验证**——② 成立只说明**结构与规则自洽**，不构成「模型能生成」的证据。
 
-⚠️ **本用例已知残留（v1.1 起登记，未整改）**：`S02-SH003` 的 `shot_language.composition` 属**条件改写**（投影规则④派生），其与上游的一致性需在**上游补值后**回归复核；`S03-SH003` 的稳定指称缺失、`CHR-01` 中英指称并存两套词组（评估第 9／10 项）**尚未逐镜整改**——本层暂无指称一致性的脚本判据，已登记为后续项。
+⚠️ **本用例已知残留（v1.1 起登记；v2.0 复核订正）**：① `S02-SH003` 的 `shot_language.composition` 属**条件改写**（投影规则④派生），其与上游的一致性需在**上游补值后**回归复核——**仍待**。② 原文「`S03-SH003` 的稳定指称缺失、`CHR-01` 中英指称并存两套词组（评估第 9／10 项）**尚未逐镜整改**」**与实测不符**（**v2.0 自查订正**）：脚本复核 14 镜正文，`the rider` 残留 **0 处**，`S03-SH002`／`S03-SH003` 起句均已含 `the delivery rider`／「外卖员」——**PR-05 的整改已完成**，原句系整改前的遗留描述（该矛盾正是「**结论表与检查表须分开维护**」的风险点）。**仍未落地的只有「指称一致性脚本判据」本身**（多角色镜口径亦未按单人镜强制，见评估第 10 项），已登记为后续项。

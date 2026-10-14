@@ -76,9 +76,11 @@
                            导致用例残留一处 `amplitude="medium"` 未被发现。本条即补该缺口。
   R27 PACK_REQUIRED        **交付包必备结构**（规范 §3.1~§3.6、§3.8）——
                            顶层 schema_version／meta／style_bible／units／shots／aigc_meta 齐备；
-                           每镜必备 13 字段（含 prompt_zh／prompt_en／style_ref／action／shot_language）；
+                           每镜必备 **14** 字段（含 prompt_zh／prompt_en／style_ref／action／shot_language／
+                           **prop_refs**；v2.0 由 13 → 14）；
                            `style_ref` 必须命中 `style_bible.style_id`（§3.8 列**阻断项**）；
-                           `character_refs` 必须命中 `characters[].character_id`。
+                           `character_refs` 必须命中 `characters[].character_id`；
+                           **`prop_refs` 必须命中 `props[].prop_id`**（v2.0 起）。
                            这是「分镜层产出是规范字段集真子集」的补全验收——SW-007 的存在理由。
   R28 PACK_APPEARANCE_ECHO **外观复用检测**（规范 §3.4「外观只在此处定义一次」）——
                            把交付包自带的 `characters[].appearance_lock_zh`（及 `_en`）与
@@ -206,6 +208,7 @@ def _pack_schema_keys():
         "shot": allow("shot"),
         "unit": allow("unit"),
         "character": allow("character"),
+        "prop": allow("prop"),          # v2.0 起（$defs/prop）
         "meta": allow("meta"),
         "style_bible": allow("styleBible"),
         "aigc_meta": allow("aigcMeta"),
@@ -218,12 +221,16 @@ LIGHT_ENUM = [
     "golden_hour", "blue_hour", "overcast", "neon_night", "candlelight", "moonlight",
 ]
 
-# 交付包必备顶层段（规范 §3.1 → R27）；characters 规范标「应当」，故单列
+# 交付包必备顶层段（规范 §3.1 → R27）——**只列 required**；characters／props／forbidden_items
+#   规范标「应当」（无则空数组），故不入本表（v2.0 起三者为**并列的可选段**）
 PACK_TOP_REQUIRED = ["schema_version", "meta", "style_bible", "units", "shots", "aigc_meta"]
 # 每镜必备字段（规范 §3.6 的「必须」级 + style_ref 的阻断项 → R27）
+#   v2.0.0 起增 `prop_refs`（道具锚，规范 §3.6／§3.4.1）→ 13 → 14 项，与交付 schema
+#   `$defs/shot.required` 逐字一致（该 schema 的 required 亦为 14 项）。
 PACK_SHOT_REQUIRED = [
     "shot_id", "unit_id", "scene_no", "shot_no", "shot_size", "camera", "duration_ms",
     "prompt_zh", "prompt_en", "action", "shot_language", "style_ref", "character_refs",
+    "prop_refs",
 ]
 # AIGC 元数据块 7 字段（规范 §5.1 → R30）
 AIGC_FIELDS = ["Label", "ContentProducer", "ProduceID",
@@ -435,7 +442,7 @@ def rule_est_seconds_sum(doc, shape, where):
 def rule_required_keys(doc, shape, where):
     """R5：按形态核对必备顶层字段。
 
-    ⚠️ 交付包（pack）不在本表内——它的必备结构由 R27 单独核对（顶层六段 + 逐镜 13 字段），
+    ⚠️ 交付包（pack）不在本表内——它的必备结构由 R27 单独核对（顶层必备 6 段 + 逐镜 14 字段，v2.0），
     两处口径若都写会互相打架。此处用 `.get()` 兜底，确保误入也不会 KeyError。
     """
     need = {
@@ -1151,23 +1158,40 @@ def rule_pack_en_camera_sentence(doc, where):
         ok(f"{where} · R34 EN_CAMERA_SENTENCE：{len(shots)} 镜英文运镜句均为独立句")
 
 
-def rule_pack_no_prop_refs(doc, where):
-    """R35：交付包的 shots[] **不得出现 `prop_refs` 键**（依评审 PR-01/PR-14 新增）。
+def rule_pack_prop_anchor(doc, where):
+    """R35 PROP_ANCH_CONSISTENCY：道具锚一致性——`shots[].prop_refs` **必须存在且命中 `props[].prop_id`**。
 
-    上游 storyboard_v1 v2.0.0 的 shots[] 含 `prop_refs`，但**交付规范 §3.6 的镜头字段集
-    与交付 schema 均无此字段**（规范全文无「道具」二字，已逐字核对），且 schema 的 shot 为
-    `additionalProperties: false` → 本层若承继该键会被门禁判「多余属性」而阻断交付。
-    本条把「承继守恒」与「交付契约」的这个冲突点**机器可见化**：
-    「上游有、本层不该有」不再只写在模板说明里，而是有判据。
-    （道具锚的结构化落地须由契约责任方评估 → 规范层缺口 `ISSUE-011`。）
+    ★ **v2.0.0 反转**（依 `ISSUE-011` 闭环，任务 `T-054`；与 `CFG-007_SCHEMA.md` 同步）：
+      v1.1~v1.3 的 `NO_PROP_REFS`（「交付包不得出现 `prop_refs`」）其**设立前提**是
+      「交付规范 §3.6 与交付 schema 均无该字段」（当时规范全文无「道具」二字，已逐字核对）；
+      **v2.0 已补齐契约**（规范 §3.4.1 增顶层 `props[]`、§3.6 增 `prop_refs`；交付 schema
+      同步并列入 `shot.required`）⇒ **旧前提消失**，故本判据**撤销并反转为正向**。
+      ⚠️ **为什么是反转而不是删除**：如果只删掉旧判据，这个位置就变成**无人看守的空白**——
+      道具锚一旦断裂（引用了不存在的前件），又没有任何脚本会说话。反转后它守的是**同一件事**
+      （道具锚在交付包层的完整性），只是**方向从「不许出现」改为「必须正确出现」**。
+
+    判据三条：
+      ① 每镜**必须有** `prop_refs` 键（无道具为**空数组** `[]`；写空串由 R33 另行拦截）；
+      ② 每一项**必须命中** `props[].prop_id`，否则**阻断**（道具锚断裂，规范 §3.4.1）；
+      ③ 与上游 storyboard 的逐镜取值**逐项一致**（承继守恒，由 R31 覆盖，本条不重复比对）。
     """
-    hits = [r.get("shot_id") for r in _shots(doc) if "prop_refs" in r]
-    if hits:
-        err(f"{where} · R35 NO_PROP_REFS：{len(hits)} 镜出现 prop_refs 键"
-            f"（交付契约无此字段，additionalProperties:false 会拒绝）→ "
-            + "；".join(str(x) for x in hits[:6]))
-    else:
-        ok(f"{where} · R35 NO_PROP_REFS：交付包未出现 prop_refs 结构键（符合交付契约）")
+    shots = _shots(doc)
+    prop_ids = {p.get("prop_id") for p in (doc.get("props") or []) if isinstance(p, dict)}
+    missing = [r.get("shot_id") for r in shots if "prop_refs" not in r]
+    broken = []
+    for r in shots:
+        for ref in (r.get("prop_refs") or []):
+            if ref not in prop_ids:
+                broken.append(f"{r.get('shot_id')}→{ref}")
+    if missing:
+        err(f"{where} · R35 PROP_ANCH_CONSISTENCY：{len(missing)} 镜缺 prop_refs 键"
+            f"（v2.0 契约必备；无道具须为空数组 []）→ " + "；".join(str(x) for x in missing[:6]))
+    if broken:
+        err(f"{where} · R35 PROP_ANCH_CONSISTENCY：{len(broken)} 处 prop_refs 未命中 props[].prop_id → "
+            + "；".join(broken[:6]))
+    if not missing and not broken:
+        ok(f"{where} · R35 PROP_ANCH_CONSISTENCY：{len(shots)} 镜 prop_refs 齐备，"
+           f"且全部命中 props[]（{len(prop_ids)} 个道具锚）")
 
 
 def rule_pack_no_extra_key(doc, where):
@@ -1203,6 +1227,11 @@ def rule_pack_no_extra_key(doc, where):
             e = sorted(set(c) - S["character"])
             if e:
                 bad.append(f"characters[{c.get('character_id')}] {e}")
+    for p in (doc.get("props") or []):
+        if isinstance(p, dict):
+            e = sorted(set(p) - S["prop"])
+            if e:
+                bad.append(f"props[{p.get('prop_id')}] {e}")
     for seg, dfn in (("meta", "meta"), ("style_bible", "style_bible"),
                      ("aigc_meta", "aigc_meta")):
         v = doc.get(seg)
@@ -1214,7 +1243,7 @@ def rule_pack_no_extra_key(doc, where):
         err(f"{where} · R36 NO_EXTRA_KEY：{len(bad)} 处出现**契约字段集之外**的键"
             f"（交付 schema additionalProperties:false 会拒绝）→ " + "；".join(bad[:6]))
     else:
-        ok(f"{where} · R36 NO_EXTRA_KEY：顶层/镜头/单元/角色/meta/style_bible/aigc_meta "
+        ok(f"{where} · R36 NO_EXTRA_KEY：顶层/镜头/单元/角色/道具/meta/style_bible/aigc_meta "
            f"均未出现契约外字段（字段集取自交付 schema）")
 
 
@@ -1224,14 +1253,17 @@ def rule_pack_required(doc, where):
     if miss:
         err(f"{where} · R27 PACK_REQUIRED：顶层缺段 → {miss}")
     sv = doc.get("schema_version")
-    if sv != "1.1.0":
-        warn(f"{where} · R27 PACK_REQUIRED：schema_version=『{sv}』（当前 schema 为 1.1.0）")
+    if sv != "2.0.0":
+        warn(f"{where} · R27 PACK_REQUIRED：schema_version=『{sv}』（当前 schema 为 2.0.0）")
     sb = doc.get("style_bible") if isinstance(doc.get("style_bible"), dict) else {}
     style_id = sb.get("style_id")
     chars = [c for c in (doc.get("characters") or []) if isinstance(c, dict)]
     char_ids = {c.get("character_id") for c in chars}
     if not chars:
         warn(f"{where} · R27 PACK_REQUIRED：characters 缺失或为空（规范标『应当』，无角色的成片可空）")
+    # v2.0.0：道具锚（顶层 props[] ↔ 逐镜 prop_refs 的引用完整性）
+    props = [p for p in (doc.get("props") or []) if isinstance(p, dict)]
+    prop_ids = {p.get("prop_id") for p in props}
     shots = _shots(doc)
     if not shots:
         err(f"{where} · R27 PACK_REQUIRED：shots 缺失或为空")
@@ -1248,11 +1280,15 @@ def rule_pack_required(doc, where):
         for ref in (r.get("character_refs") or []):
             if ref not in char_ids:
                 bad.append(f"{sid}.character_refs 引用未定义角色 『{ref}』")
+        for ref in (r.get("prop_refs") or []):
+            if ref not in prop_ids:
+                bad.append(f"{sid}.prop_refs 引用未定义道具 『{ref}』")
     if bad:
         err(f"{where} · R27 PACK_REQUIRED：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
     else:
-        ok(f"{where} · R27 PACK_REQUIRED：顶层六段齐备；{len(shots)} 镜必备 13 字段齐备；"
-           f"style_ref 全部命中 『{style_id}』；character_refs 全部命中已定义角色")
+        ok(f"{where} · R27 PACK_REQUIRED：顶层必备 6 段齐备；{len(shots)} 镜必备 14 字段齐备；"
+           f"style_ref 全部命中 『{style_id}』；character_refs／prop_refs 全部命中已定义锚"
+           f"（角色 {len(char_ids)} 个／道具 {len(prop_ids)} 个）")
 
 
 def _prompt_texts(shot):
@@ -1457,7 +1493,7 @@ def validate_doc(doc, where):
         #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层六段无此段），故 R2 不适用——
         #     上游台账留在上游产物自身，本层不输出、不搬运、不重编号。
         rule_pack_required(doc, where)
-        rule_pack_no_prop_refs(doc, where)       # R35
+        rule_pack_prop_anchor(doc, where)        # R35（v2.0 起为正向：道具锚一致性）
         rule_pack_no_extra_key(doc, where)       # R36
         rule_move_param_omission(doc, where)     # R26（分镜脚本与交付包共用）
         rule_pack_no_empty_string(doc, where)    # R33

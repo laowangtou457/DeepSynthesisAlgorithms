@@ -6,7 +6,7 @@
       「规则不误报」，**不证明规则有效**（把判据写反、条件永不成立、字段名拼错，
       都会让正向照样全绿）。本脚本**逐条构造越界样本**，断言对应规则真的触发（EXIT=1）。
 
-覆盖：交付包层 R26~R32（2026-10-13 随 SW-007 `shot_prompt_v1` 建立）。
+覆盖：交付包层 R26~R36（2026-10-13 随 SW-007 `shot_prompt_v1` 建立；R35 于 v2.0 由「禁入」反转为「道具锚一致性」）。
 
 用法：
     python tests/negtest_pack_rules.py            # 跑全部样本
@@ -249,16 +249,23 @@ def _(d):
     put(d, "shots.0.prompt_en", en.replace("The camera ", "The rig "))
 
 
-# ---- R35 交付包不得含 prop_refs 结构键（依评审 PR-01／PR-14 新增）----------
-@case("R35 shots[] 出现 prop_refs 键（上游有、交付契约无）", "R35")
+# ---- R35 道具锚一致性（★ v2.0 由「禁入」反转为**正向**；依 T-054 / ISSUE-011 闭环）----
+#  旧判据 NO_PROP_REFS 的设立前提是「交付契约无该字段」——v2.0 已补齐（§3.6 增 prop_refs、
+#  顶层增 props[]），故前提消失、判据撤销并反转为「必须存在且命中」。**两个失败分支各一样本**：
+@case("R35 某镜 prop_refs 引用不存在的 prop_id（道具锚断裂）", "R35")
 def _(d):
-    put(d, "shots.0.prop_refs", ["PRP-01"])
+    put(d, "shots.3.prop_refs", ["PRP-99"])
+
+
+@case("R35 某镜缺 prop_refs 键（v2.0 契约必备；无道具须为空数组）", "R35")
+def _(d):
+    drop(d, "shots.4.prop_refs")
 
 
 # ---- R36 交付包不得含契约字段集之外的键（依评审 PR-14 新增）---------------
-@case("R36 顶层出现 forbidden_items（上游顶层字段，交付契约无容器）", "R36")
+@case("R36 顶层出现契约外键 unspecified（上游顶层字段，交付契约无容器）", "R36")
 def _(d):
-    put(d, "forbidden_items", ["禁止出现真实人名"])
+    put(d, "unspecified", [{"field": "shots[].dialogue", "owner": "客户"}])
 
 
 @case("R36 shots[] 出现契约外键 continuity_note", "R36")
@@ -349,7 +356,7 @@ def main():
         print(json.dumps({"passed": bad == 0, "total": len(rows), "failed": bad,
                           "rows": rows}, ensure_ascii=False, indent=2))
     else:
-        print(f"交付包规则负向验证 · R26~R32 · {len(CASES)} 个越界样本 + {len(BLINDSPOTS)} 个已知盲区")
+        print(f"交付包规则负向验证 · R26~R36 · {len(CASES)} 个越界样本 + {len(BLINDSPOTS)} 个已知盲区")
         print("=" * 66)
         for r in rows:
             print(f"[{'OK ' if r['ok'] else 'BAD'}] exit={r['exit']} {r['expect']} · {r['case']}")

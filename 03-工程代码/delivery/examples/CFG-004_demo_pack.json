@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "meta": {
     "pack_id": "FR-PK-20261012-DEMO0001",
     "title": "示例作品 · 雨巷",
@@ -37,7 +37,7 @@
     },
     "aspect_ratio_default": "16:9",
     "total_duration_ms": 15000,
-    "notes": "示例交付包（v1.1）：1 个生成单元 / 3 镜 / 15 秒；已通过 Schema 校验与 11 项镜头语言质量门。用于验证规范可用性与交付前校验流程。"
+    "notes": "示例交付包（**v2.0**，`schema_version` 2.0.0）：1 个生成单元 / 3 镜 / 15 秒；已通过 Schema 校验与 11 项镜头语言质量门。用于验证规范可用性与交付前校验流程。⚠️ v2.0 变化：顶层新增 `props`／`forbidden_items`、逐镜新增必备键 `prop_refs`（本示例无道具 → 均为空数组）；`prompt_en` 上限 900 → 1200 字符。契约见《分镜提示词交付规范 **v2.0**》（`NORM-DELIVERY-001`）§3.1／§3.1.1／§3.4.1／§3.6。"
   },
   "style_bible": {
     "style_id": "STYLE-ANIME-CN-A",
@@ -105,6 +105,7 @@
       "lighting": "golden_hour",
       "style_ref": "STYLE-ANIME-CN-A",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "（旁白）那年的雨，下了很久。",
       "sfx": "细雨声、远处自行车铃",
@@ -145,6 +146,7 @@
       "lighting": "rim_light",
       "style_ref": "STYLE-ANIME-CN-A",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "",
       "sfx": "雨声渐强",
@@ -185,6 +187,7 @@
       "lighting": "backlight",
       "style_ref": "STYLE-ANIME-CN-A",
       "character_refs": ["CHR-01"],
+      "prop_refs": [],
       "ref_image": null,
       "dialogue": "",
       "sfx": "雨声、脚步声踩过积水、伞面甩水声",
@@ -193,6 +196,8 @@
       "notes": ""
     }
   ],
+  "props": [],
+  "forbidden_items": [],
   "aigc_meta": {
     "AIGC": {
       "Label": "1",
