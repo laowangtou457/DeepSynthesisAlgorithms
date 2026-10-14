@@ -1,0 +1,32 @@
+[project]
+name = "ai-comic-drama-service"
+version = "0.1.0"
+description = "AI 漫剧剧本与分镜提示词生成系统 · 服务端骨架（交付物 D-005 一期，任务 T-003）"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+
+# 依赖取向见《模型框架设计说明书》ARCH-003 §3.3 技术选型。
+# 本批（T-003 一期）只启用到「Web 框架 / 数据校验 / 配置管理」三项；
+# 数据库（PostgreSQL+SQLAlchemy+Alembic）、缓存（Redis）、推理引擎（vLLM）、
+# 可观测（structlog/prometheus）在 T-004 及之后按任务清单逐项接入。
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27",
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+# 包根是上一级（03-工程代码），使 `import app...` 与运行时一致
+pythonpath = [".."]
+addopts = "-q"
