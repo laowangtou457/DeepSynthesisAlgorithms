@@ -51,7 +51,7 @@ LEX_TPL = """# =================================================================
 #   3. 只写「违规行为的指称」，**不得写入任何可操作的方法、步骤、配方**；
 #   4. 编写人须经安全培训考核合格；**复核人不得与编写人为同一人**（§5.3(a)(3)）；
 #   5. 编写完成后运行 `python init_controlled.py --sync` 回填计数。
-# 状态：{status}
+# 状态：{status}（本行不随内容自动更新）
 # =============================================================================
 
 # ---------------------------- 词条区 ----------------------------
@@ -116,21 +116,24 @@ python check_quota.py
 
 
 def init(out):
+    # 词表头部状态行采用**中性表述**：实际条数以 `--sync` 回填的 counts 为准，
+    # 避免骨架文案（曾固定写「待编写（模板骨架，无实际内容）」）与真实内容矛盾。
+    status = "已建立骨架，实际条数以 --sync 回填值为准"
     os.makedirs(out, exist_ok=True)
     for sub in ("lexicon_controlled", "bank_controlled", "refuse_controlled"):
         os.makedirs(os.path.join(out, sub), exist_ok=True)
-    with open(os.path.join(out, "README.md"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(out, "README.md"), "w", encoding="utf-8", newline="\r\n") as f:
         f.write(CTRL_README)
     for cid, name in CLASSES:
         p = os.path.join(out, "lexicon_controlled", "%s.txt" % cid)
         if not os.path.exists(p):
-            with open(p, "w", encoding="utf-8", newline="\n") as f:
-                f.write(LEX_TPL.format(cid=cid, name=name, status="待编写（模板骨架，无实际内容）"))
+            with open(p, "w", encoding="utf-8", newline="\r\n") as f:
+                f.write(LEX_TPL.format(cid=cid, name=name, status=status))
         for sub, tpl, ext in (("bank_controlled", BANK_TPL, "jsonl"),
                               ("refuse_controlled", REFUSE_TPL, "jsonl")):
             p = os.path.join(out, sub, "%s.%s" % (cid, ext))
             if not os.path.exists(p):
-                with open(p, "w", encoding="utf-8", newline="\n") as f:
+                with open(p, "w", encoding="utf-8", newline="\r\n") as f:
                     f.write(tpl.format(cid=cid, name=name))
     print("[init_controlled] 受控区骨架已生成：%s" % out)
     print("[init_controlled] 下一步：按 _受控区/README.md 的硬约束编写内容，然后运行 --sync")
