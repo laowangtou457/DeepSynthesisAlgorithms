@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/TPL-009_shot_prompt_v1.yaml
-    version: "2.1.0"
+    version: "2.1.1"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:
@@ -136,7 +136,7 @@ templates:
       - 本层只产出**通用规范包（基准）**，不做模型适配：适配是第 2 层的「单向投影」，由 delivery/config/CFG-001_model_adapters.yaml 配置驱动（规范 §6.1「基准唯一 + 配置化」）——把适配写进模板等于每接一个模型就要改一次提示词
       - 分段策略：segment 默认 **auto**（按上游镜数自动决定：≤6 镜 all、>6 镜 package_head + 逐单元），因为规范 §3.5 明写「生成单元 = 一次生成调用所提交的完整分镜块」，分段粒度与业务语义粒度一致；输出超单次窗口时进入 fallback.output_too_long；拼装后须能过 validate_pack.py（⚠️ **分段产物本身不可能单独过交付包 schema**——required 六项不齐，只做段级结构自检）
       - 禁止项承接（**v2.0.0 起改为「原样承继」**）：剧本层与分镜层的**顶层** `forbidden_items`（客户侧「禁止出现的元素」，上游输入变量名 `must_avoid`）**须逐条原样写入交付包顶层 `forbidden_items`**——规范 §3.1 自 V2.0 起已增设该独立容器，v1.1 的「不搬运」处置**已撤销**（`ISSUE-012` 闭环）。⚠️ **边界写死**（规范 §3.1.1 三层）：本容器**只承接客户业务层禁忌**，**不得**写入 `A1-0x` 受控词库的分类码或词条（后者属**法定合规层**，由 SW-009/010 双闸承载、结果落 `meta.compliance`，**绝不进包**）。⚠️ 与之区分：`characters[].forbidden`（规范 §3.4）是**角色级**禁忌（本层从 `appearance_lock_zh` 提炼），属交付包字段集的**内建**字段，须照常产出——两者**语义不同、不得合并**。判据 **R36** 从交付 schema 读字段集，机器化「契约外字段禁入」（v2.0 起检查**九处**）
-    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` **2.1.0**，对齐 `03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 **v2.2**》§3（含 §3.1.1 三层禁忌边界／§3.4.1 道具锚点）／§4／§5／§6.1；用例见 examples/CASE-002_shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）。**v2.0.0 依契约升版批次（`T-054`＋`T-055`＋`T-056` 合并为同一次动作，依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015` 定案 (a)）**：① `output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs` → **属 output 字段增删，故为主版本升版**；② 承继列**恢复 `prop_refs`**、`forbidden_items` **进出承继列**（v1.1 的处置随契约补齐**已撤销**）；③ `prompt_en` 上限由 schema 侧 900 → **1200** 字符、§3.7.6 长度建议上修。**`ISSUE-011`／`ISSUE-012` 均已闭环**（契约侧已补齐，非「只登记」）。⚠️ **门禁现状**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` 对 `CASE-002` **BLOCK 1 → 0**（原唯一 BLOCK 系 `prompt_en` 上限，已随契约上修归零）
+    notes: 链路第 4 段模板（**编译表达层**，SW-007）。输入**双上游** script_v1（SW-005，出锚）＋ storyboard_v1（SW-006，出决策）；输出**交付包 JSON**（`schema_version` **2.1.0**，对齐 `03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。契约来源《分镜提示词交付规范 **v2.2**》§3（含 §3.1.1 三层禁忌边界／§3.4.1 道具锚点）／§4／§5／§6.1；用例见 examples/CASE-002_shot-prompt-case01.md。**v1.1.0** 依导演视角独立评审 `PR-01`~`PR-15` 修订（该评审因**会话隔离未满足**而**降级使用**，只作设计期参考）：留空口径改「省略键」（PR-02）、承继清单去 prop_refs（PR-01）、白名单扩为「三类必改 + 一类条件改写」（PR-03）、segment 默认 auto + 超长 fallback（PR-08）、新增判据 R33~R36（其中 R36 系依 PR-14「清单外字段无人管」自查发现后补，字段集直接读交付 schema）。**v2.0.0 依契约升版批次（`T-054`＋`T-055`＋`T-056` 合并为同一次动作，依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015` 定案 (a)）**：① `output` 顶层新增 `props`／`forbidden_items`、逐镜新增 `prop_refs` → **属 output 字段增删，故为主版本升版**；② 承继列**恢复 `prop_refs`**、`forbidden_items` **进出承继列**（v1.1 的处置随契约补齐**已撤销**）；③ `prompt_en` 上限由 schema 侧 900 → **1200** 字符、§3.7.6 长度建议上修。**`ISSUE-011`／`ISSUE-012` 均已闭环**（契约侧已补齐，非「只登记」）。⚠️ **门禁现状**：产物侧 `validate_output.py` **53/0/0** 全通过；交付门禁 `validate_pack.py` 对 `CASE-002` **BLOCK 1 → 0**（原唯一 BLOCK 系 `prompt_en` 上限，已随契约上修归零） **v2.1.1（2026-10-16，依 `ISSUE-037` 项目方裁决取方案 D）**：**次版本**，只改「提示词自身的输入体积」，**契约字段集与输出口径零改动**——原稿把 `{storyboard_json}`／`{script_json}`／`{pack_meta}` 分别插入 **5／3／4 次**（那 9 处本是正文里的**指称**，而渲染器对每一处 `{name}` 一律做全量替换）⇒ 上游被放大 **2.44 倍**，`shot_prompt` 段真实输入 **50,358 tokens** ＋ 模板输出 **8,192** ＝ **58,550**，超 Qwen2.5-7B 原生上限 **32768** ⇒ 该段在**引擎入口**被拒（`502`；`ISSUE-037`）。⚠️ 引擎报的 `at least 24577` 是 `32768-8192+1` 的**推导下界**、**非实测输入长度**。**处置**：9 处指称改纯文本、`task` 节保留每变量各 **1** 处全文并在该节**显式声明**「三份全文各只出现一次」；配套**服务层**对上游 JSON 做**无损紧凑化**（`app/services/dialogue_service.py`，只去空白、语义零改动、解析失败原样返回）——即裁决所取的**方案 D**。⚠️ **语义等价**：取数口径／承继守恒清单／三类必改＋一类条件改写白名单／投影规则／八维纪律**未改一字**。⚠️ 另一条路「`segment` 拆段」**对本症无效**：实测 `all`／`package_head`／`unit:U01` 渲染后输入 **50,358／50,360／50,366 tokens**（差 ≤8，只来自 `{segment}` 取值字符串本身）——分段只改变**模型该输出什么**，输入侧 `*_json` 是**无条件全量注入**的。⚠️ 同族「重复注入」形态在 `modify_v1`（`current_artifact` **9 次**）／`revise_v1`／`script_v1`／`storyboard_v1`／`check_consistency_v1` **仍存**，另立 **`ISSUE-039`**，本批**只处置本模板**
 
   - id: revise_v1
     name: 提示词解析重构
@@ -184,7 +184,7 @@ templates:
     name: 客服对话回复生成
     task_type: generate
     file: templates/TPL-003_gen_reply_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [question, context, policy, tone]
     scenes:
@@ -200,7 +200,7 @@ templates:
     name: 长文本摘要归纳
     task_type: summarize
     file: templates/TPL-011_sum_digest_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [text, max_points, max_chars_per_point, audience, focus]
     scenes:
@@ -217,7 +217,7 @@ templates:
     name: 会议纪要结构化归纳
     task_type: summarize
     file: templates/TPL-012_sum_meeting_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [transcript, attendees, meeting_date]
     scenes:
@@ -232,7 +232,7 @@ templates:
     name: 文本润色改写
     task_type: rewrite
     file: templates/TPL-007_rw_polish_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [source_text, target_style, length_ratio, forbidden_words]
     scenes:
@@ -248,7 +248,7 @@ templates:
     name: 文本精简压缩
     task_type: rewrite
     file: templates/TPL-006_rw_compress_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [source_text, target_chars, preserve]
     scenes:
@@ -263,7 +263,7 @@ templates:
     name: 结构化信息抽取
     task_type: extract
     file: templates/TPL-001_ext_json_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [text, schema, strict]
     scenes:
@@ -281,7 +281,7 @@ templates:
     name: 安全拒答与兜底
     task_type: guard
     file: templates/TPL-005_guard_refuse_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [refuse_reason, fallback_suggestion]
     scenes:
@@ -297,7 +297,7 @@ templates:
     name: 信息不足澄清追问
     task_type: guard
     file: templates/TPL-004_guard_clarify_v1.yaml
-    version: "1.0.0"
+    version: "1.0.1"
     status: active
     variables: [missing_items, known_items]
     scenes:
@@ -313,7 +313,7 @@ templates:
     name: 对话式修改与意图识别
     task_type: rewrite
     file: templates/TPL-015_modify_v1.yaml
-    version: "1.0.0"
+    version: "1.1.0"
     status: active
     variables: [target_stage, current_artifact, modification_request, change_context, upstream_artifact, locked_paths]
     scenes:
@@ -321,18 +321,19 @@ templates:
       - 多轮修改中的零漂移维护与变更留痕
     constraints:
       - 定向修改（第一条纪律）：只改修改意见点名处，其余字段逐字保持；「顺手多改」是本层最常见也最隐蔽的失守
-      - 零漂移（第二条纪律）：数字／专名／设定三类不得被动到；锚与编号（character_id／shot_id／unit_id／pack_id 等）一律不得改
-      - 修改点与响应点一一对应：change_log 每条须能指回客户原话片段（basis），多改与漏改都由此现形
-      - 口径不越权：改故事／改镜数／改外观定义／改上游事实一律转出，不得「先改了再说」
+      - 零漂移（第二条纪律）：数字／专名／设定三类不得被动到；锚与编号（本体 8 项 + 引用面 4 项，清单见 CFG-007【封闭枚举登记】）一律不得改，且不得以「连带同步」为由改动
+      - 修改点与响应点一一对应：change_log 每条须能指回客户原话片段（basis），多改与漏改都由此现形；另须满足取值级自洽（artifact[target_path] 应＝after、应≠before）
+      - 口径不越权：改故事／改镜数／改外观定义／改上游事实，以及放宽客户侧禁忌、改台词、换角色出演、改交付形态参数一律转出，不得「先改了再说」——该拦截不依赖 locked_paths 是否注入
       - 含糊时澄清：意图不唯一时不猜、不择优，转 guard_clarify_v1 追问；澄清期 change_log 必须为空
-      - 多轮不得回退：前轮已按客户要求改过的内容，本轮不得因「原始产物不是这样」而改回
-    notes: 业务链路**支撑模板**（SW-002 对话式修改），**刻意不填 stage**——它是对任意阶段产物的通用迭代入口，与链路阶段正交；修改事实由交付包 meta.generation_trace.templates 追加一条表达（该字段 id 为自由字符串，无需改契约），stage_chain 保持原值不追加。⚠️ 与 revise_v1（SW-008 解析重构）的分工：输入是「客户素材」走 revise_v1，输入是「既有产物」走本模板。用例见 examples/CASE-006_modify-case01.md
+      - 多轮不得回退：运行基准＝上一轮结束状态（current_artifact）；前轮已按客户要求改过的内容，本轮不得因「更早产物不是这样」而改回
+      - 转出与拒绝须如实登记：unresolved 每条带 type（finding／rejected_request／limitation），转出路径下 change_log 必须为空数组
+    notes: 业务链路**支撑模板**（SW-002 对话式修改），**刻意不填 stage**——它是对任意阶段产物的通用迭代入口，与链路阶段正交；修改事实由交付包 meta.generation_trace.templates 追加一条表达（该字段 id 为自由字符串，无需改契约），stage_chain 保持原值不追加。⚠️ 与 revise_v1（SW-008 解析重构）的分工：输入是「客户素材」走 revise_v1，输入是「既有产物」走本模板。用例见 examples/CASE-006_modify-case01.md（`target_stage=storyboard`）＋ **examples/CASE-007_modify-pack-case01.md**（`target_stage=pack`，2026-10-14 依 `REV-SW-002-02` §4-C ③ 补——**正交性溯源追加**与**字段→正文牵连**两项 `pack` **专属**形态此前无正极样本）
 
   - id: check_consistency_v1
     name: 跨阶段一致性校验
     task_type: extract
     file: templates/TPL-016_check_consistency_v1.yaml
-    version: "1.0.0"
+    version: "1.2.0"
     status: active
     variables: [artifact_a, artifact_b, pair_role, focus]
     scenes:
@@ -341,11 +342,14 @@ templates:
     constraints:
       - 只报告不修改：两份产物一字不动，本层的产物只有报告本身
       - 判定口径由 pair_role 决定且不得混用：before_after 不判责任、upstream_downstream 以 A 为权威源
-      - 四类对象逐类扫（number／proper_noun／setting／anchor）；anchor 类零容忍且即使全一致也须整体复述
+      - 四类对象逐类扫（number／proper_noun／setting／anchor）；anchor 类零容忍（本体 8 项 + 引用面 4 项）且即使全一致也须整体复述
+      - focus 须回显到顶层 focus 键；focus≠全篇 时 anchor 汇总条目必须写明「本次未扫锚」，不得让报告看起来像全查通过
+      - location_b 须形如 a.b[0].c（锚类汇总条目豁免）；同一处不一致只入一条 findings（镜序镜号只归锚类）
       - 逐处登记：同一值出现 6 处就有 6 条——「改了一处、漏改五处」是本层最有价值的检出对象
       - 两侧取值逐字摘自原件，不得规范化、转述或省略；数值换写法不算漂移、同义改写与称谓不一致算漂移
       - summary 三数互相推导（checked_count／drift_count／verdict），工程侧判据 R39 同口径复算
-    notes: 业务链路**支撑模板**（SW-002 的校验侧），**刻意不填 stage**。与 validate_output.py 的 R23／R28／R31／R36 等**确定性判据互补而非替代**：脚本管枚举与结构（在线、逐条、可复现），本层管脚本难以穷举的**语义漂移**（换说法／同义改写／称谓不一致）；两者结论不一致时须如实并列、由人裁定，不得择一掩盖。用例见 examples/CASE-006_modify-case01.md
+      - 归档落点与轮次命名（v1.2.0）：target_stage=pack 时报告落交付包 qa/<pack_id>.drift.r<N>.json（与 qa/audit_report.txt 同构、须在 manifest.json 登记；工程侧判据 R40）；其余四类落服务层留档（与 MR-13 合并挂起）。轮次号 N 为该 target_stage 上的第 N 轮修改（≥1 正整数、无前导零），**不同 target_stage 各自独立计数**
+    notes: 业务链路**支撑模板**（SW-002 的校验侧），**刻意不填 stage**。与 validate_output.py 的 R23／R28／R31／R36 等**确定性判据互补而非替代**：脚本管枚举与结构（在线、逐条、可复现），本层管脚本难以穷举的**语义漂移**（换说法／同义改写／称谓不一致）；两者结论不一致时须如实并列、由人裁定，不得择一掩盖。用例见 examples/CASE-006_modify-case01.md（`target_stage=storyboard`）＋ **examples/CASE-007_modify-pack-case01.md**（`target_stage=pack`；漂移报告含 `focus` 缩范围声明与 `anchor` 汇总条目）。⚠️ **v1.2.0 归档落点**（依项目方对 PRO-004 §7 的裁决 ＝ A3-lite）：target_stage=pack 时报告落 **交付包 qa/<pack_id>.drift.r<N>.json**（与 qa/audit_report.txt 同构、须在 manifest.json 登记；工程侧判据 **R40**，**只判形态、不判存在性**）；其余四类落 **服务层留档**（与 MR-13 合并挂起）；冲突的**裁定伴随件** `<pack_id>.drift.r<N>.arbitration.md`（与归档件同址、同轮次号）。⚠️ 本次**不动包结构**（schema_version 仍 2.1.0、顶层仍 5 键），规范随升 **SPEC-008 V2.3**
 
 # ========== 统计 ==========
 summary:

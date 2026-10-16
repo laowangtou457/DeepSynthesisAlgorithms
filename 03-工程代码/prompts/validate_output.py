@@ -139,21 +139,57 @@
                           shot_prompt｜pack）；`artifact` 必须是**可识别的完整产物**（非 diff 片段），
                           且其形态须与 `target_stage` 相符；`change_log` 每条恰好 8 键、`op_id` 形如
                           `MOD-\d{2}` 且唯一不跳号、`op_type`／`upstream_impact` 落在枚举内、
-                          `target_path` 须能在 `artifact` 中解析到（`insert` 除外）；`unresolved` 每条
-                          恰好 4 键、`blocking` 为布尔；`clarification` 恰好 2 键，且 `needed=true` 时
-                          `change_log` 必空、`questions` 为 1~3 条（澄清期间不动手）。
+                          `target_path` 须能在 `artifact` 中解析到（**`insert`／`delete` 除外**——
+                          后者的落点在修订后本就**应当**不存在，原口径只豁免 `insert`，使契约声明
+                          合法的 `delete` 必被判失败）；**取值级自洽**三条（`artifact[target_path]`
+                          应＝`after`、应≠`before`、`delete` 后该路径应不存在）——**不需要外部基准**，
+                          其中"应≠`before`"把**伪记录**（记录说改了、产物里没改）由不可判变为可判；
+                          `unresolved` 每条恰好 **5** 键、`blocking` 为布尔、
+                          `type` 取 finding／rejected_request／limitation 之一；
+                          `clarification` 恰好 2 键，且 `needed=true` 时 `change_log` 必空、`questions`
+                          为 1~3 条（澄清期间不动手）；`change_log` 为空且非澄清态时
+                          `unresolved` **必须非空**（「本轮无改动」不得静默返回）。
   R39 DRIFT_REPORT_SHAPE  **漂移报告的形态与三数自洽**（`check_consistency_v1` 的产物＝只报告不修改）——
-                          顶层恰好 4 键；`pair_role` 两值、`category` 四值、`verdict` 三值；
-                          `findings` 非空、每条恰好 8 键、`finding_id` 形如 `DR-\d{2}` 且唯一不跳号，
+                          顶层恰好 **5** 键（含 `focus` **回显键**——把"本次实扫哪几类"从自由文本
+                          搬进机器可读层，否则缩范围时无法复检）；`focus` 落五值枚举、
+                          `pair_role` 两值、`category` 四值、`verdict` 三值；
+                          `findings` 非空、每条恰好 8 键、`finding_id` 形如 `DR-\d{2}` 且唯一不跳号、
+                          `location_b` 须形如 `a.b[0].c`（禁 `[*]`／`/`／空串／自然语言；
+                          **锚类汇总条目豁免**——它是整类合计条目、无单一路径），
                           且**必含 `anchor` 类条目**（锚类「零容忍」要求**证明查过**——空数组与「只有
-                          别的类」都无法区分「锚全部一致」与「根本没查锚」）；`summary` 三数
+                          别的类」都无法区分「锚全部一致」与「根本没查锚」）；**`focus`≠`全篇` 时
+                          该条目的 `action` 必须写明「本次未扫锚」**，`focus` 为全篇／anchors 时
+                          须写「本次已扫锚」并给出实比项数；`summary` 三数
                           **互相推导**（`checked_count`＝清单条数、`drift_count`＝非 `consistent` 条数、
                           `verdict` 随之），复算不一致即判失败。
+  R40 DRIFT_ARCHIVE_SHAPE **漂移报告归档件的形态与轮次命名**（`check_consistency_v1` 的
+                          **归档形态**）——与 R39 判的是**同一份产物**，但对象不同：
+                          R39 判「报告本身合不合规」，R40 判「**归档件**合不合规」。三条判据：
+                          ① **文件名须含轮次号**——须形如 `<pack_id>.drift.r<N>.json`
+                             （`N` 为 ≥1 的正整数、**无前导零**）。这是评审的硬要求原话：
+                             「**没有轮次号，"时间序列"这个说法就不成立**」——一轮一份、文件名
+                             即轮次，r1…rN 才能摆在一起逐轮比对；
+                          ② **声明与内容须一致**——文件名既然声明它是漂移报告归档件，内容形态
+                             就必须是 `drift_report`；误把别的产物改成这个名字（或反之）在此暴露；
+                          ③ **顶层恰好 5 键**——与 R39 **同源同值**（共用 `DRIFT_TOP_KEYS`），
+                             此处**独立复检**的理由是**归档件会被单独摘出送检**（从交付包 `qa/`
+                             或服务层留档目录里调取单份），此时不能假定「R39 已在别处跑过」。
+                          ⚠️ **触发条件是声明式的**：文件名（basename）含 `.drift.` 即以归档件
+                             论处——**不是**「扫目录看有没有归档」。
+                          ⚠️ **刻意不判存在性**：本条**不**回答「这一轮到底有没有落盘」。该义务由
+                             **声明性义务**承担（规范 §1.4 的**条件必须** ＋ `manifest.json` 的
+                             「列出全部文件」既有义务），**不硬凑脚本近似**——与 R37 的既有取向
+                             一致（评审原话：「不要再硬凑一个近似，那会造出'看起来很严格、
+                             实则无意义'的门槛」）。
   ⚠️ **R38 的能力边界（如实登记）**：本条只判**外层形态与内在自洽**。三项需**外部基准**的事
      它**判不了**——「未点名处逐字保持」「`before` 逐字性」「牵连是否漏改」（三者都需
      `current_artifact`，同 R31 需 `--storyboard` 的情形）；**也刻意不递归校验 `artifact` 内部**
      （它是该阶段的完整产物，须由对应阶段判据另行校验；`target_stage=pack` 时走
      `delivery/validate_pack.py`）。把「无判据」写成「已覆盖」是本工程反复出现的一类缺陷的根因。
+     ⚠️ **已知盲区三条**（预期不触发、**登记而非修复**，清单见 CFG-007 的 R38 登记）：
+     「改了却没写记录」「`before` 写成空串而不逐字摘自原件」「牵连是否漏改」。
+     ⚠️ **"伪记录"不在盲区之内**——它已由 ⑤ 的取值级自洽覆盖（无需外部基准），
+     故不得再被列为"无从判定"，也不得与"改了却没写记录"混为一谈。
 
   ⚠️ 口径差异（必须知道）：R19 判定的是**结构化字段是否有值**（SW-006 的产物）；
      audit_shots.py 判定的是**适配投喂文本**（SW-007 的产物）。两者对象不同——
@@ -166,6 +202,7 @@
   python validate_output.py --file pack.unspecified.json           # 独立缺口台账（revise 层）→ 启用 R37
   python validate_output.py --file modify_out.json                 # 变更说明（SW-002 modify_v1）→ 启用 R38
   python validate_output.py --file drift_report.json               # 漂移报告（SW-002 check_consistency_v1）→ 启用 R39
+  python validate_output.py --file pack01.drift.r1.json            # 漂移报告**归档件**（文件名含 .drift.）→ 另启用 R40
   python validate_output.py --file pack.json --storyboard sb.json  # 附带上游分镜 → 启用 R31 时长守恒
   python validate_output.py --json              # 机器可读结果
   python validate_output.py --duration-bounds 4-15   # 覆盖单镜时长区间（秒）
@@ -357,6 +394,10 @@ EXAMPLES_UPSTREAM = {
     #   注入项 `upstream_artifact`（零漂移的比对基准），并非 examples 内的固定用例，
     #   故此处显式登记为空列表（否则「有没有上游」只能靠缺省行为推断，看不出是刻意还是遗漏）。
     "CASE-006_modify-case01.md": [],
+    # CASE-007 是 SW-002 的**第二个用例**（`target_stage=pack`，2026-10-14 依评审 §4-C ③ 补「pack 形态正极样本」）：
+    #   同为「无模板上游」，理由与 CASE-006 相同；差异只在**形态**——`pack` 是链路末端，
+    #   且**只有它有 `meta.generation_trace`**（正交性溯源的唯一可落地形态，见 MR-13）。
+    "CASE-007_modify-pack-case01.md": [],
 }
 
 RESULT = {"checks": 0, "errors": [], "warnings": []}
@@ -1617,7 +1658,7 @@ MODIFY_TOP_KEYS = ["modify_version", "target_stage", "artifact",
                    "change_log", "unresolved", "clarification"]
 MODIFY_CL_FIELDS = ["op_id", "intent", "target_path", "op_type",
                     "before", "after", "basis", "upstream_impact"]
-MODIFY_UNRES_FIELDS = ["field", "reason", "need", "blocking"]
+MODIFY_UNRES_FIELDS = ["field", "reason", "need", "blocking", "type"]
 CLARIFY_FIELDS = ["needed", "questions"]
 # `target_stage` 的取值域＝模板 `TPL-015_modify_v1.yaml` variables 原文的封闭枚举
 #   （**取自产物自身的阶段属性**，不是本模板的运行阶段）。⚠️ 与产物形态**不同名的只有一处**：
@@ -1628,17 +1669,39 @@ TARGET_STAGE_SHAPE = {"synopsis": "synopsis", "script": "script", "storyboard": 
                       "shot_prompt": "pack", "pack": "pack"}
 OP_TYPE_ENUM = ["replace", "normalize", "insert", "delete"]
 UPSTREAM_IMPACT_ENUM = ["none", "duration_sum", "unit_membership", "cross_ref", "other"]
+# `unresolved[].type`（v1.2.0 依评审 MR-09 新增；取值同步 CFG-007 的【封闭枚举登记】）
+UNRESOLVED_TYPE_ENUM = ["finding", "rejected_request", "limitation"]
 OP_ID_RE = re.compile(r"^MOD-\d{2}$")
 
-DRIFT_TOP_KEYS = ["check_version", "pair_role", "findings", "summary"]
+DRIFT_TOP_KEYS = ["check_version", "pair_role", "focus", "findings", "summary"]
 DRIFT_FINDING_FIELDS = ["finding_id", "category", "item", "value_a", "value_b",
                         "location_b", "verdict", "action"]
 DRIFT_SUMMARY_FIELDS = ["checked_count", "drift_count", "verdict"]
 PAIR_ROLE_ENUM = ["before_after", "upstream_downstream"]
+# `focus`（v1.2.0 依评审 MR-10 新增为**顶层回显键**）：把"本次实扫哪几类"从自由文本搬进
+#   机器可读层——有了它，R39 才能复检"缩范围时不得出现全查式声明"。
+FOCUS_ENUM = ["全篇", "numbers", "proper_nouns", "settings", "anchors"]
+# `location_b` 形式（v1.2.0 依评审 MR-16）：须形如 `a.b[0].c`。
+#   ⚠️ 刻意**不支持** `[*]` 通配（通配即落点不唯一），也排除 `/` 分隔、空串与自然语言。
+LOCATION_B_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\[\d+\])?"
+                           r"(?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\d+\])?)*$")
+# 缩范围声明关键词（v1.2.0 依评审 MR-10）
+ANCHOR_SCANNED_KW = "本次已扫锚"
+ANCHOR_SKIPPED_KW = "本次未扫锚"
 DRIFT_CATEGORY_ENUM = ["number", "proper_noun", "setting", "anchor"]
 DRIFT_VERDICT_ENUM = ["consistent", "drift", "absent"]
 SUMMARY_VERDICT_ENUM = ["clean", "drift"]
 FINDING_ID_RE = re.compile(r"^DR-\d{2}$")
+# 归档件命名（R40，2026-10-14 依 PRO-004 §3.2 的裁决落地）：`<pack_id>.drift.r<N>.json`。
+#   ⚠️ `N` 取 `[1-9]\d*`——**正整数且无前导零**：`r0` 不是轮次、`r01` 与 `r1` 是同一个
+#      轮次的两种写法（同表内混用会让“按轮次排序”失效）。
+#   ⚠️ 刻意**不锚定 `pack_id` 的字符集**：`pack_id` 由服务层生成，本层不重复定义其形态；
+#      本条只判「**有轮次号**」这一件事（判据的作用域越窄，越不容易与上游口径打架）。
+DRIFT_ARCHIVE_RE = re.compile(r"^.+\.drift\.r([1-9]\d*)\.json$")
+# 归档位「声明」标识：文件名含 `.drift.` 即以归档件论处（触发 R40）。
+#   ⚠️ 用 `.drift.` 而非 `drift`：`pack01.drift_report.json` 含 `drift` 但**不含** `.drift.`，
+#      故不会被误当归档件（那是一个未按归档位命名的普通文件名）。
+DRIFT_ARCHIVE_HINT = ".drift."
 
 _PATH_SEG_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)((?:\[\d+\])*)$")
 _PATH_IDX_RE = re.compile(r"\[(\d+)\]")
@@ -1674,6 +1737,29 @@ def _resolve_json_path(root, path):
     return True
 
 
+def _resolve_json_path_value(root, path):
+    """同 `_resolve_json_path`，但返回 (是否解析到, 取值)。
+
+    ⚠️ 与 `_resolve_json_path` 共用同一套路径语法（**不支持 `[*]`**），保证"可达性判定"
+       与"取值判定"不会各说一套。R38 第 ⑤ 条（取值级自洽）用它。
+    """
+    if not isinstance(path, str) or not path:
+        return False, None
+    cur = root
+    for seg in path.split("."):
+        m = _PATH_SEG_RE.match(seg)
+        if not m:
+            return False, None
+        if not isinstance(cur, dict) or m.group(1) not in cur:
+            return False, None
+        cur = cur[m.group(1)]
+        for ix in _PATH_IDX_RE.findall(m.group(2)):
+            if not isinstance(cur, list) or int(ix) >= len(cur):
+                return False, None
+            cur = cur[int(ix)]
+    return True, cur
+
+
 def _seq_ids(items, key, pattern):
     """检查「形如 pattern、全表唯一、不跳号」——R38 的 `op_id` 与 R39 的 `finding_id` 共用。"""
     bad, nums = [], []
@@ -1704,11 +1790,22 @@ def rule_modify_shape(doc, where):
          （`shot_prompt` 与 `pack` 同映射到交付包形态）；
       ③ `artifact` 必须是**可识别的完整产物**——「可直接替换原产物」的最低要求是它**像一份产物**；
       ④ `change_log` 每条恰好 8 键；`op_id` 唯一不跳号；`op_type`／`upstream_impact` 落在枚举内；
-         **`target_path` 必须能在 `artifact` 中解析到**（`insert` 除外——新增的路径尚不存在）——
-         这是「修改点与响应点一一对应」里**唯一可脚本化**的那一半；
-      ⑤ `unresolved` 每条恰好 4 键、`blocking` 为**布尔**（字符串 `"false"` 是真值，同 R37 第 ③ 条）；
-      ⑥ `clarification` 恰好 2 键；`needed=true` 时 `change_log` **必空**且 `questions` 为 1~3 条
-         ——「边问边改」会让客户看到的产物与预期错位，且事后无法分辨哪部分是被猜出来的。
+         **`target_path` 必须能在 `artifact` 中解析到**（**`insert`／`delete` 除外**——新增的路径
+         尚不存在、被删的路径改后本就应该不存在；原口径只豁免 `insert`，使契约声明合法的 `delete`
+         必被判失败）——这是「修改点与响应点一一对应」里**唯一可脚本化**的那一半；
+      ⑤ **取值级自洽**（**不需要任何外部基准**——`artifact` 与 `after`／`before` 同在产物内）：
+         `replace`／`normalize`／`insert` 时 `artifact[target_path]` 应＝`after`；`replace`／`normalize`
+         时应≠`before`（**这一条把"伪记录"由不可判变为可判**）；`delete` 时该路径应不存在、
+         `insert` 时该路径**必须**可达；
+      ⑥ `unresolved` 每条恰好 **5** 键、`blocking` 为**布尔**（字符串 `"false"` 是真值，同 R37
+         第 ③ 条）、`type` 取 `finding`／`rejected_request`／`limitation` 之一——原 4 键 schema
+         只适配"产品的缺陷"一种语义，越权请求与基准局限被静默合并；
+      ⑦ `clarification` 恰好 2 键；`needed=true` 时 `change_log` **必空**且 `questions` 为 1~3 条
+         ——「边问边改」会让客户看到的产物与预期错位，且事后无法分辨哪部分是被猜出来的；
+      ⑧ **转出形态**：`change_log` 为空、`clarification.needed=false` 时 `unresolved` **必须非空**
+         ——「本轮无改动」必须给出说明（转出／局限），不得静默返回。
+         ⚠️ 能力边界：产物内**无"是否走转出路径"的独立标识**，故只能落成这一**弱形态**；
+         "被转出的是什么"由 `unresolved[].type="rejected_request"` 承载（可检索、可计数）。
     """
     tag, bad = "R38 MODIFY_SHAPE", []
 
@@ -1766,11 +1863,42 @@ def rule_modify_shape(doc, where):
             if rec.get("upstream_impact") not in UPSTREAM_IMPACT_ENUM:
                 bad.append(f"change_log[{i}].upstream_impact=『{rec.get('upstream_impact')}』"
                            f"（须在 {'／'.join(UPSTREAM_IMPACT_ENUM)} 内）")
+            op = rec.get("op_type")
             tp = rec.get("target_path")
-            if (ashape is not None and rec.get("op_type") != "insert"
-                    and not _resolve_json_path(art, tp)):
-                bad.append(f"change_log[{i}].target_path=『{tp}』在 artifact 中解析不到"
-                           f"（op_type 非 insert 时该路径必须已存在）")
+            # ④（v1.2.0 依评审 MR-01 订正）：`insert` **与** `delete` 一并豁免"必须可解析"——
+            #    `delete` 的落点在修订后**本就应该解析不到**；原口径只豁免 `insert`，
+            #    使契约声明合法的 `delete` **必被判失败**。
+            if ashape is not None and op not in ("insert", "delete"):
+                if not _resolve_json_path(art, tp):
+                    bad.append(f"change_log[{i}].target_path=『{tp}』在 artifact 中解析不到"
+                               f"（op_type=『{op}』时该路径必须已存在）")
+            # ⑤（v1.2.0 依评审 MR-02 新增）：**取值级自洽**——三条**不需要外部基准**的检查
+            #    （`artifact` 与 `after`/`before` 同在产物内，故单文件即可判）。
+            #    其中"取值 ≠ before"这一条把**伪记录**（记录说改了、产物里没改）由不可判变可判。
+            if ashape is not None and isinstance(tp, str) and tp:
+                found, av = _resolve_json_path_value(art, tp)
+                if op == "delete":
+                    if found:
+                        bad.append(f"change_log[{i}] op_type=delete 但 target_path=『{tp}』"
+                                   f"在 artifact 中仍存在（删除后该路径应当不存在）")
+                elif op == "insert":
+                    if not found:
+                        bad.append(f"change_log[{i}] op_type=insert 但 target_path=『{tp}』"
+                                   f"在 artifact 中解析不到（新增后该路径必须可达）")
+                    elif str(av) != str(rec.get("after")):
+                        bad.append(f"change_log[{i}] 取值级自洽：insert 后 artifact 在 『{tp}』"
+                                   f"上的取值为 {av!r}，与 after={rec.get('after')!r} 不符")
+                elif op in ("replace", "normalize"):
+                    if not found:
+                        bad.append(f"change_log[{i}] op_type=『{op}』但 target_path=『{tp}』"
+                                   f"在 artifact 中解析不到（改后该路径必须存在）")
+                    else:
+                        if str(av) != str(rec.get("after")):
+                            bad.append(f"change_log[{i}] 取值级自洽：artifact 在 『{tp}』上的取值为 "
+                                       f"{av!r}，与 after={rec.get('after')!r} 不符")
+                        if str(av) == str(rec.get("before")):
+                            bad.append(f"change_log[{i}] 取值级自洽：artifact 在 『{tp}』上的取值"
+                                       f"**等于 before**（{av!r}）——伪记录：记录说改了、产物里没改")
 
     unres = doc.get("unresolved")
     if not isinstance(unres, list):
@@ -1786,6 +1914,11 @@ def rule_modify_shape(doc, where):
                 bad.append(f"unresolved[{i}] 缺键 {m3}")
             if e3:
                 bad.append(f"unresolved[{i}] 多出契约外键 {e3}")
+            # ⑥（v1.2.0 依评审 MR-09）：`type` 三义区分——原 4 键 schema 只适配"产品的缺陷"
+            #    一种语义，越权请求与基准局限被静默合并。
+            if it.get("type") not in UNRESOLVED_TYPE_ENUM:
+                bad.append(f"unresolved[{i}].type=『{it.get('type')}』"
+                           f"（须在 {'／'.join(UNRESOLVED_TYPE_ENUM)} 内）")
             if not isinstance(it.get("blocking"), bool):
                 bad.append(f"unresolved[{i}].blocking 非布尔（值为 『{it.get('blocking')}』）"
                            f"—— 字符串 \"false\" 在多数语言的真值判断下为真")
@@ -1814,6 +1947,13 @@ def rule_modify_shape(doc, where):
                            f"—— 澄清期间不得动手")
         elif needed is False and qs:
             bad.append("clarification.needed=false 但 questions 非空（须为空数组）")
+        # ⑧（v1.2.0 依评审 MR-15）：转出形态——`change_log` 为空且非澄清态时，
+        #    `unresolved` 必须非空（「本轮无改动」必须有说明）。
+        #    ⚠️ 能力边界：产物内**无"本轮是否走转出路径"的独立标识**，故只能落成这一**弱形态**；
+        #    "被转出的是什么"由 `unresolved[].type="rejected_request"` 承载（可检索、可计数）。
+        if (not clog and needed is False and not unres):
+            bad.append("change_log 为空、clarification.needed=false，但 unresolved 也为空"
+                       "—— 「本轮无改动」必须在 unresolved 中给出说明（转出/局限），不得静默返回")
 
     if bad:
         err(f"{where} · {tag}：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
@@ -1851,6 +1991,12 @@ def rule_drift_report_shape(doc, where):
     if pr not in PAIR_ROLE_ENUM:
         bad.append(f"pair_role=『{pr}』不在封闭枚举 {'／'.join(PAIR_ROLE_ENUM)} 内")
 
+    # ③（v1.2.0 依评审 MR-10 新增）：`focus` 是"本次实扫哪几类"的**机器可读声明**。
+    foc = doc.get("focus")
+    if foc not in FOCUS_ENUM:
+        bad.append(f"focus=『{foc}』不在封闭枚举 {'／'.join(FOCUS_ENUM)} 内"
+                   f"（该键须回显输入变量的实际取值，不得为省事一律写「全篇」）")
+
     finds = doc.get("findings")
     if not isinstance(finds, list):
         bad.append(f"findings 非数组（实际 {type(finds).__name__}）")
@@ -1876,9 +2022,34 @@ def rule_drift_report_shape(doc, where):
             if fd.get("verdict") not in DRIFT_VERDICT_ENUM:
                 bad.append(f"findings[{i}].verdict=『{fd.get('verdict')}』"
                            f"（须在 {'／'.join(DRIFT_VERDICT_ENUM)} 内）")
+            # ⑤（v1.2.0 依评审 MR-16 新增）：`location_b` 形式约束——它是报告里唯一的定位
+            #    字段，此前**无任何约束**（R39 只校验它是 8 键之一）。**格式可判**（可达性不可判）。
+            #    ⚠️ **刻意豁免 `category=anchor`**：锚类条目在该形态下是**全量复述的汇总条目**
+            #       （涵盖 shots[*]／units[*] 全域），本就没有唯一的落点，强制填单一路径只会
+            #       制造假精度。该豁免已在 CFG-007 的 R39 登记与 TPL-016 中写明。
+            lb = fd.get("location_b")
+            if fd.get("category") != "anchor":
+                if not isinstance(lb, str) or not LOCATION_B_RE.match(lb):
+                    bad.append(f"findings[{i}].location_b=『{lb}』形式不合规"
+                               f"（须形如 a.b[0].c：点分字段 + 方括号整数索引；"
+                               f"不得用 [*] 通配、/ 分隔、空串或自然语言）")
         if not any(isinstance(fd, dict) and fd.get("category") == "anchor" for fd in finds):
             bad.append("findings 中无任何 category=anchor 的条目（锚类「零容忍」要求**证明查过**；"
                        "缺此条则无法区分「锚全部一致」与「根本没查锚」）")
+        else:
+            # ⑥（v1.2.0 依评审 MR-10 新增）：**缩范围声明复检**——防止"缩范围却写出全查式假证据"。
+            #    原形态下 `focus=numbers` 与"必含 anchor 条目"叠加，会迫使模型写一条本次根本没扫的
+            #    「锚全部一致」（正是 check_consistency_v1 自身 system 第 7 条禁止的事）。
+            _anch_txt = " ".join(str(fd.get("action") or "") for fd in finds
+                                 if isinstance(fd, dict) and fd.get("category") == "anchor")
+            if foc in ("全篇", "anchors"):
+                if ANCHOR_SCANNED_KW not in _anch_txt:
+                    bad.append(f"focus=『{foc}』（锚在本次范围内）但 anchor 条目的 action 中"
+                               f"未出现「{ANCHOR_SCANNED_KW}」——须显式声明本次已扫锚并给出实比项数")
+            elif foc in FOCUS_ENUM:
+                if ANCHOR_SKIPPED_KW not in _anch_txt:
+                    bad.append(f"focus=『{foc}』（锚**不在**本次范围内）但 anchor 条目的 action 中"
+                               f"未出现「{ANCHOR_SKIPPED_KW}」——不得让报告看起来像全查通过")
 
     # 复算（与清单**同一份数据**，故口径必定一致）
     drift_cnt = sum(1 for fd in finds
@@ -1914,19 +2085,91 @@ def rule_drift_report_shape(doc, where):
     if bad:
         err(f"{where} · {tag}：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
     else:
-        ok(f"{where} · {tag}：漂移报告形态合规（顶层 4 键；{len(finds)} 条 findings 的 "
+        ok(f"{where} · {tag}：漂移报告形态合规（顶层 5 键、focus=『{foc}』；{len(finds)} 条 findings 的 "
            f"finding_id 唯一不跳号、含 anchor 类条目；summary "
            f"{summ.get('checked_count')}／{summ.get('drift_count')}／『{summ.get('verdict')}』复算自洽）")
 
 
-# ---------------- 调度 ----------------
-def validate_doc(doc, where):
+def rule_drift_archive_shape(doc, where, base):
+    """R40 DRIFT_ARCHIVE_SHAPE：漂移报告**归档件**的形态与轮次命名。
+
+    为什么要有这条（与 R39 的分工）：
+      R39 判「这份报告合不合规」，但它**看不见文件名**——报告本身顶层 5 键里
+      **没有 `pack_id`、也没有轮次号**（顶层就是 `check_version`／`pair_role`／`focus`／
+      `findings`／`summary`，见 CFG-007 的【封闭枚举登记】）。而评审对归档的硬要求恰恰是
+      **文件名**：「**文件名必须含轮次号**（如 `<pack_id>.drift.r<N>.json`）——**没有轮次号，
+      '时间序列'这个说法就不成立**」（`REV-SW-002-02` §4-B 结论一）。
+      ⇒ 轮次号**不存在于产物内部**，只可能落在文件名上 ⇒ 判它必须**有文件名才能判**，
+        故本条的签名带 `base`（basename），且**只在 `--file` 模式下有条件触发**。
+
+    判据三条：
+      ① 文件名须形如 `<pack_id>.drift.r<N>.json`（`N` 为 ≥1 正整数、无前导零）；
+      ② 内容形态须为 `drift_report`——文件名声明了归档身份，内容就得对得上
+         （误把别的产物改成这个名、或反之，都在此暴露）；
+      ③ 顶层**恰好** 5 键——与 R39 **同源同值**（共用 `DRIFT_TOP_KEYS`）。此处**独立复检**
+         而非"R39 已判过就跳过"：归档件是**会被单独摘出送检**的东西（从交付包 `qa/` 或
+         服务层留档目录里调取**单份**），送检时不能假定 R39 在别处跑过、更不能假定送检人
+         会把两个脚本都跑一遍。
+
+    ⚠️ **刻意不判「存在性」**（即不回答"这一轮到底有没有落盘"）：「缺失即阻断」在本工程
+       由**声明性义务**承担（规范 §1.4 的**条件必须** ＋ `manifest.json` 的「列出全部文件」
+       既有义务），与本条同名的 **R37** 也是同一取舍。评审对此立场明确——**不硬凑近似**，
+       否则会造出「看起来很严格、实则无意义」的门槛。
+    """
+    tag, bad = "R40 DRIFT_ARCHIVE_SHAPE", []
+
+    # ① 轮次命名
+    m = DRIFT_ARCHIVE_RE.match(base)
+    if not m:
+        bad.append(
+            f"文件名 『{base}』不含合法轮次号——须形如 <pack_id>.drift.r<N>.json"
+            f"（N 为 ≥1 的正整数、无前导零；评审：没有轮次号，『时间序列』这个说法就不成立）")
+
+    # ② 声明与内容形态一致
     shape = detect_shape(doc)
-    if shape is None:
+    if shape != "drift_report":
+        bad.append(f"该文件以归档件命名（含 `{DRIFT_ARCHIVE_HINT}`），内容形态却是 『{shape}』"
+                   f"——归档件的内容必须是 drift_report（声明与内容不一致）")
+    else:
+        # ③ 顶层恰好 5 键（与 R39 同源同值）——**仅在形态已确认为 drift_report 时判**：
+        #    形态不符时再叠报一遍「缺键／多键」，会让**同一个根因**产生三条噪音、
+        #    把真正的那一条（声明与内容不一致）淹掉。判据宁可少而准，不可多而糊。
+        miss, extra = _keyset(doc, DRIFT_TOP_KEYS)
+        if miss:
+            bad.append(f"顶层缺键 {miss}")
+        if extra:
+            bad.append(f"顶层多出契约外键 {extra}（该形态只允许恰好 {len(DRIFT_TOP_KEYS)} 键）")
+
+    if bad:
+        err(f"{where} · {tag}：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · {tag}：归档件形态合规（文件名含轮次号 r{m.group(1)}、内容形态 "
+           f"drift_report、顶层恰好 {len(DRIFT_TOP_KEYS)} 键——轮次号是『时间序列』成立的前提；"
+           f"⚠️ 本条不判该轮报告是否真的落了盘，那是 §1.4 条件必须与 manifest 登记义务的事）")
+
+
+# ---------------- 调度 ----------------
+def validate_doc(doc, where, fname=None):
+    shape = detect_shape(doc)
+    # R40 的触发条件是**声明式**的：文件名（basename）含 `.drift.` 即以归档件论处。
+    #   ⚠️ 必须**在 shape 分派之前**判定——否则「声明为归档件但形态不符」会落进
+    #      「形态识别失败 → 跳过」或「归到别的分支 → R40 不跑」两种盲区。
+    base = os.path.basename(fname) if fname else ""
+    is_archive = bool(base) and DRIFT_ARCHIVE_HINT in base
+    if shape is None and not is_archive:
         warn(f"{where}：无法识别产物形态（非 acts／shots+units／scenes_outline／"
              f"unspecified 台账／change_log／findings 任一种），跳过")
         return
-    out(f"\n--- {where}（形态：{shape}）---")
+    out(f"\n--- {where}（形态：{shape if shape else '无法识别'}）---")
+    if is_archive and shape != "drift_report":
+        # ⚠️ **声明为归档件**（文件名含 `.drift.`）**但形态不是 drift_report**——**不能沉默通过**。
+        #    本判定**必须放在所有形态分支之前**：`pack`／`ledger`／`modify` 三个分支各自
+        #    `return`，若把它放在它们之后，「名不副实」会在 pack 分支就返回、R40 永不触发
+        #    ——**缺陷正好落进判据盲区**（与 R37 注释里明写的那类同形；本函数首版即踩此坑，
+        #    由「文件名声明归档、内容为交付包」的负向样本当场暴露）。
+        #    此处**先由 R40 报出**，再照常跑其**实际形态**的规则（不掩盖——它可能同时是别的
+        #    形态的合法产物；两条结论并列，不择一）。
+        rule_drift_archive_shape(doc, where, base)
     if shape == "pack":
         # 交付包（SW-007）走的是一套**自足**的规则：
         #   · 顶层必备字段由 R27 统一核对（R5 的 need 表不列 pack，避免两处口径打架）；
@@ -1961,7 +2204,12 @@ def validate_doc(doc, where):
         return
     if shape == "drift_report":
         # 漂移报告（SW-002 `check_consistency_v1`）是**只报告不修改**的产物，自成一套形态。
-        rule_drift_report_shape(doc, where)
+        rule_drift_report_shape(doc, where)          # R39（形态与三数自洽）
+        if is_archive:
+            # R40（归档命名与轮次）——归档件同时过 R39 与 R40：前者判「报告合不合规」、
+            #   后者判「**归档件**合不合规」。⚠️ 与上面那条前置判定**互斥**（那条排除了
+            #   `drift_report`），故不会重复触发。
+            rule_drift_archive_shape(doc, where, base)
         return
     rule_required_keys(doc, shape, where)
     rule_fill_stage_enum(doc, where)
@@ -2065,7 +2313,7 @@ def scan_examples():
                 err(f"{fn}（第 {i} 个 JSON 块）：解析失败 {e}")
                 continue
             suffix = f"（上游＝{' + '.join(used)}）" if used else ""
-            validate_doc(doc, f"{fn}#{i}{suffix}")
+            validate_doc(doc, f"{fn}#{i}{suffix}", fname=fn)
     UPSTREAM.update({"doc": None, "src": None, "sb_doc": None, "sb_src": None})
 
 
@@ -2085,12 +2333,12 @@ def validate_file(path):
         except Exception as e:
             err(f"{os.path.basename(path)}（第 {i} 个 JSON）：解析失败 {e}")
             continue
-        validate_doc(doc, f"{os.path.basename(path)}#{i}")
+        validate_doc(doc, f"{os.path.basename(path)}#{i}", fname=os.path.basename(path))
 
 
 def main():
     global QUIET, DURATION_MIN_MS, DURATION_MAX_MS
-    ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门、跨层锚/道具比对、变更说明与漂移报告形态）")
+    ap = argparse.ArgumentParser(description="输出契约校验器（封闭枚举、缺口台账 owner 责任归属、场时长下限、分镜层质量门、跨层锚/道具比对、变更说明与漂移报告形态、漂移报告归档件轮次命名）")
     ap.add_argument("--file", help="校验单个 JSON（或含 ```json 块的 .md）文件")
     ap.add_argument("--script", help="上游剧本产物（script_v1 的输出）——提供后启用跨层规则 R23（外观锚重述）与 R24（道具覆盖）")
     ap.add_argument("--storyboard", help="上游分镜产物（storyboard_v1 的输出）——校验交付包时提供，启用 R31 的逐镜纪律（镜数/镜序/duration_ms 逐项相同）")
@@ -2139,6 +2387,9 @@ def main():
         print(f"对话式修改层：R38 变更说明（形态 modify，target_stage ∈ "
               f"{'／'.join(MODIFY_TARGET_STAGE_ENUM)}）／R39 漂移报告（形态 drift_report，"
               f"pair_role ∈ {'／'.join(PAIR_ROLE_ENUM)}）—— SW-002 支撑产物，与链路阶段**正交**")
+        print(f"漂移报告归档件：R40 轮次命名（文件名须形如 <pack_id>"
+              f"{DRIFT_ARCHIVE_HINT}r<N>.json；触发条件＝文件名含 `{DRIFT_ARCHIVE_HINT}`）"
+              f"—— **只判形态、不判存在性**")
 
     if args.file:
         validate_file(args.file)
@@ -2160,6 +2411,7 @@ def main():
             "op_type_enum": OP_TYPE_ENUM,
             "upstream_impact_enum": UPSTREAM_IMPACT_ENUM,
             "pair_role_enum": PAIR_ROLE_ENUM,
+            "drift_archive_pattern": DRIFT_ARCHIVE_RE.pattern,
             "drift_category_enum": DRIFT_CATEGORY_ENUM,
             "drift_verdict_enum": DRIFT_VERDICT_ENUM,
             "scene_min_seconds": SCENE_MIN_SECONDS,

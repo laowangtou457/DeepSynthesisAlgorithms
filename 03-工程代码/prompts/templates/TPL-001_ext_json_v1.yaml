@@ -1,6 +1,6 @@
 id: ext_json_v1
 name: 结构化信息抽取
-version: "1.0.0"
+version: "1.0.1"
 task_type: extract
 language: zh-CN
 
@@ -45,6 +45,18 @@ sections:
     源文本：
     {text}
 
+  context: |
+    本节说明抽取任务的来源约束与字段口径。
+
+    变量使用口径
+    - 源文本变量 `{text}` 是唯一信息来源，抽取结果不得出现源文本中不存在的内容。
+    - 目标 Schema 变量 `{schema}` 决定输出字段结构，**字段名与层级不得增删改**。
+    - 严格模式变量 `{strict}` 为 `true` 时，字段无对应内容填 `null`，**不得省略字段、不得臆造取值**。
+
+    禁止项
+    - 不得输出 Schema 之外的字段。
+    - 不得把推断结果写成源文本的原话。
+    - 不得改变源文本中的数字、日期与专名。
   output: |
     目标 Schema：
     {schema}

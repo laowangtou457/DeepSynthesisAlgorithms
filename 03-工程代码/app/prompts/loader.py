@@ -27,6 +27,34 @@ from app.core.errors import AppError, ErrorCode
 #: 故不会误伤模板 output 段中的 JSON 花括号（那里的 `{` 后紧跟换行或引号）。
 _TOKEN = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)(?:\?([^}\n]*))?\}")
 
+#: **双花括号＝字面量占位符**（`{{PROVIDER_CODE}}`／`{{PROVIDER_NAME}}`／`{{STATEMENT_ID}}`）。
+#:
+#: ⚠️ **为什么必须单独摘出**（2026-10-16 实测发现的根因）：模板用 `{{X}}` 表达「服务侧未分配时
+#: 留这个占位」，而 `_TOKEN` 会在**内层** `{X}` 上命中 —— `X` 不是变量 ⇒ 替换成空串 ⇒
+#: `{{PROVIDER_CODE}}` **退化成 `{}`**。实测：`TPL-009` 第 437／528 行的占位示例渲染后成为
+#: `"provider_code": "{}"` 与 `"ContentProducer": "{}/{}"`，而真跑产物里 `generator.provider_code`
+#: 恰为 `"{}"` ⇒ **逐字吻合**。后果有两层：
+#:   ① **未填项不可检出** —— 占位符纪律依赖「产物里能 grep 到 `{{`」，而 `{}` 里没有 `{{`；
+#:      交付门禁 `validate_pack.py` 的 `provider.code` 判据写的正是 `"{{" in provider_code`
+#:      ⇒ 该 WARN **永不触发**，占位项**静默通过**（「看起来正常、实则未填」）。
+#:   ② 模型会把残缺的 `{}` 或空缺**自行补成看起来合规的值**（善意幻觉），见 `pack_meta` 注记。
+#:
+#: 语义＝「`{{…}}` 是**不可插值的字面量区**，**原样输出、不改变括号层数**」。
+#: ⚠️ **刻意不是** Python `str.format` 那套「`{{` 转义成一个字面 `{`」——
+#: 本工程的占位符纪律要求**产物里保留双花括号**，因为交付门禁就是按它判的：
+#: `delivery/validate_pack.py` 写的是 `if "{{" in str(provider_code)`（`provider.code` WARN）。
+#: 若按 format 语义转成单花括号 `{PROVIDER_CODE}`，该判据**仍不触发**，修复等于白做。
+#: ⇒ 判据一致性的唯一真值在 `validate_pack.py`，本处**向它对齐**。
+#: ⚠️ 仅在内层**不含花括号**时成立（`[^{}]*`）——JSON 示例里的相邻 `}}`（如 `{"a":{"b":1}}`）
+#: 不匹配本式，故**不会**被误吞；这类序列由 `_TOKEN` 的「`{` 后须跟标识符」条件天然豁免。
+#: ⚠️ **行为变更**：若某模板写了 `{{var}}` 且 `var` 是真实变量，此前会渲染成 `{<值>}`，
+#: 现在**原样输出 `{{var}}`**。现网模板中 `{{…}}` 只有上述三个占位符名（均非变量），故无影响。
+#: 「变量值外包一层花括号」此前**无模板依赖**，如需该效果应在模板侧改写成别的记号。
+_ESCAPED_PLACEHOLDER = re.compile(r"\{\{([^{}]*)\}\}")
+
+#: `_ESCAPED_PLACEHOLDER` 的还原表：哨兵＝`\x01<序号>\x02`（不会与模板正文或 `_TOKEN` 冲突）。
+_STASH_RESTORE = re.compile(r"\x01(\d+)\x02")
+
 #: 链路阶段 → 模板 id（与 CFG-008 的 `stage` 字段一一对应）。
 STAGE_TEMPLATE: dict[str, str] = {
     "synopsis": "synopsis_v1",
@@ -237,6 +265,14 @@ class PromptRepository:
 
 
 def _interpolate(text: str, variables: dict[str, Any], tpl: Template) -> str:
+    """插值：`{name}` 替换为变量值；`{{NAME}}` **原样保留为字面量占位符**。
+
+    三步走（顺序不可换）：
+      ① 先把 `{{…}}` 摘成哨兵 `\\x01<序号>\\x02` —— 否则 `_TOKEN` 会吃掉内层 `{…}`
+         把 `{{PROVIDER_CODE}}` 抹成 `{}`（根因见 `_ESCAPED_PLACEHOLDER` 的注记）；
+      ② 再跑 `_TOKEN` 做常规变量插值（哨兵既不含 `{` 也不含标识符，天然免疫）；
+      ③ 最后把哨兵**原样还原**为摘出前的那一段（含双花括号，一字不改）。
+    """
     def repl(m: re.Match[str]) -> str:
         name, default = m.group(1), m.group(2)
         value = variables.get(name)
@@ -249,7 +285,17 @@ def _interpolate(text: str, variables: dict[str, Any], tpl: Template) -> str:
             return _stringify(tpl_default)
         return ""
 
-    return _TOKEN.sub(repl, text)
+    stashed: list[str] = []
+
+    def stash(m: re.Match[str]) -> str:
+        stashed.append(m.group(0))  # ⚠️ `group(0)`＝含花括号的完整原文，不是内层
+        return f"\x01{len(stashed) - 1}\x02"
+
+    protected = _ESCAPED_PLACEHOLDER.sub(stash, text)
+    interpolated = _TOKEN.sub(repl, protected)
+    if not stashed:
+        return interpolated
+    return _STASH_RESTORE.sub(lambda m: stashed[int(m.group(1))], interpolated)
 
 
 def _stringify(value: Any) -> str:

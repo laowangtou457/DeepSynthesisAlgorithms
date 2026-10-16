@@ -33,8 +33,10 @@ from app.core.errors import (
 from app.core.logging import configure_logging, get_logger, get_request_id
 from app.core.middleware import RequestContextMiddleware
 from app.prompts.loader import PromptRepository
+from app.repositories.lexicon import load_lexicon
 from app.repositories.session_repo import SessionRepository
 from app.services.dialogue_service import DialogueService
+from app.services.safety_service import SafetyService
 
 logger = get_logger("main")
 
@@ -123,7 +125,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.prompts = prompts
     app.state.sessions = sessions
-    app.state.dialogue_service = DialogueService(sessions, prompts)
+    # ⚠️ **双闸必须挂在生成链路上**（`T-005` 的实质，不只是提供 `/safety` 端点）：
+    #    `SafetyService` 只判定，**阻断由编排层据 verdict 抛 `GUARD_*`**。
+    #    接线用**同一实例**（不另造，避免两套策略）；这里用**延迟解析**是因为
+    #    `safety_service` 在本行之后才装配，而解析发生在**请求期**，届时必定就绪。
+    app.state.dialogue_service = DialogueService(
+        sessions, prompts, safety_resolver=lambda: app.state.safety_service
+    )
+
+    # ---- 内容安全双闸（`T-005`）----
+    # 词库加载**不抛异常**：缺失/为空一律降级为「检测不可用」，由 SafetyService
+    # 按 fail-closed 拒绝放行——**绝不在装配阶段崩掉整个应用**，也不静默放行。
+    # 受控词库**不入库**，运行时从受控区目录读取（项目方 2026-10-15 决策）；
+    # 其路径**不外泄**，只以 `controlled_loaded` 布尔出现在策略视图与本条日志里。
+    lexicon = load_lexicon(settings.lexicon_dir, settings.controlled_lexicon_dir)
+    app.state.safety_service = SafetyService(
+        lexicon,
+        output_action=settings.guard_output_action,
+        fail_closed=settings.guard_fail_closed,
+        max_hits=settings.guard_max_hits,
+        enforce=settings.guard_enforce,
+        # `SW-017` 话术注入（方案 B）：留空 ⇒ 服务层回落内置默认，行为不变
+        refusal_talk=settings.guard_refusal_talk or None,
+        clarify_talk=settings.guard_clarify_talk or None,
+    )
     logger.info(
         "app_initialized",
         extra={
@@ -131,6 +156,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "templates": len(prompts.list()),
                 "inference_backend": settings.inference_backend,
                 "prompts_root": str(settings.prompts_dir),
+                "lexicon_categories": lexicon.category_count,
+                "lexicon_words": lexicon.total_words,
+                "lexicon_empty_categories": len(lexicon.empty_categories),
+                "lexicon_controlled_loaded": lexicon.controlled_loaded,
+                "lexicon_circuit_open": not lexicon.usable,
+                "guard_enforce": settings.guard_enforce,
+                "guard_fail_closed": settings.guard_fail_closed,
+                "guard_output_action": settings.guard_output_action,
             }
         },
     )

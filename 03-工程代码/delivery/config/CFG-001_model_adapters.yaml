@@ -18,10 +18,23 @@
 #   ★ 规范 §13 NT-03：partial 未清除前，该模型适配文本不得作为「照做就行」的样板。
 #
 # ★ 铁律：本文件不得出现任何下游 API 地址、密钥字段或调用逻辑（SYS-018 脱钩原则）。
+#
+# ★★ v1.2 说明（SW-025 运行态落地，2026-10-14）：
+#   本文件此前只是「适配规则表」——**没有任何代码把它变成可投喂的适配文本**
+#   （交付规范 §1.4 要求包内 `exports/<model>/<model>.txt`，此前该目录恒为空）。
+#   v1.2 补齐运行态所需的两项**声明**：
+#     1. `defaults.explicit_mark_text` —— 适配文本「标识区」的显式标识文案
+#        （与 `AST-004` 交付合规声明、`SYS-Q15` 定案口径一致）；
+#     2. 逐模型 `export_rules` —— 此前散落在「公共印象」里的逐模型差异
+#        （镜头语言句是**追加**还是**已内嵌**、负向字段标签、转场是否单独成行、
+#         使用说明条）**显式声明化**，使生成器 `tools/export_models.py` 做到
+#        「新增模型不改代码」（规范 §6.7 判据）——一切差异读本文件。
+#   ⚠️ 本次**未改动任何已有规则值**（11 维适配、limits、negative_policy 逐字未变），
+#      `coverage_table` 与 `onboarding_checklist` 亦未变；仅新增声明与一处文案。
 # ============================================================
 
-schema_version: "1.1.0"
-updated_at: "2026-10-12"
+schema_version: "1.2.0"
+updated_at: "2026-10-14"
 
 defaults:
   fallback_action: general_spec_with_guide   # 无适配配置时：输出通用规范 + 使用说明（规范 §6.6）
@@ -39,6 +52,12 @@ defaults:
   copy_hint: "复制方法：请从上方「提示词区」分隔行以下开始复制，不要连同标识区一起粘贴。"
   # 适配输出不含 AIGC 元数据块（元数据写在 pack 与导出文件中，避免污染提示词）
   include_aigc_meta_in_adapter_output: false
+  # ★ v1.2：适配文本「标识区」的显式标识文案（规范 §7.4 / §9.2；SYS-Q15 定案）
+  explicit_mark_text: "本文件由AI生成，已经过合规验证"
+  # ★ v1.2：`CFG-002` 词表里**给人看的参数注解型字面**（不是可投喂的措辞）——
+  #   命中者不得直接进入适配正文，须退到该条的 `model_map.fallback`，无 fallback 则退到中文字面。
+  #   例：可灵 `pan_left` 的「六轴水平摇负值」（注解）→ fallback「镜头向左摇」（措辞）。
+  literal_reject_patterns: ["^六轴", "模式切分", "^自然语言"]
 
 # 负向词处理通则（规范 §6.4）
 negative_policy:
@@ -60,6 +79,14 @@ models:
     verify_status: verified
     verify_source: "h3_prompt_model/h3_compiler.py（95 条规则，本项目实测）+ 07-提示词工程/PE-003_外部提示词集AI可用化改造方法论.md §8"
     export_filename: minimax_h3.txt
+    export_rules:                           # ★ v1.2：逐模型导出声明（由 tools/export_models.py 执行；代码内不得硬编码）
+      camera_line: embedded                 # 运镜须为正文内独立句（§6.4）→ 只核不补，避免重复
+      negative_label: null                  # 基础模式无负向字段 → 正文不得出现任何负向残留（§6.4）
+      transition_line: false                # 转场由正文承载；官方 5 条切镜短语不得自造
+      dialogue_format: d_tag_chinese         # 中文台词须包 `<d>[Chinese]…</d>`（§6.4 语言铁律）
+      extra_notices:
+        - "逐镜导出：本文件按「一镜一条提示词」组织。H3 基础模式（三字段）为整段描述；若客户按单元整段投喂，须自行合并，并在 [Shot 2] 起使用官方 5 条切镜短语之一（§6.4）；逐镜导出时本文件**不追加**转场行（多镜合并才需要）"
+        - "语言铁律：H3 框架描述须全英文；本文件对白已按 `<d>[Chinese]…</d>` 包装。若单元音轨（环境声／配乐）出现中文而本模型要求英文基底，属**上游字段缺英文**，须回上游补写"
     dims:
       language_preference: en_primary      # ★ v1.1 修正：H3 以英文为基底（v1.0 误写为 zh_primary）
       language_hard_constraint: true       # 语言倾向不得覆盖模型硬约束（规范 §6.3 第 1 维）
@@ -128,6 +155,12 @@ models:
     verify_pending: [max_prompt_chars, min_duration_ms, max_duration_ms]
     verify_source: "07-提示词工程/PE-003_外部提示词集AI可用化改造方法论.md §9 + 项目已确立写法（悬崖吊桥刀战_Seedance提示词集.md）"
     export_filename: seedance.txt
+    export_rules:                           # ★ v1.2：逐模型导出声明
+      camera_line: appended                 # 中文模型：正文之后追加一行平台字面运镜
+      negative_label: "Negative prompt:"    # 结尾独立一行，不与正向混写（§6.4）
+      transition_line: true                 # 转场可点名（§6.5）
+      extra_notices:
+        - "四段结构（素材映射 / 一句话简述 / 时间轴 / 全局约束）须按 §6.4 组装；本文件提供逐镜可投喂文本、时长画幅与负向行，素材映射请按 reference_syntax 人工填写"
     dims:
       language_preference: zh_primary
       language_hard_constraint: false
@@ -180,6 +213,12 @@ models:
     verify_pending: [min_duration_ms, max_duration_ms, max_prompt_chars]
     verify_source: "07-提示词工程/PE-003_外部提示词集AI可用化改造方法论.md §11（官方公式与官方镜头词典）"
     export_filename: dreamina.txt
+    export_rules:                           # ★ v1.2：逐模型导出声明
+      camera_line: appended
+      negative_label: "负向提示词："        # 独立负向输入框，不与正向混写（§6.4）
+      transition_line: true
+      extra_notices:
+        - "镜头语言须使用平台官方镜头词典写法（已由 config/CFG-002_shot_vocab.yaml 的 model_map 投影，不得自造）；官方明示不适用于画面内精准文字场景（§6.4）"
     dims:
       language_preference: zh_primary
       language_hard_constraint: false
@@ -233,6 +272,12 @@ models:
     verify_pending: [limits 数值微调]
     verify_source: "07-提示词工程/PE-003_外部提示词集AI可用化改造方法论.md §10（官方公式、2500 字符、六轴 [-10,10]）"
     export_filename: kling.txt
+    export_rules:                           # ★ v1.2：逐模型导出声明
+      camera_line: appended
+      negative_label: "负向提示词："        # 独立字段，不与正向混写（混写会干扰识别）
+      transition_line: true
+      extra_notices:
+        - "多镜头须使用平台独立「多镜头模式」，不是单提示词内切镜（§6.4）；六轴数值可精确定量，本文件给出自然语言运镜，六轴参数按需人工换算；「2500 是天花板不是目标」——60–100 字精炼提示词效果通常优于长堆砌"
     dims:
       language_preference: zh_primary
       language_hard_constraint: false
@@ -311,6 +356,12 @@ models:
     verify_status: pending
     verify_source: ""
     export_filename: generic.txt
+    export_rules:                           # ★ v1.2：逐模型导出声明（通用降级路径，规范 §6.6）
+      camera_line: appended
+      negative_label: null                  # 未核对 → 不装配负向字段（避免误投喂）
+      transition_line: true
+      extra_notices:
+        - "通用使用说明：① 把「提示词区」文本逐镜复制进目标平台提示词输入框；② 时长与画幅按本文件分隔行标注填写；③ 标识素材请按 assets/ 内素材与 AST-002 规格叠加；④ 本平台 verify_status: pending，**适配参数须自行核对后方可交付**（§6.6）"
     dims:
       language_preference: bilingual
       camera_expression: natural_language

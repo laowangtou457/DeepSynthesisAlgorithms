@@ -42,6 +42,12 @@ class ErrorCode(str, Enum):
     # ---- 内容安全（SW-I03）----
     GUARD_INPUT_BLOCKED = "GUARD_INPUT_BLOCKED"
     GUARD_OUTPUT_BLOCKED = "GUARD_OUTPUT_BLOCKED"
+    #: `SW-017` 含糊时澄清（`CFG-008`「意图不唯一时不猜、不择优，转 `guard_clarify_v1` 追问」）。
+    #: 2026-10-16 项目方裁决 `ISSUE-035` ③ 取**口径 A**（必填项缺失即含糊）时落地。
+    #: ⚠️ **不是拦截**（内容本身可能安全，只是指令不完整）⇒ 状态码取 **409 Conflict**
+    #:   而非 4xx 语义错误；`details.missing_items` 给出缺失项供前端渲染追问。
+    #: ⚠️ 契约要求「澄清期 `change_log` 必须为空」⇒ 编排层抛本码时**不写产物、不写 history**。
+    CLARIFICATION_NEEDED = "CLARIFICATION_NEEDED"
 
     # ---- 交付与导出（SW-I04 / SW-I08）----
     DELIVERY_PACK_INVALID = "DELIVERY_PACK_INVALID"
@@ -64,6 +70,7 @@ _DEFAULT_STATUS: dict[ErrorCode, int] = {
     ErrorCode.GENERATION_FAILED: 502,
     ErrorCode.GUARD_INPUT_BLOCKED: 422,
     ErrorCode.GUARD_OUTPUT_BLOCKED: 451,
+    ErrorCode.CLARIFICATION_NEEDED: 409,
     ErrorCode.DELIVERY_PACK_INVALID: 422,
     ErrorCode.NOT_IMPLEMENTED: 501,
 }

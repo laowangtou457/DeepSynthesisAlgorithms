@@ -1,11 +1,34 @@
 id: shot_prompt_v1
 name: 分镜提示词生成
-version: "2.1.0"
+version: "2.1.1"
 task_type: generate
 stage: shot_prompt
 language: zh-CN
 
-# 版本说明（**v2.1.0**，2026-10-14）：AI 漫剧业务链路第 4 段（SW-007）。
+# 版本说明（**v2.1.1**，2026-10-16）：AI 漫剧业务链路第 4 段（SW-007）。
+#   ★ v2.1.1 修订（**次版本**；依 `ISSUE-037` 项目方 2026-10-16 裁决**取方案 D**）：
+#     本版**只改「提示词自身的输入体积」，不改任何契约字段、不改任何输出口径**（故属次版本）：
+#     ① **上游产物在本模板中改为「各只全文注入一次」** —— 原稿把 `{storyboard_json}` 插 **5 次**、
+#        `{script_json}` **3 次**、`{pack_meta}` **4 次**；⚠️ 那 9 处其实都是**正文里的「指称」**
+#        （如「以下字段一律原样承继 {storyboard_json}」），本意是「指向上游」而非「再贴一遍全文」，
+#        但渲染器（`app/prompts/loader.py::_interpolate`）对**每一处** `{name}` 一律做**全量替换**
+#        ⇒ 上游被放大 **2.44 倍**：`shot_prompt` 段真实输入达 **50,358 tokens**，加模板
+#        `sampling.max_tokens=8192` 后 **58,550** ⇒ 超 Qwen2.5-7B 原生上限 **32768**，
+#        该段在**引擎入口**被拒（`502`，实测于 `T-004` 收尾第 2 轮真跑）。
+#        现：正文 9 处指称改为**纯文本**（「分镜脚本 JSON」／「剧本 JSON」／「包元数据」），
+#        **仅 `task` 节保留每变量各 1 处全文**；并在 `task` 节**显式声明**「三份全文只出现一次」。
+#        ⚠️ **语义等价性**：被替换处原本读到的就是同一份全文，改文本后模型仍由 `task` 节拿到全文；
+#        **取数口径、承继守恒清单、三类必改＋一类条件改写白名单、投影规则、八维纪律未改一字**。
+#        ⚠️ 另一条路（`segment` 拆段）**对本症无效**：实测 `all`／`package_head`／`unit:U01` 渲染后
+#        输入为 **50,358／50,360／50,366 tokens**（差 ≤8，只来自 `{segment}` 取值字符串本身）——
+#        分段只改变**模型该输出什么**，输入侧 `*_json` 是**无条件全量注入**的。
+#     ② **配套应用层改动**（`app/services/dialogue_service.py`）：注入上游变量前对 JSON 文本做
+#        **无损紧凑化**（只去空白、语义零改动；解析失败则**原样返回**）——属服务层改动，
+#        不改模板契约；与 ① 叠加即裁决所取的**方案 D**。
+#     ③ ⚠️ **本批未处置（另立 `ISSUE-039`）**：同一「重复注入」形态在 `modify_v1`（`current_artifact`
+#        **9 次**）、`revise_v1`（`pack_meta` 4 次／`source_material` 3 次）、`script_v1`／
+#        `storyboard_v1`（上游 2 次）、`check_consistency_v1`（上游 2 次）**同样存在** ——
+#        本批**只按裁决处置 `TPL-009`**，其余**如实保留待裁决**（不擅改他人域内产物）。
 #   ★ v2.0.0 修订（**结构变更 → 主版本**；依 `ISSUE-011`／`ISSUE-012`／`ISSUE-015`，任务
 #     `T-054`~`T-056` **合并为同一次契约升版动作**）：本层 **output 的契约字段集新增三项**，
 #     故属**主版本**（v1.1.0 的「无 output 字段增删故属次版本」判据在此**反向成立**）：
@@ -186,7 +209,7 @@ sections:
     不是"重新切镜"（属上一阶段），也不是"改写剧本"（属更上一阶段）。
 
     硬性约束：
-    1. **不改导演决策（承继守恒）**：以下字段一律**原样承继** {storyboard_json}，一字不得改：
+    1. **不改导演决策（承继守恒）**：以下字段一律**原样承继**分镜脚本 JSON（全文见 task 节），一字不得改：
        shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera 全部子字段／
        action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／character_refs／
        **prop_refs**／soundscape／music／notes。**尤其不得改 duration_ms**——它是导演决策，也是与
@@ -201,9 +224,9 @@ sections:
        以及顶层的 schema_version／meta／style_bible／characters／**props**／**forbidden_items**／aigc_meta
        （后两项：`props[]` 为**搬运**、`forbidden_items` 为**原样承继**）。
     3. **双上游取数，不得张冠李戴**：
-       · 锚的**内容**取自 {script_json}——style_bible（style_prompt_zh／style_anchors／lighting_default／
+       · 锚的**内容**取自剧本 JSON（全文见 task 节）——style_bible（style_prompt_zh／style_anchors／lighting_default／
          negative_global）与 characters[]（appearance_lock_zh／voice／age_band）、props[]；
-       · 镜头决策取自 {storyboard_json}——units／shots／style_ref／total_duration_ms。
+       · 镜头决策取自分镜脚本 JSON（全文见 task 节）——units／shots／style_ref／total_duration_ms。
        两边都要读，**只读其中一份必然缺字段**。
     4. **外观只定义一次，正文不得复述**（规范 §3.4）：`prompt_zh`／`prompt_en` 内**不得**出现角色的
        发型／发色／瞳色／服装／体态，也不得出现道具的材质／饰件／磨损与款式。
@@ -231,7 +254,7 @@ sections:
        若某镜确实超出上限，属**上游缺陷或维度异常**，按 fallback 回退，**不得砍维度**。
     8. **风格锚点封闭**（规范 §3.3）：`prompt_zh`／`prompt_en` 中**不得出现 style_anchors 清单之外的
        风格词**。第 3 镜说「赛璐璐」、第 7 镜说「厚涂」，风格就散了。
-       风格词只从 {script_json} 的 style_bible.style_anchors（中文侧）与 style_prompt_en（英文侧）里取。
+       风格词只从剧本 JSON（全文见 task 节）的 style_bible.style_anchors（中文侧）与 style_prompt_en（英文侧）里取。
        ⚠️ **英文侧须与中文侧一一对应**：`style_prompt_en` 是 `style_anchors` 的**英文对等物**，
        条数与语义须逐条对应、不得增删（评审 PR-10）。注意：英文侧目前的**闭集来源只有中文
        `style_anchors`**，词表的 `style_tags` 仅覆盖中文 → 英文锚点**无独立闭集可校**；
@@ -258,13 +281,16 @@ sections:
     11. **正文内不得写模型参数指令**（如 `--ar 16:9`）——参数一律走结构化字段。
         画面可见文字**必须加引号原样写出、不翻译**（H3 必须用英文双引号）。
     12. **元数据不得编造**：pack_id／created_at／session_id／task_id／statement_id／provider_code／
-        compliance.* **一律取自 {pack_meta}**。缺项时写占位符（如 `{{PROVIDER_CODE}}`）并在
+        compliance.* **一律取自包元数据（全文见 task 节）**。缺项时写占位符（如 `{{PROVIDER_CODE}}`）并在
         unspecified 中登记，**不得自拟编号或日期**——§5.2 要求「编号 → 生成记录」可反查，自拟即断链。
     13. 不使用绝对化与宣传性表述；不写暴力、色情、恐怖的具体细节，冲突点到为止。
     14. 只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
 
   task: |
     请把以下分镜脚本编译为**分镜提示词交付包**。
+
+    ⚠️ 本消息中，**分镜脚本 JSON、剧本 JSON、包元数据三份全文各只出现一次，就在下方**。
+    正文其它位置提到的「分镜脚本 JSON」「剧本 JSON」「包元数据」，均指此处这三份，**不再重复粘贴**。
 
     本次分段粒度：
     {segment}
@@ -288,7 +314,7 @@ sections:
       | 交付包字段 | 来源 |
       | --- | --- |
       | schema_version | 常量 "2.1.0"（与 schema 对应；v2.1.0 起） |
-      | meta | {pack_meta} 原样搬运；缺失项写占位符并登记 unspecified |
+      | meta | 包元数据（全文见 task 节）原样搬运；缺失项写占位符并登记 unspecified |
       | style_bible.style_id | 剧本 style_bible.style_id（＝分镜 style_ref，二者必须相同） |
       | style_bible.style_prompt_zh / style_anchors / negative_global / lighting_default | 剧本 style_bible（**逐字承继**） |
       | style_bible.style_prompt_en | **本层补出**（剧本层通常无此字段；须与 style_prompt_zh 同义） |
@@ -302,7 +328,7 @@ sections:
       | **shots[].prop_refs（V2.0 起承继）** | 分镜 shots[] **原样承继**（逐镜、不得增删改）；无道具为**空数组** `[]`，**不得写空串** |
       | shots[].style_ref | 本层补出＝style_bible.style_id（规范 §3.8 列**阻断项**，缺失即不得交付） |
       | shots[].prompt_zh / prompt_en / aspect_ratio | **本层补出**（aspect_ratio 缺省取 meta.aspect_ratio_default） |
-      | aigc_meta | 规则区，由 {pack_meta} 拼接（见 output 第 12 条），**不得创作** |
+      | aigc_meta | 规则区，由包元数据（全文见 task 节）拼接（见 output 第 12 条），**不得创作** |
       | **上游顶层字段** title／genre／style_ref／aspect_ratio_default／total_duration_ms／quality_gate | **不搬入交付包**（规范 §3.1 顶层**八段**无这些段；其作用已由 meta 的对应字段承担——如 `total_duration_ms` → `meta.total_duration_ms`、`aspect_ratio_default` → `meta.aspect_ratio_default`／逐镜 `aspect_ratio`） |
       | **上游顶层** `forbidden_items` | ✅ **v2.0.0 起原样承继**（规范 §3.1 已增设该独立容器）——逐条搬运，**不得增删改写**；⚠️ 只承接**客户侧禁忌**（上游 `must_avoid`），**不得**放入受控词库分类码／词条（规范 §3.1.1 三层边界） |
       | **上游顶层** `unspecified` | ⚠️ **交付包无此段**（规范 §3.1 顶层**八段**无它）→ 不搬入；缺口的**状态可见性**改由 `meta.notes` 登记（见 output 第 10 条） |
@@ -510,7 +536,7 @@ sections:
     }
 
     数量与口径要求：
-    1. **承继守恒**：shots 与 units 的镜数、镜序、单元构成、时长，必须与 {storyboard_json} **逐项相同**；
+    1. **承继守恒**：shots 与 units 的镜数、镜序、单元构成、时长，必须与分镜脚本 JSON（全文见 task 节）**逐项相同**；
        total_duration_ms 必须等于各镜 duration_ms 之和，且必须等于上游 total_duration_ms
        （本层不改时长，二者不等即说明本层动了不该动的东西）。
     2. 每个镜头必须属于且仅属于一个单元；style_ref 必须命中 style_bible.style_id；
@@ -554,7 +580,7 @@ sections:
   examples: |
     示例 1（**一镜的编译全过程**：上游决策 → 交付包字段，重点看 prompt 的八维双落地）：
 
-    上游（{storyboard_json} 的 S01-SH001，紧凑摘录）：
+    上游（分镜脚本 JSON 的 S01-SH001，**静态示例摘录**，非本次输入的全文）：
       {"shot_id": "S01-SH001", "shot_size": "wide",
        "camera": {"move": "push_in", "amplitude": "small", "speed": "slow",
                   "from": "楼道口外三米、齐腰高度", "to": "停在 CHR-01 肩背，雨幕堆在身后",

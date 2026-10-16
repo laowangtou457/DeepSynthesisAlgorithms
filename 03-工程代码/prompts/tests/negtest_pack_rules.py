@@ -11,6 +11,11 @@
       台账必须**另行产出**为独立产物，其形态与交付包不同，故**另有一套基础样本与样本表**）。
       ＋ **对话式修改层 R38／R39**（2026-10-14 随 SW-002 `modify_v1`／`check_consistency_v1` 建立——
       本层与链路阶段**正交**（`modify_v1` 无 `stage`），两种产物各自一套形态，故**再各起一套样本**）。
+      ＋ **漂移报告归档件 R40**（2026-10-14 依项目方对 `PRO-004` §7 的裁决建立——归档落点取
+      **A3-lite**：`target_stage=pack` → 交付包 `qa/<pack_id>.drift.r<N>.json`；其余四类 → 服务层留档
+      （与 `MR-13` 合并挂起，见 `PM-001` §8.1）。⚠️ **本层样本的第 4 位是「文件名」**——
+      R40 的触发条件是**声明式**的（basename 含 `.drift.`），判据对象也含文件名，
+      故归档表**必须能把文件名传给 `_run`**；其余四表的第 4 位仍是 `need_sb`）。
 
 用法：
     python tests/negtest_pack_rules.py            # 跑全部样本
@@ -57,7 +62,13 @@ MODIFY_CASES = []   # R38 专用：变更说明样本（SW-002，与链路阶段
 MODIFY_BLINDSPOTS = []
 DRIFT_CASES = []    # R39 专用：漂移报告样本
 DRIFT_BLINDSPOTS = []
+DRIFT_ARCHIVE_CASES = []       # R40 专用：漂移报告**归档件**样本（第 4 位 ＝ 文件名）
+DRIFT_ARCHIVE_BLINDSPOTS = []
 _SB = {}
+# ⚠️ 其余四表共用的临时文件名——**刻意不含 `.drift.`**：R40 的触发是声明式的，
+#    这保证了 R26~R39 的既有样本**不会**因为文件名而意外多跑一条 R40
+#    （否则 89 项的既有基线与后续计数都会被污染）。
+TMP_NAME = "_tmp_pack.json"
 
 
 def _load_base():
@@ -480,6 +491,41 @@ def _(d):
     d["clarification"] = {"needed": False, "questions": ["要不要一并改总时长？"]}
 
 
+# ---- v1.1.0 依独立评审 REV-SW-002-02 新增的 R38 样本（2026-10-14）----
+#   MR-01：insert / delete 的可达性反向检查（原口径只豁免 insert，使契约声明合法的 delete 必被判失败）
+#   MR-02：取值级自洽（「伪记录」由不可判变可判）
+#   MR-09：unresolved.type 三义枚举
+#   MR-15：转出形态（change_log 空 + 非澄清态 ⇒ unresolved 必须非空）
+@modify_case("R38 op_type=insert 但新增后该路径在 artifact 中仍解析不到", "R38")
+def _(d):
+    d["change_log"][0]["op_type"] = "insert"
+    d["change_log"][0]["target_path"] = "shots[9].duration_ms"
+    d["change_log"][0]["before"] = ""
+
+
+@modify_case("R38 op_type=delete 但该路径在 artifact 中仍存在（删除未生效）", "R38")
+def _(d):
+    d["change_log"][0]["op_type"] = "delete"
+    d["change_log"][0]["after"] = ""
+
+
+@modify_case("R38 伪记录：artifact 在该路径上的取值仍等于 before（记录说改了、产物里没改）", "R38")
+def _(d):
+    d["change_log"][0]["before"] = "6000"
+    d["change_log"][0]["after"] = "6000"
+
+
+@modify_case("R38 unresolved.type 越界（写成 rejected）", "R38")
+def _(d):
+    d["unresolved"][0]["type"] = "rejected"
+
+
+@modify_case("R38 change_log 空且非澄清态，但 unresolved 也为空（无改动却无任何说明）", "R38")
+def _(d):
+    d["change_log"] = []
+    d["unresolved"] = []
+
+
 # ---- R39 漂移报告的形态与三数自洽（★ 2026-10-14 随 SW-002 `check_consistency_v1` 新增）----
 def drift_case(name, rule):
     def deco(fn):
@@ -492,7 +538,21 @@ def drift_blindspot(name, fn, why):
     return fn
 
 
-@drift_case("R39 顶层多出契约外键（该形态只允许恰好 4 键）", "R39")
+# ---- R40 归档件的注册器（★ 第 4 位是**文件名**，与其余四表的语义不同）----
+def drift_archive_case(name, rule, fname):
+    def deco(fn):
+        # (名称, 期望规则, 变异函数, need_sb=False, 文件名)
+        DRIFT_ARCHIVE_CASES.append((name, rule, fn, False, fname))
+        return fn
+    return deco
+
+
+def drift_archive_blindspot(name, fn, why, fname):
+    DRIFT_ARCHIVE_BLINDSPOTS.append((name, fn, why, fname))
+    return fn
+
+
+@drift_case("R39 顶层多出契约外键（该形态只允许恰好 5 键）", "R39")
 def _(d):
     d["artifact"] = {}
 
@@ -515,7 +575,7 @@ def _(d):
 
 @drift_case("R39 findings 缺少 anchor 类条目（把锚类汇总的 category 改成 number）", "R39")
 def _(d):
-    d["findings"][4]["category"] = "number"
+    d["findings"][5]["category"] = "number"
 
 
 @drift_case("R39 findings 每条缺 location_b（8 键不齐）", "R39")
@@ -557,6 +617,29 @@ def _(d):
 @drift_case("R39 summary.verdict 与复算不符（有漂移却写 clean）", "R39")
 def _(d):
     d["summary"]["verdict"] = "clean"
+
+
+# ---- v1.1.0 依独立评审 REV-SW-002-02 新增的 R39 样本（2026-10-14）----
+#   MR-10：`focus` 回显键 + 缩范围声明复检（防「缩范围却写出全查式假证据」）
+#   MR-16：`location_b` 形式约束
+@drift_case("R39 focus 取值越界（写成 numbers_only）", "R39")
+def _(d):
+    d["focus"] = "numbers_only"
+
+
+@drift_case("R39 focus=numbers 但 anchor 条目仍写「本次已扫锚」（缩范围却写全查式声明）", "R39")
+def _(d):
+    d["focus"] = "numbers"
+
+
+@drift_case("R39 location_b 形式不合规（用 [*] 通配，非唯一落点）", "R39")
+def _(d):
+    d["findings"][0]["location_b"] = "shots[*].duration_ms"
+
+
+@drift_case("R39 location_b 形式不合规（写成自然语言）", "R39")
+def _(d):
+    d["findings"][1]["location_b"] = "整片总时长那一处"
 
 
 @drift_case('R39 summary.checked_count 写成字符串 "5"（非整数）', "R39")
@@ -624,6 +707,25 @@ modify_blindspot("change_log[].before 写成空串（未逐字摘自原件）", 
                  "同 R33 的取舍：不写比契约更严的私有口径。")
 
 
+def _mbs_untracked_change(d):
+    """`artifact` 被改动、`change_log` 却为空——「改了却没写记录」。
+
+    ⚠️ 本样本**不是**「伪记录」：伪记录是「记录说改了、产物里没改」，已由 R38 第 ⑤ 条
+       （取值级自洽）**判得了**；本项是它的反面——**改了却没写记录**，仍需 `current_artifact`
+       作外部基准，故**仍无判据**。
+    """
+    d["change_log"] = []
+    d["artifact"]["total_duration_ms"] = 19001
+
+
+modify_blindspot("change_log 为空而 artifact 有改动（「改了却没写记录」）", _mbs_untracked_change,
+                 "判定「artifact 相对原件是否被改动」需要 `current_artifact` 作**外部基准**"
+                 "（同 R31 需 `--storyboard` 的情形），单文件内无从判定。"
+                 "⚠️ 与「伪记录」**刻意区分**：伪记录（记录说改了、产物里没改）已由 R38 第 ⑤ 条"
+                 "的取值级自洽覆盖；本项（改了却没写记录）**仍无判据**，登记为预期不触发。"
+                 "要脚本化须为 `validate_output.py` 增设 `--before` 参数。")
+
+
 def _dbs_normalized_value(d):
     d["findings"][0]["value_b"] = "6s"
 
@@ -643,6 +745,56 @@ drift_blindspot("findings[].action 写成空串", _dbs_empty_action,
                 "同 R37 的取舍：不写比契约更严的私有口径。")
 
 
+# ---- R40 漂移报告归档件（★ 2026-10-14 依项目方对 `PRO-004` §7 的裁决新增）----
+#   裁决口径：问 1 ＝ **A3-lite**（`pack` 落交付包 `qa/<pack_id>.drift.r<N>.json`；其余四类 → 服务层
+#   留档，与 `MR-13` 合并挂起）；问 3 ＝ **B-γ（主）+ B-β（辅）**；**问 5 ＝ 是**（新增 `R40`，
+#   **只判形态、不判存在性**）。⚠️ 本表的第 4 位是**文件名**——R40 的触发条件与判据对象都是文件名。
+#   判据三条：① 文件名含轮次号（`<pack_id>.drift.r<N>.json`，`N` 为 ≥1 正整数、无前导零）；
+#             ② 声明与内容形态一致（归档件的内容必须是 `drift_report`）；
+#             ③ 顶层恰好 5 键（与 R39 **同源同值**，归档件被单独摘出送检时须能单文件自证）。
+@drift_archive_case("R40 文件名缺轮次号（pack01.drift.json）", "R40", "pack01.drift.json")
+def _(d):
+    pass
+
+
+@drift_archive_case("R40 轮次号非正整数（r0）", "R40", "pack01.drift.r0.json")
+def _(d):
+    pass
+
+
+@drift_archive_case("R40 轮次号有前导零（r01）", "R40", "pack01.drift.r01.json")
+def _(d):
+    pass
+
+
+@drift_archive_case("R40 归档名成立但顶层多出契约外键", "R40", "pack01.drift.r2.json")
+def _(d):
+    d["artifact"] = {}
+
+
+@drift_archive_case("R40 归档名 + 内容形态不符（误把交付包改成归档名）", "R40", "pack01.drift.r9.json")
+def _(d):
+    # 把这份漂移报告整体换成**交付包**内容——文件名仍声明它是归档件。
+    #   ⚠️ 本样本同时是「判据位置」的回归位：首版实现把归档判定放在形态分支**之后**，
+    #      于是 pack 分支先 `return`、R40 永不触发（缺陷正好落进盲区）。
+    d.clear()
+    d.update(_load_base())
+
+
+def _dabs_no_archive_hint(d):
+    pass
+
+
+drift_archive_blindspot("漂移报告命名为不含 `.drift.` 的名字（report.json）", _dabs_no_archive_hint,
+                        "R40 的触发是**声明式**的（basename 含 `.drift.`）。一份内容完全合法、"
+                        "但命名上看不出归档意图的文件，R40 **不会**触发——因为「这一轮到底有没有"
+                        "落盘、以及它有没有按规范命名」**不可能由单文件判定**。该义务由"
+                        "**声明性义务**承担（规范 §1.4 的**条件必须** ＋ `manifest.json` 的"
+                        "「列出全部文件」既有义务），与 R37 的既有取向一致——评审原话："
+                        "「不要再硬凑一个近似（那会造出'看起来很严格、实则无意义'的门槛）」。",
+                        "report.json")
+
+
 # --------------------------------------------------------------------------
 # 执行
 # --------------------------------------------------------------------------
@@ -653,11 +805,15 @@ FORMS = [
     ("独立台账（ledger）", _load_ledger, LEDGER_CASES, LEDGER_BLINDSPOTS),
     ("变更说明（modify）", _load_modify, MODIFY_CASES, MODIFY_BLINDSPOTS),
     ("漂移报告（drift_report）", _load_drift, DRIFT_CASES, DRIFT_BLINDSPOTS),
+    # ⚠️ 本表的样本是 **5 元**（第 4 位是文件名、不是 need_sb）——执行循环按长度分流。
+    ("漂移报告归档件（drift_archive）", _load_drift, DRIFT_ARCHIVE_CASES, DRIFT_ARCHIVE_BLINDSPOTS),
 ]
 
 
-def _run(doc, need_sb, tmpdir):
-    fp = os.path.join(tmpdir, "_tmp_pack.json")
+def _run(doc, need_sb, tmpdir, fname=TMP_NAME):
+    """⚠️ `fname` 是 R40 的**触发开关**（basename 含 `.drift.` 即以归档件论处）——
+    其余形态一律用 `TMP_NAME`，故不会意外触发 R40。"""
+    fp = os.path.join(tmpdir, fname)
     with open(fp, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=2)
     cmd = [sys.executable, VAL, "--file", fp]
@@ -670,7 +826,7 @@ def _run(doc, need_sb, tmpdir):
 
 def main():
     ap = argparse.ArgumentParser(description="输出契约规则负向验证：交付包 R26~R36 ＋ 台账 R37 ＋ "
-                                             "变更说明 R38 ＋ 漂移报告 R39")
+                                             "变更说明 R38 ＋ 漂移报告 R39 ＋ 归档件 R40")
     ap.add_argument("--json", action="store_true", help="输出机器可读结果")
     ap.add_argument("--keep", action="store_true", help="保留临时样本目录（排查用）")
     args = ap.parse_args()
@@ -680,10 +836,15 @@ def main():
     try:
         for label, loader, cases, blinds in FORMS:
             doc = loader()
-            for name, rule, mutate, need_sb in cases:
+            for tup in cases:
+                if len(tup) == 5:                      # 归档表：(名, 规则, 变异, need_sb, 文件名)
+                    name, rule, mutate, need_sb, fname = tup
+                else:
+                    name, rule, mutate, need_sb = tup
+                    fname = TMP_NAME
                 d = copy.deepcopy(doc)
                 mutate(d)
-                code, out = _run(d, need_sb, tmpdir)
+                code, out = _run(d, need_sb, tmpdir, fname)
                 fails = [ln for ln in out.splitlines() if "[FAIL]" in ln]
                 exact = any(rule in ln for ln in fails)
                 good = (code == 1 and exact)
@@ -691,10 +852,15 @@ def main():
                 rows.append({"form": label, "case": name, "rule": rule,
                              "expect": "EXIT=1 命中 " + rule,
                              "exit": code, "hit": exact, "ok": good, "fails": fails[:3]})
-            for name, mutate, why in blinds:
+            for tup in blinds:
+                if len(tup) == 4:                      # 归档表盲区：(名, 变异, 理由, 文件名)
+                    name, mutate, why, fname = tup
+                else:
+                    name, mutate, why = tup
+                    fname = TMP_NAME
                 d = copy.deepcopy(doc)
                 mutate(d)
-                code, out = _run(d, False, tmpdir)
+                code, out = _run(d, False, tmpdir, fname)
                 good = (code == 0)
                 bad += 0 if good else 1
                 rows.append({"form": label, "case": name, "rule": "（已知盲区）",
@@ -703,15 +869,18 @@ def main():
     finally:
         shutil.rmtree(tmpdir, ignore_errors=not args.keep)
 
-    n_cases = len(CASES) + len(LEDGER_CASES) + len(MODIFY_CASES) + len(DRIFT_CASES)
-    n_blind = len(BLINDSPOTS) + len(LEDGER_BLINDSPOTS) + len(MODIFY_BLINDSPOTS) + len(DRIFT_BLINDSPOTS)
+    n_cases = (len(CASES) + len(LEDGER_CASES) + len(MODIFY_CASES) + len(DRIFT_CASES)
+               + len(DRIFT_ARCHIVE_CASES))
+    n_blind = (len(BLINDSPOTS) + len(LEDGER_BLINDSPOTS) + len(MODIFY_BLINDSPOTS)
+               + len(DRIFT_BLINDSPOTS) + len(DRIFT_ARCHIVE_BLINDSPOTS))
     if args.json:
         print(json.dumps({"passed": bad == 0, "total": len(rows), "failed": bad,
                           "cases": n_cases, "blindspots": n_blind,
                           "rows": rows}, ensure_ascii=False, indent=2))
     else:
-        print(f"输出契约规则负向验证 · 交付包 R26~R36 ＋ 台账 R37 ＋ 变更说明 R38 ＋ 漂移报告 R39 · ")
-        print(f"{n_cases} 个越界样本 + {n_blind} 个已知盲区（四形态各自一套基础样本）")
+        print(f"输出契约规则负向验证 · 交付包 R26~R36 ＋ 台账 R37 ＋ 变更说明 R38 ＋ "
+              f"漂移报告 R39 ＋ 归档件 R40 · ")
+        print(f"{n_cases} 个越界样本 + {n_blind} 个已知盲区（五形态各自一套基础样本）")
         print("=" * 66)
         prev = None
         for r in rows:

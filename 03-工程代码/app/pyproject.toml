@@ -8,19 +8,21 @@ license = { text = "Proprietary" }
 
 # 依赖取向见《模型框架设计说明书》ARCH-003 §3.3 技术选型。
 # 本批（T-003 一期）只启用到「Web 框架 / 数据校验 / 配置管理」三项；
-# 数据库（PostgreSQL+SQLAlchemy+Alembic）、缓存（Redis）、推理引擎（vLLM）、
-# 可观测（structlog/prometheus）在 T-004 及之后按任务清单逐项接入。
+# 数据库（PostgreSQL+SQLAlchemy+Alembic）、缓存（Redis）、可观测（structlog/prometheus）
+# 在 T-004 及之后按任务清单逐项接入。
+# ⚠️ `httpx` 自 T-004（vLLM 后端接入）起升为**运行时依赖**（此前仅在 dev 组）——
+#    `app/inference/vllm_backend.py` 经它访问 OpenAI 兼容接口。
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
   "PyYAML>=6.0",
+  "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.27",
   "pytest>=8.0",
 ]
 

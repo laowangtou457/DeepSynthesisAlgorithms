@@ -6,11 +6,11 @@
 | --- | --- |
 | 用例编号 | `CASE-MOD-001` |
 | 对应需求 | **SW-002 对话式修改**（通用迭代入口：对「当前阶段产物」做定向修改、保持跨阶段一致性；异常＝修改意见含糊时澄清） |
-| 主模板 | `modify_v1` **v1.0.0**（业务链路**支撑模板**，**刻意不填 `stage`**——与链路阶段正交，见其版本说明） |
-| 连带模板 | `check_consistency_v1` **v1.0.0**（一致性校验侧，`pair_role=before_after`） |
+| 主模板 | `modify_v1` **v1.1.0**（业务链路**支撑模板**，**刻意不填 `stage`**——与链路阶段正交，见其版本说明） |
+| 连带模板 | `check_consistency_v1` **v1.1.0**（一致性校验侧，`pair_role=before_after`） |
 | 产物形态参照 | `CASE-003_storyboard-case01.md`（分镜产物形态）。⚠️ 本用例**自带一份精简产物**（4 镜 / 2 单元）而非引用该用例全文——目的是让「修改前 ↔ 修改后」**可逐字比对**；`CASE-003` 的产物规模（13 镜）会让变更说明与漂移报告淹没在噪声里 |
 | 用例来源 | **构造用例**（修改意见为人为设计，含 6 处陷阱位；正式使用前须补一组脱敏真实客户意见） |
-| 采样参数 | temperature 0.2 / top_p 0.85 / top_k 40 / max_tokens 8192（**受约束解码**；温度取全库最低档——本层的风险不是句式呆滞，而是「顺手多改」，低温使模型倾向照抄输入） |
+| 采样参数 | temperature 0.2 / top_p 0.85 / top_k 40 / max_tokens 8192（**受约束解码**；温度取全库最低档）。⚠️ **订正（`v1.1.0` 依评审 §3.2 温度项）**：低温**不是**「顺手多改」的防线——多改的成因是模型自认为的"规范化"，**不是采样随机性**；真正的防线是 `guards` 第 1 条的全文差异清单。 |
 | 记录日期 | 2026-10-14 |
 | **验证状态** | ⚠️ **未验证**——未跑模型。以下产物为**人工按模板纪律构造**，用于固化判据口径与陷阱位；实测须待模型就绪后由 `tests/` 下的负向样本与人工抽检（SW-002 验收要求 **≥30 例**）共同承担 |
 
@@ -224,7 +224,7 @@
 
 ```json
 {
-  "modify_version": "1.0.0",
+  "modify_version": "1.1.0",
   "target_stage": "storyboard",
   "artifact": {
     "title": "夜班便利 · 第3集",
@@ -429,12 +429,14 @@
   ],
   "unresolved": [
     {
+      "type": "limitation",
       "field": "（全局）漂移基准",
       "reason": "本轮未提供上游产物，零漂移只能以「修改前的当前产物」自身为基准",
       "need": "服务层注入 upstream_artifact 后由 check_consistency_v1 复跑一次，方可与上游事实交叉验证",
       "blocking": false
     },
     {
+      "type": "finding",
       "field": "quality_gate.static_ratio",
       "reason": "脚本复算结果为 0.25，与填写值一致；但本产物仅 4 镜，统计量样本过小，参考意义有限",
       "need": "镜数 ≥8 后再行复算",
@@ -451,8 +453,9 @@
 
 ```json
 {
-  "check_version": "1.0.0",
+  "check_version": "1.1.0",
   "pair_role": "before_after",
+  "focus": "全篇",
   "findings": [
     {
       "finding_id": "DR-01",
@@ -487,25 +490,35 @@
     {
       "finding_id": "DR-04",
       "category": "number",
-      "item": "第 3／4 镜时长（shots[2..3].duration_ms）",
-      "value_a": "5000 / 4000",
-      "value_b": "5000 / 4000",
-      "location_b": "shots[2].duration_ms、shots[3].duration_ms",
+      "item": "第 3 镜时长（shots[2].duration_ms）",
+      "value_a": "5000",
+      "value_b": "5000",
+      "location_b": "shots[2].duration_ms",
       "verdict": "consistent",
-      "action": "未被点名，逐字未变；本条用于证明「数字类逐处查过」，非仅查被改动处"
+      "action": "未被点名，逐字未变（数字类**逐处登记**：第 3 镜单独一条）"
     },
     {
       "finding_id": "DR-05",
+      "category": "number",
+      "item": "第 4 镜时长（shots[3].duration_ms）",
+      "value_a": "4000",
+      "value_b": "4000",
+      "location_b": "shots[3].duration_ms",
+      "verdict": "consistent",
+      "action": "未被点名，逐字未变（数字类**逐处登记**：第 4 镜单独一条）—— 与 DR-04 分列，正是为了不把「逐处性」抹掉"
+    },
+    {
+      "finding_id": "DR-06",
       "category": "anchor",
-      "item": "锚与编号全量比对（shot_id／unit_id／shot_ids／scene_no／character_refs／prop_refs／style_ref）",
+      "item": "锚与编号全量比对（本体 8 项 + 引用面 4 项，清单见 CFG-007【封闭枚举登记】）",
       "value_a": "S01-SH001..004 / U01,U02 / [S01-SH001,S01-SH002],[S01-SH003,S01-SH004] / 1,1,1,1 / [CHR-01]×4 / []、[PRP-01]、[PRP-01]、[] / STYLE-01",
       "value_b": "S01-SH001..004 / U01,U02 / [S01-SH001,S01-SH002],[S01-SH003,S01-SH004] / 1,1,1,1 / [CHR-01]×4 / []、[PRP-01]、[PRP-01]、[] / STYLE-01",
       "location_b": "shots[*] 与 units[*] 全域",
       "verdict": "consistent",
-      "action": "锚与编号共 7 类全部一致（零容忍类整体复述）——本条**不得省略**：缺此条则无法区分「锚全部一致」与「根本没查锚」"
+      "action": "本次已扫锚：锚与编号共 11 项（本体 8 + 引用面 3；本产物无 prop_id 本体键）、合计 34 处全部一致（零容忍类整体复述）——本条**不得省略**：缺此条则无法区分「锚全部一致」与「根本没查锚」。⚠️ 本行 location_b 为全量复述的代表落点（锚类条目**豁免** `location_b` 形式校验）"
     }
   ],
-  "summary": { "checked_count": 5, "drift_count": 3, "verdict": "drift" }
+  "summary": { "checked_count": 6, "drift_count": 3, "verdict": "drift" }
 }
 ```
 
@@ -529,7 +542,7 @@
 | 3 | `target_stage` 回显 | 与输入一致（`storyboard`） | ✅ |
 | 4 | `change_log` 条数 | 2 条意图 → 3 条记录（MOD-01 的牵连位置另占一条） | ✅ |
 | 5 | `op_id` 形态与唯一性 | 形如 `MOD-\d{2}`、全表唯一、不跳号（MOD-01/02/03） | ✅ |
-| 6 | `target_path` 可达性 | 每条路径都能在 `artifact` 中解析到 | ✅（`shots[0].duration_ms`／`total_duration_ms`／`shots[1].shot_size`） |
+| 6 | `target_path` 可达性 | 每条路径都能在 `artifact` 中解析到（**`insert`／`delete` 豁免**，改判反向检查） | ✅（`shots[0].duration_ms`／`total_duration_ms`／`shots[1].shot_size`；三条均 `replace`） |
 | 7 | `op_type` 取值 | ∈ {replace, normalize, insert, delete} | ✅（三条均 replace） |
 | 8 | `before` 逐字性 | 与 §2.1 逐字相同（非推算值） | ✅（`18000` 取自原件，非由 5000→6000 反推） |
 | 9 | `basis` 指回性 | 每条 `basis` 是客户原话的逐字片段 | ✅ |
@@ -537,13 +550,15 @@
 | 11 | 未点名处逐字保持 | §2.1 与 §4 的差异**恰好 3 处** | ✅（正文本用例已逐字对齐，只此 3 处） |
 | 12 | 锚与编号零变化 | 7 类锚与编号逐字相同 | ✅ |
 | 13 | 枚举取值合法 | `shot_size=medium` 在 6 值内；`static` 镜**省略** `amplitude`／`speed` 键（非空串）；`lighting` 4 镜全覆盖且为分镜层「词表值——说明」形态（过 `R19` 光线覆盖门槛 40%） | ✅ |
-| 14 | `unresolved` 形态 | 每条恰好 4 键、`blocking` 为**布尔** | ✅（2 条，均 `false` 布尔） |
+| 14 | `unresolved` 形态 | 每条恰好 **5** 键、`blocking` 为**布尔**、`type` 在枚举内 | ✅（2 条：`limitation`／`finding`，均 `false` 布尔） |
 | 15 | 上游基准局限已登记 | `upstream_artifact` 为空时 `unresolved` 必有一条说明该局限 | ✅（第 1 条） |
 | 16 | `clarification` 形态 | 恰好 2 键；`needed=false` 时 `questions` 为空数组 | ✅ |
 | 17 | 报告四类全覆盖 | 漂移报告含 number／setting／anchor 三类（本用例无 proper_noun 可查） | ✅ |
-| 18 | 报告 anchor 类整体复述 | 锚类即使一致也有汇总条目（DR-05） | ✅ |
-| 19 | 报告自洽复算 | `checked_count`＝清单条数；`drift_count`＝非 consistent 条数；`verdict` 随之 | ✅（5／3／drift） |
+| 18 | 报告 anchor 类整体复述 | 锚类即使一致也有汇总条目（DR-06） | ✅ |
+| 19 | 报告自洽复算 | `checked_count`＝清单条数；`drift_count`＝非 consistent 条数；`verdict` 随之 | ✅（6／3／drift） |
 | 20 | 报告不越界 | 只报告，产物零改动 | ✅ |
+| 21 | `focus` 回显与缩范围声明 | 顶层含 `focus` 且与输入一致；`focus=全篇` 时 anchor 条目含「本次已扫锚」 | ✅（`focus="全篇"`；DR-06 已写明） |
+| 22 | 逐处性（同一类数值的每一处各占一条） | 未点名的第 3／4 镜时长**各占一条**，未合并 | ✅（DR-04／DR-05 分列） |
 
 ## 8 自检表
 
@@ -560,8 +575,10 @@
 | 枚举值合法 | ✅ `medium` 在 `shot_size` 六值内 |
 | `lighting` 覆盖与形态 | ✅ 4/4 镜；分镜层「词表值——说明」，§2.1 与 §4 逐字相同 |
 | `locked_paths` 无命中 | ✅ 三条记录的目标路径均不在锁定清单内 |
-| 模板版本常量 | ✅ `modify_version="1.0.0"` 与 `TPL-015` 文件版本一致 |
-| 报告三数自洽 | ✅ 5／3／drift |
+| 模板版本常量 | ✅ `modify_version="1.1.0"` 与 `TPL-015` 文件版本一致；`check_version="1.1.0"` 与 `TPL-016` 一致 |
+| 报告三数自洽 | ✅ 6／3／drift |
+| 逐处性（同一类数值的每一处各占一条） | ✅ 未点名的第 3／4 镜时长**各占一条**（DR-04／DR-05），未合并，逐处性未被抹掉 |
+| 报告缩范围声明（本轮为全篇，故写「本次已扫锚」） | ✅ DR-06 的 `action` 已写明并给出实比项数 |
 | 产物标注验证状态 | ⚠️ **未验证**（未跑模型） |
 
 ## 9 与工程判据的对应
@@ -571,8 +588,8 @@
 
 | 判据 | 形态 | 覆盖的本用例评测项 |
 | --- | --- | --- |
-| **R38** `MODIFY_SHAPE` | `modify` | 项 1（顶层恰好 6 键）／项 3（`target_stage` 落在封闭 5 值内）／项 5（`op_id` 形如 `MOD-\d{2}`、唯一不跳号）／项 6（`target_path` 可在 `artifact` 中解析）／项 7（`op_type` 取值）／项 14（`unresolved` 每条 4 键、`blocking` 为布尔）／项 16（`clarification` 恰好 2 键）；另加两条**追加**判据：`target_stage` 与 `artifact` 形态须相符、`clarification.needed=true` 时 `change_log` 必空 |
-| **R39** `DRIFT_REPORT_SHAPE` | `drift_report` | 项 17（四类中「锚类必须有交代」）／项 18（锚类汇总条目**必须存在**）／项 19（`summary` 三数复算自洽）；另加一条**追加**判据：`findings` 不得为空数组 |
+| **R38** `MODIFY_SHAPE` | `modify` | 项 1（顶层恰好 6 键）／项 3（`target_stage` 落在封闭 5 值内）／项 5（`op_id` 形如 `MOD-\d{2}`、唯一不跳号）／项 6（`target_path` 可达，**`insert`／`delete` 豁免**）／项 7（`op_type` 取值）／项 14（`unresolved` 每条 **5** 键、`type` 在枚举内、`blocking` 为布尔）／项 16（`clarification` 恰好 2 键）；另加四条**追加**判据：`target_stage` 与 `artifact` 形态须相符、`clarification.needed=true` 时 `change_log` 必空、**取值级自洽三条**（`artifact[target_path]` 应＝`after`／应≠`before`／`delete` 后应不存在）、**转出形态**（`change_log` 空且非澄清态时 `unresolved` 必须非空） |
+| **R39** `DRIFT_REPORT_SHAPE` | `drift_report` | 项 17（四类中「锚类必须有交代」）／项 18（锚类汇总条目**必须存在**）／项 19（`summary` 三数复算自洽）／项 21（`focus` 回显 + 缩范围声明复检）／项 22（`location_b` 形式，锚类豁免）；另加一条**追加**判据：`findings` 不得为空数组 |
 
 ⚠️ **判据的能力边界（如实登记，不得靠"看起来对"蒙混）**——下列评测项**无脚本判据**：
 
@@ -589,6 +606,16 @@
 上述无判据项由**模板 `guards` 的自检项 + 人工抽检**承担（SW-002 验收要求 ≥30 例）。
 若日后要脚本化项 8／11／12，须为 `validate_output.py` 增设 `--before` 参数（同 R31 需 `--storyboard` 的模式）。
 
-⚠️ 两条**已登记进负向样本的已知盲区**（`tests/negtest_pack_rules.py`）：「顺手多改」
-（改动未被 `change_log` 覆盖的字段）与「`before` 写成空串」——被明确登记为**预期不触发**，
-防止日后误以为 R38 已覆盖它们。**不把无判据的事写成"已覆盖"，是本工程反复出现的一类缺陷的根因。**
+⚠️ **已知盲区（`tests/negtest_pack_rules.py` 登记；`v1.1.0` 依评审 `MR-02`／`MR-15` 由两条改三条）**：
+
+| 盲区 | 为何仍无判据 |
+| --- | --- |
+| 「顺手多改」（改动未被 `change_log` 覆盖的字段） | 需 `current_artifact` 作外部基准 |
+| 「`before` 写成空串」 | 同上（`before` 的逐字性须与原件比对） |
+| 「**改了却没写记录**」（`change_log` 空而 `artifact` 变了） | 同上——**注意它与"伪记录"不是一回事** |
+
+✅ **「伪记录」（记录说改了、产物里没改）已不再是盲区**：`v1.1.0` 的 R38 第 ⑤ 条**取值级自洽**
+把它变为**可判**（`artifact[target_path]` 应≠`before`）。原文曾**漏登记**它、并误称其已被 R38 拦下
+（评审 `MR-02` 即针对此处）。
+
+**不把无判据的事写成"已覆盖"，是本工程反复出现的一类缺陷的根因。**

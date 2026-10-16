@@ -1,0 +1,24 @@
+━━━ 交付包 FR-PK-20261012-DEMO0001 ━━━
+模型：MiniMax H3（海螺） ｜ 单元数：1 ｜ 镜数：3 ｜ 总时长：15s ｜ 生成时间：2026-10-14T17:34:40+08:00
+核对状态：verified（已按官方文档／本项目实测核对，可直接交付）
+[适配说明] 逐镜导出：本文件按「一镜一条提示词」组织。H3 基础模式（三字段）为整段描述；若客户按单元整段投喂，须自行合并，并在 [Shot 2] 起使用官方 5 条切镜短语之一（§6.4）；逐镜导出时本文件**不追加**转场行（多镜合并才需要）
+[适配说明] 语言铁律：H3 框架描述须全英文；本文件对白已按 `<d>[Chinese]…</d>` 包装。若单元音轨（环境声／配乐）出现中文而本模型要求英文基底，属**上游字段缺英文**，须回上游补写
+[适配说明] 组织粒度＝**逐镜一条提示词**（每镜可独立成片投喂）；两段式输出＝开启（标识区 + 分隔行 + 提示词区）；本模型不含 AIGC 元数据块（避免污染提示词）；Ref2VA 六段式合并（参考生成／续写／编辑／音频复用）本期不作适配。
+⚠️ 单元 U01：环境声为中文，而本模型要求英文基底且**语言倾向不得覆盖硬约束**（§6.3 第 1 维） —— 属**上游字段缺英文**，须回上游补写，本脚本不代译
+复制方法：请从上方「提示词区」分隔行以下开始复制，不要连同标识区一起粘贴。
+【AI生成内容】本文件由AI生成，已经过合规验证        ← 标识区，请勿复制
+════════════ 以下为提示词区，请从此行以下复制 ════════════
+
+━━━ 单元 U01（3 镜 · 15s · MiniMax H3（海螺））━━━
+[Unit audio] Soundscape: 细雨持续打在屋檐与伞面上，远处偶有自行车铃，巷口水滴成串落下。
+[Unit audio] Music: N/A
+─── 镜 S01-SH001（远景 · 固定机位 · 4s · 16:9）───
+Wide shot of a rainy old alley in Jiangnan at dusk. The camera holds a static shot at eye level, the rain streaking left to right across the frame. Wet cobblestone in the foreground reflects a lantern glow, while the girl with an umbrella stands small in frame right against the alley falling away into the background. Warm lamplight rims her shoulders and the white walls stay half in shadow. Rain beads along the umbrella ribs and drips from its edge.
+<d>[Chinese]（旁白）那年的雨，下了很久。</d>
+SFX: 细雨声、远处自行车铃
+─── 镜 S01-SH002（近景/特写 · 前推 · 5s · 16:9）───
+Close-up of the girl as she slowly lifts her head. The camera pushes in with small amplitude at slow speed toward her eyes from a slightly low angle, holding a shallow depth of field so the rain curtain behind her stays out of focus. She sits in the left third of the frame with negative space to her right, still facing left along the same eyeline as the previous shot, so the axis is not crossed. A rim light lifts her jaw line and the edge of her hair. Rain beads roll down her hair tips and fall past her collar.
+SFX: 雨声渐强
+─── 镜 S01-SH003（中景 · 上摇 · 6s · 16:9）───
+Medium shot of the girl turning and walking off down the alley. The camera tilts up with small amplitude at slow speed from a low angle and a slight dutch angle as she leaves, keeping a deep focus so the whole alley stays readable. She crosses from frame right to frame left, the same screen direction as before, so the axis turns with her and is never crossed. Backlight through the rain glints along the wet wall while the lantern pools behind her dim into shadow. The umbrella swings wide, scattering a spray of drops that catch the lamplight and settle on the stone.
+SFX: 雨声、脚步声踩过积水、伞面甩水声

@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `dialogue`  | SW-I01（SW-001~003） | ✅ 本批实现 |
 | `tasks`     | SW-I02（SW-004~008） | ✅ 本批实现（mock 后端） |
-| `safety`    | SW-I03（SW-009~011、017） | ⏳ 占位（T-005） |
+| `safety`    | SW-I03（SW-009~011、017） | ✅ 本批实现（`T-005`）；判定在 `services/safety_service.py`，**生成链路上的阻断在 `services/dialogue_service.py`** |
 | `delivery`  | SW-I04 | ⏳ 占位（T-006） |
 | `auth`      | SW-I05 | ⏳ 占位（二期） |
 | `export`    | SW-I08 | ⏳ 占位（二期） |

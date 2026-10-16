@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>需求进度与开发顺序全景图</title>
+<style>
+:root{
+  --bg:#ffffff; --bg2:#faf9f7; --bg3:#f1efe8;
+  --tx:#1c1c1a; --tx2:#5f5e5a; --tx3:#888780;
+  --bd:#e2e0d8;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:32px 24px 56px;background:var(--bg);color:var(--tx);
+  font-family:"Noto Sans SC","Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;
+  font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:22px;font-weight:500;margin:0 0 6px}
+.sub{color:var(--tx2);font-size:13px;margin:0 0 4px}
+.meta{color:var(--tx3);font-size:12px;margin:0 0 28px}
+section{margin:0 0 40px}
+h2{font-size:15px;font-weight:500;margin:0 0 6px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.note{font-size:12.5px;color:var(--tx2);margin:0 0 18px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 26px}
+.card{background:var(--bg3);border-radius:8px;padding:14px 16px}
+.card .k{font-size:12.5px;color:var(--tx2)}
+.card .v{font-size:24px;font-weight:500;margin:3px 0 2px}
+.card .s{font-size:11.5px;color:var(--tx3)}
+.bar{display:flex;gap:3px;height:28px;margin:0 0 14px}
+.bar div{border-radius:4px}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--tx2)}
+.legend div{display:flex;gap:9px;align-items:flex-start;line-height:1.5}
+.dot{width:10px;height:10px;border-radius:2px;flex:none;margin-top:5px}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px;font-size:12.5px;color:var(--tx2)}
+.mini div{border-top:1px solid #d8d6cd;padding-top:8px}
+.mini b{color:var(--tx);font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 8px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);vertical-align:top}
+th{font-weight:500;color:var(--tx2);font-size:12.5px}
+code{font-family:"Cascadia Code",Consolas,monospace;font-size:12.5px;background:var(--bg3);padding:1px 5px;border-radius:3px}
+.callout{background:#fdf6ec;border:1px solid #f0dcbe;border-radius:8px;padding:14px 16px;font-size:13px;color:#4a3a1c;margin:0 0 20px}
+.callout b{font-weight:500}
+.foot{color:var(--tx3);font-size:12px;border-top:1px solid var(--bd);padding-top:14px;margin-top:8px}
+svg{width:100%;height:auto;display:block}
+@media(max-width:720px){.cards,.mini{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>需求进度与开发顺序全景图</h1>
+<p class="sub">回答四问：做到需求几了 · 需求之间的前后关系 · 后续哪些是串行 · 整体开发顺序</p>
+<p class="meta">生成时间 2026-10-15 09:40　｜　⚠️ <b>本图数据截至 2026-10-15，主件已于 2026-10-16 更新（见 <code>PM-001</code> §9）——本图待全量重生成（<code>T-082</code>），其间<b>不得作为对外汇报依据</b></b>　｜　数据来源：<code>REQ-005</code> V2.6 · <code>REQ-004</code> V2.0 · <code>REQ-001</code> V1.6 · <code>PM-001</code> · <code>PM-002</code>　｜　性质：**派生视图**（机器生成，内容以主件为准，不取编号）</p>
+
+<section>
+<h2>一、目前做到需求几了</h2>
+<div class="callout"><b>口径声明</b>：<code>REQ-005</code> 明写「『模板建成』不等于『需求完成』，验收须以<b>服务化跑测</b>为准（<code>RQ5-03</code>）」。故<b>通过验收的需求为 0 条</b>；对外汇报须区分「文档已建 / 资产已建 / 验收通过」三个水位。</div>
+
+<div class="cards">
+  <div class="card"><div class="k">需求文档 · 三层</div><div class="v">3 / 3</div><div class="s">HW-018 · SYS-021 · SW-028</div></div>
+  <div class="card"><div class="k">软件级验收通过</div><div class="v">0 / 28</div><div class="s">验收以服务化跑测为准</div></div>
+  <div class="card"><div class="k">当前边界</div><div class="v">SW-008</div><div class="s">建模资产 5/5 已建齐</div></div>
+  <div class="card"><div class="k">关键路径下一站</div><div class="v">T-004</div><div class="s">生成链路接入</div></div>
+</div>
+
+<div class="bar">
+  <div style="flex:3;background:#9FE1CB"></div>
+  <div style="flex:5;background:#EF9F27"></div>
+  <div style="flex:20;background:#D3D1C7"></div>
+</div>
+<div class="legend">
+  <div><span class="dot" style="background:#9FE1CB"></span><span><code>SW-001 ~ SW-003</code>　对话编排（3 条）：骨架已通 —— 状态机与 3 个端点已实现，服务化未跑测</span></div>
+  <div><span class="dot" style="background:#EF9F27"></span><span><code>SW-004 ~ SW-008</code>　内容生成与解析重构（5 条）：模板资产 5/5 建成，服务化实现 0　← <b>当前边界</b></span></div>
+  <div><span class="dot" style="background:#D3D1C7"></span><span><code>SW-009 ~ SW-028</code>　安全 / 标识 / 版权 / 治理 / 未保（20 条）：未开工</span></div>
+</div>
+
+<div class="mini">
+  <div>接口需求 <code>SW-I01 ~ I08</code><br><b>3 已实现 / 5 显式占位</b></div>
+  <div>数据需求 <code>SW-D01 ~ D10</code><br><b>0 已建（会话仍内存态）</b></div>
+  <div>非功能 <code>SW-101 ~ SW-111</code><br><b>0 已达标（未压测）</b></div>
+</div>
+</section>
+
+<section>
+<h2>二、需求之间的前后关系</h2>
+<p class="note">箭头 = 前置依赖（据 <code>REQ-005</code> §2「关联」列与验收逻辑）。实线为硬串行，虚线为相关或旁挂，灰色块为旁挂或横切。</p>
+
+<svg viewBox="0 0 680 476" role="img">
+<title>软件级需求依赖关系图</title>
+<desc>四条需求链与横切需求：主业务流硬串行链、内容安全闸、生成标识链、治理与数据链。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="40" y="24" font-size="12" font-weight="500" fill="#5f5e5a">主业务流 · 硬串行</text>
+<text x="195" y="24" font-size="12" font-weight="500" fill="#5f5e5a">内容安全闸</text>
+<text x="350" y="24" font-size="12" font-weight="500" fill="#5f5e5a">生成标识链</text>
+<text x="505" y="24" font-size="12" font-weight="500" fill="#5f5e5a">治理与数据链</text>
+
+<g><rect x="40" y="40" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="55" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-001</text><text x="107.5" y="69" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">任务对话状态机</text></g>
+<path d="M107.5 78L107.5 89" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="40" y="90" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="105" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-003</text><text x="107.5" y="119" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">梗概确认门控</text></g>
+<path d="M107.5 128L107.5 139" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="40" y="140" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="155" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-004</text><text x="107.5" y="169" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">故事梗概生成</text></g>
+<path d="M107.5 178L107.5 189" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="40" y="190" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="205" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-005</text><text x="107.5" y="219" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">剧本生成</text></g>
+<path d="M107.5 228L107.5 239" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="40" y="240" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="255" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-006</text><text x="107.5" y="269" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">分镜脚本生成</text></g>
+<path d="M107.5 278L107.5 289" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="40" y="290" width="135" height="38" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="107.5" y="305" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">SW-007</text><text x="107.5" y="319" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">分镜提示词生成</text></g>
+<path d="M107.5 328L107.5 339" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+<g><rect x="40" y="340" width="135" height="38" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="107.5" y="355" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-008</text><text x="107.5" y="369" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">解析重构 · 并行入口</text></g>
+
+<g><rect x="195" y="40" width="135" height="38" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/><text x="262.5" y="55" font-size="12" font-weight="500" fill="#791F1F" text-anchor="middle" dominant-baseline="central">SW-009</text><text x="262.5" y="69" font-size="11" fill="#A32D2D" text-anchor="middle" dominant-baseline="central">输入内容检测</text></g>
+<path d="M262.5 78L262.5 89" fill="none" stroke="#A32D2D" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="195" y="90" width="135" height="38" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/><text x="262.5" y="105" font-size="12" font-weight="500" fill="#791F1F" text-anchor="middle" dominant-baseline="central">SW-010</text><text x="262.5" y="119" font-size="11" fill="#A32D2D" text-anchor="middle" dominant-baseline="central">输出内容复检</text></g>
+<path d="M262.5 128L262.5 139" fill="none" stroke="#A32D2D" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="195" y="140" width="135" height="38" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/><text x="262.5" y="155" font-size="12" font-weight="500" fill="#791F1F" text-anchor="middle" dominant-baseline="central">SW-017</text><text x="262.5" y="169" font-size="11" fill="#A32D2D" text-anchor="middle" dominant-baseline="central">拒答与兜底</text></g>
+<path d="M262.5 178L262.5 189" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+<g><rect x="195" y="190" width="135" height="38" rx="8" fill="#FBEAF0" stroke="#D4537E" stroke-width="0.5"/><text x="262.5" y="205" font-size="12" font-weight="500" fill="#72243E" text-anchor="middle" dominant-baseline="central">SW-028</text><text x="262.5" y="219" font-size="11" fill="#993556" text-anchor="middle" dominant-baseline="central">未成年人保护</text></g>
+
+<g><rect x="350" y="40" width="135" height="38" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="417.5" y="55" font-size="12" font-weight="500" fill="#3C3489" text-anchor="middle" dominant-baseline="central">SW-012</text><text x="417.5" y="69" font-size="11" fill="#534AB7" text-anchor="middle" dominant-baseline="central">显式生成标识</text></g>
+<path d="M417.5 78L417.5 89" fill="none" stroke="#534AB7" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="350" y="90" width="135" height="38" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="417.5" y="105" font-size="12" font-weight="500" fill="#3C3489" text-anchor="middle" dominant-baseline="central">SW-013</text><text x="417.5" y="119" font-size="11" fill="#534AB7" text-anchor="middle" dominant-baseline="central">隐式生成标识</text></g>
+<path d="M417.5 128L417.5 139" fill="none" stroke="#534AB7" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="350" y="140" width="135" height="38" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="417.5" y="155" font-size="12" font-weight="500" fill="#3C3489" text-anchor="middle" dominant-baseline="central">SW-014</text><text x="417.5" y="169" font-size="11" fill="#534AB7" text-anchor="middle" dominant-baseline="central">标识传递与声明</text></g>
+<path d="M417.5 178L417.5 189" fill="none" stroke="#534AB7" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="350" y="190" width="135" height="38" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="417.5" y="205" font-size="12" font-weight="500" fill="#3C3489" text-anchor="middle" dominant-baseline="central">SW-026</text><text x="417.5" y="219" font-size="11" fill="#534AB7" text-anchor="middle" dominant-baseline="central">交付合规声明与自检</text></g>
+<path d="M417.5 228L417.5 239" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+<g><rect x="350" y="240" width="135" height="38" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="417.5" y="255" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-015</text><text x="417.5" y="269" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">版权校验</text></g>
+<path d="M350 209H340V309H349" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+<g><rect x="350" y="290" width="135" height="38" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="417.5" y="305" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-022</text><text x="417.5" y="319" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">内容导出</text></g>
+
+<g><rect x="505" y="40" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="55" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-020</text><text x="572.5" y="69" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">认证与租户隔离</text></g>
+<path d="M572.5 78L572.5 89" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="90" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="105" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-019</text><text x="572.5" y="119" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">数据保护</text></g>
+<path d="M572.5 128L572.5 139" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="140" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="155" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-016</text><text x="572.5" y="169" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">全链路审计留痕</text></g>
+<path d="M572.5 178L572.5 189" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="190" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="205" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-018</text><text x="572.5" y="219" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">异常处置</text></g>
+<path d="M572.5 228L572.5 239" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="240" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="255" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-021</text><text x="572.5" y="269" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">申诉举报接口</text></g>
+<path d="M572.5 278L572.5 289" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="290" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="305" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-027</text><text x="572.5" y="319" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">客服工作台</text></g>
+<path d="M572.5 328L572.5 339" fill="none" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g><rect x="505" y="340" width="135" height="38" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="572.5" y="355" font-size="12" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">SW-024</text><text x="572.5" y="369" font-size="11" fill="#0F6E56" text-anchor="middle" dominant-baseline="central">管理控制台</text></g>
+
+<text x="40" y="406" font-size="12" font-weight="500" fill="#5f5e5a">横切需求 · 贯穿多个阶段，不属单条链</text>
+<g><rect x="40" y="418" width="141" height="38" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/><text x="110.5" y="433" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-002</text><text x="110.5" y="447" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">对话式修改</text></g>
+<g><rect x="193" y="418" width="141" height="38" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/><text x="263.5" y="433" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-011</text><text x="263.5" y="447" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">提示注入防护</text></g>
+<g><rect x="346" y="418" width="141" height="38" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/><text x="416.5" y="433" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-023</text><text x="416.5" y="447" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">检索增强 RAG</text></g>
+<g><rect x="499" y="418" width="141" height="38" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/><text x="569.5" y="433" font-size="12" font-weight="500" fill="#2C2C2A" text-anchor="middle" dominant-baseline="central">SW-025</text><text x="569.5" y="447" font-size="11" fill="#5F5E5A" text-anchor="middle" dominant-baseline="central">多模型提示词适配</text></g>
+</svg>
+</section>
+
+<section>
+<h2>三、后续哪些是串行需求</h2>
+<p class="note">下列四条链<b>不可并行</b>——后者的输入契约由前者固化，前者未产出稳定契约时，后者开工即返工。</p>
+<table>
+<tr><th style="width:26%">链</th><th style="width:44%">串行顺序</th><th>为什么必须串行</th></tr>
+<tr><td><b>主业务流</b></td><td><code>SW-001 → SW-003 → SW-004 → SW-005 → SW-006 → SW-007</code></td><td>下游产物的字段集是上游的<b>真子集或增补</b>（例：分镜层不含镜头级 <code>prompt_*</code>，须提示词层补齐）——上游一改，下游契约跟着改</td></tr>
+<tr><td><b>内容安全闸</b></td><td><code>SW-009 → SW-010 → SW-017</code></td><td>先判输入、再判输出、最后兜底拒答；输出复检必须在生成链路可跑通后才有对象可检</td></tr>
+<tr><td><b>生成标识链</b></td><td><code>SW-012 → SW-013 → SW-014 → SW-026</code></td><td>显式与隐式标识先定义，元数据块才能携带；交付合规声明须在标识能力就位后自检</td></tr>
+<tr><td><b>治理与数据</b></td><td><code>SW-020 → SW-019 → SW-016 → SW-018 → SW-021 → SW-027 → SW-024</code></td><td>先有认证与数据保护，审计才有可信身份与最小化口径；控制台是所有治理能力的汇聚界面，须最后做</td></tr>
+</table>
+<p class="note"><b>可并行、不占串行位的 4 条</b>：<code>SW-002</code> 对话式修改（横切全阶段）· <code>SW-011</code> 提示注入防护（并入输入检测）· <code>SW-023</code> RAG（横切生成）· <code>SW-025</code> 多模型适配（横切交付）。<br>
+<b>特例</b>：<code>SW-008</code> 是<b>并行入口层</b>——客户自带素材时不跑前四段，可独立推进。</p>
+</section>
+
+<section>
+<h2>四、后续整个工程的开发顺序</h2>
+<p class="note">上排为关键路径（顺序不可乱），下四轨为并行轨道（可同时推进，不占主干顺序）。</p>
+
+<svg viewBox="0 0 680 336" role="img">
+<title>后续开发顺序与串并行轨道图</title>
+<desc>关键路径主干 T-004 到 T-018 必须串行；四条并行轨道可同时推进。</desc>
+<defs>
+<marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="85" y="34" font-size="12" font-weight="500" fill="#854F0B" text-anchor="middle">现在</text>
+<path d="M85 40L85 54" fill="none" stroke="#854F0B" stroke-width="1" marker-end="url(#arrow2)"/>
+<text x="40" y="80" font-size="12" font-weight="500" fill="#5f5e5a">关键路径 · 必须串行，顺序不可乱</text>
+<g><rect x="40" y="90" width="90" height="46" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="85" y="107" font-size="12" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">T-004</text><text x="85" y="123" font-size="11" fill="#854F0B" text-anchor="middle" dominant-baseline="central">生成链路</text></g>
+<path d="M130 113L140 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="142" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="187" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-005</text><text x="187" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">安全双闸</text></g>
+<path d="M232 113L242 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="244" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="289" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-013</text><text x="289" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">上机并发实测</text></g>
+<path d="M334 113L344 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="346" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="391" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-014/15</text><text x="391" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">红线跑测</text></g>
+<path d="M436 113L446 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="448" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="493" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-017</text><text x="493" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">安全评估报告</text></g>
+<path d="M538 113L548 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="550" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="595" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-018</text><text x="595" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">申报书 → 提交</text></g>
+
+<text x="40" y="166" font-size="12" font-weight="500" fill="#5f5e5a">并行轨道 · 可同时推进，不占用主干顺序</text>
+<text x="40" y="203" font-size="11" fill="#5f5e5a" dominant-baseline="central">可插空支线</text>
+<g><rect x="160" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-006 标识与交付四件套</text></g>
+<g><rect x="320" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-007 RAG 检索增强</text></g>
+<g><rect x="480" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-008 二期外围能力</text></g>
+<text x="40" y="245" font-size="11" fill="#5f5e5a" dominant-baseline="central">部署与数据</text>
+<g><rect x="160" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-011 数据来源说明</text></g>
+<g><rect x="320" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-012 部署运维手册</text></g>
+<g><rect x="480" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-016 QLoRA 手册（可选）</text></g>
+<text x="40" y="287" font-size="11" fill="#5f5e5a" dominant-baseline="central">合规资产</text>
+<g><rect x="160" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-020 受控 4 类编写</text></g>
+<g><rect x="320" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-058 台账回填自检</text></g>
+<g><rect x="480" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-021/022 签核与授权</text></g>
+<text x="40" y="329" font-size="11" fill="#5f5e5a" dominant-baseline="central">外部阻断</text>
+<g><rect x="160" y="314" width="148" height="30" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="234" y="329" font-size="11" fill="#633806" text-anchor="middle" dominant-baseline="central">T-026 网信办口径确认</text></g>
+<g><rect x="320" y="314" width="148" height="30" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="394" y="329" font-size="11" fill="#633806" text-anchor="middle" dominant-baseline="central">T-027 制度责任人名单</text></g>
+</svg>
+
+<table>
+<tr><th style="width:14%">周次</th><th style="width:22%">主题</th><th>主干与并行</th></tr>
+<tr><td>Week 1</td><td>启动关键路径 + 清障</td><td><b>已完成</b> <code>T-001</code>／<code>T-002</code>／契约升版批次 <code>T-054~T-056</code>／<code>T-010</code></td></tr>
+<tr><td>Week 2</td><td>提示资产收口 + 回归</td><td><b>已完成</b> <code>SW-008</code> 落地 ＋ <code>T-057</code>；<code>T-012</code> 部署手册启动</td></tr>
+<tr><td>Week 3–4</td><td>工程骨架与收口</td><td><b>已完成</b> <code>T-003</code> → <b>进行中</b> <code>T-004</code> 生成链路接入</td></tr>
+<tr><td>Week 5–6</td><td>链路打通 · 安全与上机</td><td><code>T-004</code> 完成 → <code>T-005</code> 安全双闸 → <code>T-013</code> 上机并发实测</td></tr>
+<tr><td>Week 7–8</td><td>评测准备 · 技术闭环</td><td><code>T-014</code> 拒答测试集 → <code>T-015</code> 红线跑测（≥95% / ≤5% / 0%）；<code>T-006</code> 完成</td></tr>
+<tr><td>Week 9–10</td><td>评估报告 · 申报书起草</td><td><code>T-017</code> 安全评估报告 → <code>T-018</code> 申报书起草；<code>T-020</code>／<code>T-021</code> 持续</td></tr>
+<tr><td>Week 11–12</td><td>申报书成稿 · 提交备案</td><td><code>T-018</code> 成稿 → 内部预审（齐备性 / 口径一致性 / 脱敏版对照）→ <b>提交备案</b></td></tr>
+<tr><td>审核等待期</td><td>2027/01 – 2027/03</td><td>约 <b>4–8 周</b>；期间不空转：<code>T-008</code>／<code>T-007</code>／<code>T-021</code> 收尾</td></tr>
+</table>
+</section>
+
+<section>
+<h2>五、口径与风险提示</h2>
+<table>
+<tr><th style="width:26%">事项</th><th>说明</th></tr>
+<tr><td><b>进度风险</b></td><td>已由「提示资产未建齐」转为「<b>D-005 工程体量 + 备案审核等待期（4–8 周）</b>」；M5 提交窗口 2026-12 中下旬，<b>基本吻合、无余量</b></td></tr>
+<tr><td><b>最大外部风险</b></td><td>监管审核周期 4–8 周。⚠️ 原第一风险「固定公网 IP + ICP 备案」<b>已消除</b>——本算法挂载于宿主平台内、不单独对外运营，平台已完成 ICP 备案；替代硬约束 = <b>不得自行开对外域名或公网端口</b></td></tr>
+<tr><td><b>当前阻塞（⚠️ 已过期，见下注）</b></td><td><b>主件口径（2026-10-16）：</b>① <code>ISSUE-037</code> —— <code>shot_prompt</code> 段输入自身 ≈50,358 tokens 超窗、<b>拆段无效</b>，<code>T-004</code> 第 4 段永久阻塞，<b>待项目方就四案裁决（推荐 C／D）</b>，为当前唯一卡住主线的待决策项；② <code>T-014</code>／<code>T-015</code> 未开工（<code>06-测试评估/</code> 仍空）⇒ <code>T-005</code> 达标判定无对象。<b>原记（2026-10-15，已失效）：</b><code>T-011</code> 连续两轮未启动（<code>05-数据管理/</code> 空目录，现已有 <code>DATA-001</code> 落地）；<code>T-020</code> 受控 4 类编写 0 进度（现受控区三组实体已落盘且超配额，残余缺口收窄为 <code>T-058</code>）</td></tr>
+<tr><td><b>外部阻断</b></td><td><code>T-026</code> 属地网信办口径、<code>T-027</code> 八类制度责任人名单 —— <b>建议立即启动</b>，二者均有外部周期且不占开发工时</td></tr>
+</table>
+</section>
+
+<p class="foot">本图为<b>派生视图</b>（机器生成，不取编号、不作举证背书）。<b>一切以主件为准</b>：需求看 <code>00-需求/</code>、任务与状态看 <code>PM-001</code>、排期看 <code>PM-002</code>、 ISSUE 台账看 <code>PM-001</code> §8。主件升版后本图须同批刷新。</p>
+
+</div>
+</body>
+</html>

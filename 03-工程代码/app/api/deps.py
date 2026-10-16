@@ -9,6 +9,7 @@ from fastapi import Request
 
 from app.prompts.loader import PromptRepository
 from app.services.dialogue_service import DialogueService
+from app.services.safety_service import SafetyService
 
 
 def get_dialogue_service(request: Request) -> DialogueService:
@@ -17,3 +18,8 @@ def get_dialogue_service(request: Request) -> DialogueService:
 
 def get_prompts(request: Request) -> PromptRepository:
     return request.app.state.prompts
+
+
+def get_safety_service(request: Request) -> SafetyService:
+    """内容安全服务（`T-005`）。词库快照在启动时装配为单例，请求期只读。"""
+    return request.app.state.safety_service

@@ -169,10 +169,13 @@ def test_templates_and_backends_listing(client) -> None:
 
 # ------------------------------------------------------------------ 占位接口
 def test_unimplemented_endpoints_return_501_not_silent_pass(client) -> None:
-    """未接入的接口必须**显式报未接入**，不得静默放行。"""
+    """未接入的接口必须**显式报未接入**，不得静默放行。
+
+    ⚠️ `SW-I03`（`/safety/*`）已于任务 **`T-005`** 从占位改为实现，
+    故**移出本用例**；其「不静默放行」改由**另一条更强的纪律**保证——
+    词库不可用时返回 `passed=false` 而非「通过」，见 `tests/test_safety.py`。
+    """
     cases = [
-        ("post", "/api/v1/safety/inspect"),
-        ("get", "/api/v1/safety/policy"),
         ("post", "/api/v1/delivery/pack"),
         ("post", "/api/v1/auth/login"),
         ("post", "/api/v1/auth/verify-identity"),

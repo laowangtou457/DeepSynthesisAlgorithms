@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -86,3 +87,40 @@ def test_loader_is_read_only(repo: PromptRepository) -> None:
     before = path.read_bytes()
     repo.render(repo.get("synopsis_v1"), {"source_input": "y"})
     assert path.read_bytes() == before
+
+
+# ------------------------------------------- 上游注入体积（`ISSUE-037` 回归位）
+def test_shot_prompt_injects_each_upstream_exactly_once(repo: PromptRepository) -> None:
+    """上游产物的**全文**在渲染结果里只出现一次（`ISSUE-037` 回归）。
+
+    渲染器 `_interpolate` 对 `sections` 中**每一处** `{name}` 都做**全量替换**
+    ⇒ 「正文里重复指称同一变量」等价于「把上游全文重复搬运」。原稿把
+    `{storyboard_json}` 插 **5** 次、`{script_json}` **3** 次、`{pack_meta}` **4** 次
+    ⇒ 上游被放大 **2.44 倍**，`shot_prompt` 段真实输入达 **50,358 tokens**，
+    加模板输出 8,192 后 **58,550**，超 Qwen2.5-7B 原生上限 **32768**
+    ⇒ 该段在**引擎入口**被拒（`502`；实测于 `T-004` 收尾第 2 轮真跑）。
+
+    本用例用**唯一标记串**做上游内容，直接数它在渲染结果里出现几次
+    ——期望 3（＝三份各一次），而非原稿的 12。
+    """
+    tpl = repo.by_stage("shot_prompt")
+    marker = "MARKER-UPSTREAM-7f3a"
+    payload = json.dumps({"marker": marker}, ensure_ascii=False)
+    rendered = repo.render(
+        tpl,
+        {"storyboard_json": payload, "script_json": payload, "pack_meta": payload},
+    )
+    assert rendered.as_text().count(marker) == 3
+
+
+def test_shot_prompt_sections_reference_upstream_once_each(repo: PromptRepository) -> None:
+    """静态形式：`sections` 内每个上游变量**恰好**出现 1 次。
+
+    ⚠️ 「**至少** 1 次」是硬约束——`prompts/validate_templates.py` 对「声明但正文未使用」
+    的变量会告警；本用例进一步钉死在「**恰好** 1 次」，使「重复注入」不能经渲染器之外的
+    路径悄悄回来（正文里的指称必须写成纯文本，而不是复制占位符）。
+    """
+    tpl = repo.by_stage("shot_prompt")
+    body = "\n".join(tpl.sections.get(k, "") for k in SECTION_ORDER)
+    for var in ("storyboard_json", "script_json", "pack_meta"):
+        assert len(re.findall(r"\{" + var + r"\}", body)) == 1, f"{var} 出现了多次"
