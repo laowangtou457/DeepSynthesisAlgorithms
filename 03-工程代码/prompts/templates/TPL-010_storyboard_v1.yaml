@@ -1,11 +1,27 @@
 id: storyboard_v1
 name: 分镜脚本生成
-version: "2.1.1"
+version: "2.2.0"
 task_type: generate
 stage: storyboard
 language: zh-CN
 
-# 版本说明（v2.1.1，2026-10-14）：AI 漫剧业务链路第 3 段（SW-006）。
+# 版本说明（v2.2.0，2026-10-16）：AI 漫剧业务链路第 3 段（SW-006）。
+#   v2.2.0 修订说明（**`quality_gate` 数值字段的填写口径收口**，依 `BR-12` 授权「`quality_gate`
+#     降级为可选参考或以比对规则替代」）：
+#     背景 —— `R25`（若填则须与复算一致）落地后，**真跑实测**发现：三个「计数类」字段里
+#       `shot_count`／`static_shot_count` 模型能数对，而 **`move_type_min_required` 3/3 全填错**。
+#       真因**不是模型不数数**，而是该字段**语义歧义** —— 它是由镜数**推导**出的阈值
+#       （`min(5,max(2,⌈镜数/4⌉))`），名字却像「实际用到的运镜类型数」；模型三种填法
+#       （填实际类型数／填门槛值／填固定 2）**都是对字段名的合理误读** ⇒ 属**结构性缺陷**，非偶发。
+#     处置 —— ① **骨架不再列出 `move_type_min_required`**，条款中明写「**一律不填**」（它是
+#       `BR-12` 界定的「交付前脚本复算」统计量，**不由模型承诺**）；② `move_types` 补一步
+#       **可机械执行的动作**（按镜序抄录 `camera.move` 再去重，清单可留 `self_check`），把
+#       「凭记忆回忆」改为「照着 `shots` 抄」；③ `shot_count`／`static_shot_count` 保留（实测可靠）。
+#     ⚠️ **`R25` 判据本身零改动**：`truth` 仍含 `move_type_min_required` —— 一旦有模型填了**仍会比对**；
+#        本版改的只是**模板不再诱导填一个算不对的派生量**。⚠️ 属「约束/示例调整」⇒ 按
+#        `CFG-008_manifest.yaml` 版本规范为**次版本 +1**（非主版本：`output` 字段未增删，
+#        `quality_gate` 对象仍必备，只是示例少列一项）。
+#     同族：`ISSUE-038`（分镜段质量门 8 项失败，其中 `R25` 最重）／本轮 `T-087`。
 #   v2.1.1 修订说明（**仅订正「字段口径来源」的规范现行版引用**，属「活跃引用陈旧」缺陷类）：
 #     原写 `SPEC-005_分镜提示词交付规范-v2.0.md`（现行版），而规范已经 `SPEC-006` v2.1、`SPEC-007` v2.2 两轮升版，
 #     现行版为 **`SPEC-007_分镜提示词交付规范-v2.2.md`**。⚠️ **字段口径、`output` 契约、示例与全部技术约束零改动**
@@ -349,9 +365,8 @@ sections:
       "quality_gate": {
         "shot_count": 0,
         "static_shot_count": 0,
-        "move_types": ["本片使用到的运镜类型去重清单"],
-        "move_type_min_required": 0,
-        "self_check": "逐项对照规范 §4.2 十一项阈值的自查结论（一段话）"
+        "move_types": ["本片 camera.move 的去重清单——须按镜序抄录后再去重，见数量要求 8"],
+        "self_check": "自查结论（一段话）。建议先在此按镜序列出「shot_id: camera.move」清单，再据此填上方 move_types；不要凭记忆"
       }
     }
 
@@ -382,9 +397,17 @@ sections:
        · `quality_gate` 的**数值字段是可选参考**（填了就**必须与脚本复算一致**，见下条；不填不罚）；
        · 写 `self_check` 时**不要为了"看起来满足"而编数字**——规范 §4.8 明确「**质量门是脚本产出物，不是承诺**」。
          数字好看但不实，在备案举证时会成为**伪证**，比不写更糟。
-    8. `quality_gate` 的数值字段（shot_count／static_shot_count／move_types／move_type_min_required）
-       **可选**：填写则**必须等于由 shots 复算的真值**（镜数／static 镜数／去重运镜清单／
-       min(5,max(2,⌈镜数/4⌉))）——脚本会逐项比对，不一致即报错。不填也可交付。
+       · **不要为了字段齐全而填一个你没数过的数字** —— 填错与不填的差别，是「报告一处不实声明」与「不报告」；后者可控，前者在举证时是**伪证**。
+    8. `quality_gate` 的数值字段**可选**（**建议只填前三个**）：
+       · `shot_count`（本片镜数）与 `static_shot_count`（`camera.move` 为 `static` 的镜数）——
+         **照着 `shots` 数**，不要凭感觉估；
+       · `move_types`（本片 `camera.move` 的**去重清单**）—— 填写前**先按镜序把每镜的 move 抄一遍**
+         （清单可写进 `self_check`），再对这份清单去重；**照着 `shots` 抄，不要凭记忆回忆**；
+       · **`move_type_min_required` 一律不填** —— 它是由镜数**推导**出的阈值
+         （`min(5,max(2,⌈镜数/4⌉))`），属「交付前脚本复算」的统计量（`BR-12`），**不由本层承诺**；
+         填它只会引入错误（真跑实测该字段**全部填错**，三种错法均源于字段名歧义）。
+       · 以上前三项一旦填写，**必须等于**由 `shots` 复算的真值；脚本逐项比对、不一致即报错；
+         **不填也可交付**（`quality_gate` 对象本身必备，只写 `self_check` 亦合规）。
     9. music 字段与 soundscape 字段都必须有值（无配乐写 N/A）；music 不得出现抽象情绪词。
        若本层自行提议了 music 织体，须同步在 unspecified 中登记该项（本层新产生的设计内容）。
     10. forbidden_items 须与剧本 forbidden_items 逐条一致，不得增删改写。
@@ -563,7 +586,7 @@ guards:
   - 相邻镜衔接由后一镜 transition_in 单侧表达；transition_out 仅单元末镜可填；单元边界＝前单元末镜的出点 + 后单元首镜的入点，两个半段，不算"两头都写"
   - music 与 soundscape 必须有值（无配乐写 N/A）；music 不得出现抽象情绪词；若本层自行提议 music 织体须在 unspecified 登记
   - 【增量】质量门分两类：结构性约束（单元镜数 ∈[2,3]、单元内运镜不重复、static/pov 不带幅度速度、景别／运镜每镜必有、单场镜数 ≤ ⌊场秒数÷4s⌋）生成时必须满足；统计性阈值（覆盖率／占比／类型数）由**交付前脚本复算**，不由模型承诺——可写入 quality_gate.self_check 作参考，但不得为"看起来满足"而编数字
-  - 【增量】quality_gate 的数值字段（shot_count／static_shot_count／move_types／move_type_min_required）为可选参考；填写即须等于由 shots 复算的真值，否则视为不实声明
+  - 【增量】quality_gate 的**数值字段可选**：`shot_count`（镜数）／`static_shot_count`（static 镜数）／`move_types`（camera.move 去重清单，**须按镜序抄录后再去重**）填写即须等于由 shots 复算的真值，否则视为不实声明；**`move_type_min_required` 一律不填** —— 它是由镜数推导的阈值（min(5,max(2,⌈镜数/4⌉))），属交付前脚本复算的统计量，不由本层承诺
   - 单人镜必须遵守单人替身法则（用具名锚点指向角色，禁省略主语）
   - 【增量】§4.4 的两条禁律对「所有静止／无人戏镜头」均适用，不限单人戏：禁「无光的镜头」、禁「无结果的静止」（任何静止镜里都必须有一样东西在动，且必须写出来）
   - forbidden_items 须原样承接剧本 forbidden_items，不得丢弃、不得改写
