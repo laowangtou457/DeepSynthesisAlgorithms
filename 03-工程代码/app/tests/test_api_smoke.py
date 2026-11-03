@@ -174,9 +174,12 @@ def test_unimplemented_endpoints_return_501_not_silent_pass(client) -> None:
     ⚠️ `SW-I03`（`/safety/*`）已于任务 **`T-005`** 从占位改为实现，
     故**移出本用例**；其「不静默放行」改由**另一条更强的纪律**保证——
     词库不可用时返回 `passed=false` 而非「通过」，见 `tests/test_safety.py`。
+    ⚠️ `SW-I04`（`/delivery/*`）已于任务 **`T-006`** 从占位改为实现，
+    同样**移出本用例**；其「不静默放行」由 `tests/test_delivery.py` 保证——
+    无产物时报 `NOT_FOUND`、缺顶层键时报 `VALIDATION_ERROR`，
+    且**占位如实保留**（`is_preview=true`）。
     """
     cases = [
-        ("post", "/api/v1/delivery/pack"),
         ("post", "/api/v1/auth/login"),
         ("post", "/api/v1/auth/verify-identity"),
         ("post", "/api/v1/export/sess_x"),

@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     # 该 schema 是**契约资产**，服务层读它做 FSM 约束采样（见 TPL-009 sampling 注释）。
     delivery_schemas_dir: str = ""
 
+    # ---- 交付包输出目录（`SW-I04` / `T-006`）----
+    #: `POST /delivery/pack` 的默认落盘目录。留空时端点要求请求体显式给 `out_dir`。
+    #: ⚠️ **本目录只放交付包文件**（提示词集 ＋ 标识素材 ＋ 合规声明 ＋ 清单），
+    #: **不托管下游平台密钥与成片**（`SYS-018`）。
+    delivery_out_dir: str = ""
+
     # ---- 提示词输入体积（`ISSUE-037` 方案 D 的**服务层**一半）----
     #: 注入上游产物变量（`*_json`）前，对其 JSON 文本做**无损紧凑化**（只去空白，语义零改动）。
     #: 背景：`TPL-009` 原先把上游全文插入 **5 次**（渲染器 `loader._interpolate` 对**每一处**

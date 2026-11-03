@@ -35,7 +35,7 @@
 求神拜佛	review
 拜神	review
 符水	review
-做法	review
+做法	warn
 法事	review
 超度	review
 招魂	review
@@ -58,12 +58,12 @@
 秘法	review
 
 # ===== 信仰相关中性词（防误伤） =====
-迷信	review
-封建迷信	review
-信仰	review
-宗教	review
-庙宇	review
-香火	review
+迷信	warn
+封建迷信	warn
+信仰	warn
+宗教	warn
+庙宇	warn
+香火	warn
 
 # 词条数（不含注释）：46 / 100
 

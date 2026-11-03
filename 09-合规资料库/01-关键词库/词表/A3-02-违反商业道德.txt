@@ -35,17 +35,17 @@
 包治	block
 
 # ===== 广告法违禁极限词 =====
-国家级	review
-世界级	review
-顶级	review
-最好	review
-第一	review
-唯一	review
-首个	review
-王牌	review
-金牌	review
-冠军品牌	review
-史上最强	review
+国家级	warn
+世界级	warn
+顶级	warn
+最好	warn
+第一	warn
+唯一	warn
+首个	warn
+王牌	warn
+金牌	warn
+冠军品牌	warn
+史上最强	warn
 
 # 词条数（不含注释）：31 / 300
 

@@ -761,7 +761,18 @@ class DialogueService:
             stage=tpl_stage,
             templates=[{"id": self.prompts.by_stage(tpl_stage).id,
                         "version": self.prompts.by_stage(tpl_stage).version}],
-            model={"name": backend.name, "backend": backend.name, "revision": backend.version},
+            # ⚠️ **语义修正**（2026-11-03 真机实测）：schema 真相源（官方样例
+            #    `CFG-004_demo_pack.json`）是 `name`＝**模型名**／`backend`＝**后端枚举**
+            #    ／`revision`＝模型 revision。⚠️ 而 `backend.name` 是**后端标识**
+            #    （`vllm`）、`backend.version` 是**模型名**（`inference/base.py`）
+            #    ⇒ 原写法 `{"name": backend.name, ...}` 把后端名填进了 `name`，
+            #    与 schema 语义**正好相反** ⇒ 真机产物过门禁报 BLOCK。
+            model={
+                "name": backend.version or "unknown",
+                "backend": backend.name if backend.name in
+                           ("vllm", "transformers", "llama_cpp", "remote_api") else "other",
+                "revision": backend.version or "unknown",
+            },
             settings=get_settings(),
             artifacts=rec.artifacts,
             title=rec.source_input[:30],

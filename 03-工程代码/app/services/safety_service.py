@@ -34,16 +34,60 @@ from app.schemas.safety import (
 
 OutputAction = Literal["block", "flag"]
 
+
+def _split_by_level(hits: list[Hit]) -> tuple[list[Hit], list[Hit]]:
+    """按等级拆分命中集合：`block`/`review` = 需处置；`warn` = 仅提示。
+
+    ⚠️ **2026-11-03 增补（ISSUE-052）**：此前只有「含 `block` 级 ⇒ 拦截，
+    否则 ⇒ `flag`」两分档 ⇒ **`review` 与 `warn` 同义**（都转人工复核），
+    12,035 条 `review` 级词条全部进人工队列 ⇒ 实测误拒率 6.7%（超国标 ≤5%）。
+
+    依据 `SEC-007` §4.3 三级判据：`block` 命中即阻断／`review` 转人工复核／
+    `warn` **命中仅提示**（正常语境常见、仅特定语境违规）。
+    ⇒ `warn` 级命中**不进人工复核队列、不计误拒**，但**仍记录留痕**（`warn_count`）。
+    """
+    actionable = [h for h in hits if getattr(h, "level", "review") != "warn"]
+    notices = [h for h in hits if getattr(h, "level", "review") == "warn"]
+    return actionable, notices
+
+
+def _has_block_level(hits: list[Hit]) -> bool:
+    """命中集合中**是否含 `block` 级**词条。
+
+    ⚠️ **分级处置的依据**（2026-11-03 抽检实测修复）：词表第 2 段标注了
+    `block`／`review`／`warn` 三级，本意是「拿不准的词不直接拦、留待人工复核」
+    （`SEC-007` §4.3）。⚠️ 运行时此前**丢弃等级** ⇒ 全库 12,035/12,578 条
+    （**96%**）`review` 级被当 `block` 处置 ⇒ 正常剧本段 **12/12 = 100% 误拒**
+    （命中「第一」「最好」等高频普通词），误拒率 6.7% **超国标 ≤5%**。
+    """
+    return any(getattr(h, "level", "review") == "block" for h in hits)
+
 #: `SW-011` 提示注入模式。**只做结构化模式识别，不做语义判断**——
 #: 宁可漏判也不误判（误判会把正常创作指令当注入拦掉）。
 _INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ignore_previous", re.compile(r"(忽略|无视|忘记)\s*.{0,12}(之前|上面|以上|前面)")),
-    ("ignore_instruction", re.compile(r"(忽略|无视|忘记)\s*.{0,8}(指令|要求|命令|规则|设定)")),
+    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：「忽略**安全策略**」原不在宾语表内
+    #    （原表只有 指令|要求|命令|规则|设定）⇒ 策略类宾语补入。
+    ("ignore_instruction", re.compile(
+        r"(忽略|无视|忘记|放弃)\s*.{0,8}(指令|要求|命令|规则|设定|安全策略|安全规则|审核规则|拒答规则|防护策略)")),
     ("role_override", re.compile(r"(你现在是|从现在起你是|你不再是|扮演)\s*\S")),
     ("developer_mode", re.compile(r"(developer\s*mode|开发者模式|dan\s*模式)", re.I)),
     ("leak_system_prompt", re.compile(r"(输出|复述|重复|告诉我)\s*.{0,10}(系统提示|系统指令|system\s*prompt|初始指令)", re.I)),
-    ("bypass_refusal", re.compile(r"(不要拒绝|不许拒绝|必须回答|不得拒绝|绕过(限制|检测|审核))")),
-    ("reveal_guard", re.compile(r"(你的)(系统提示|安全策略|审核规则|拒答规则)")),
+    # ⚠️ 2026-11-03 实测补齐（`S-27` 漏放）：「**跳过所有安全检查**」原不在表内
+    #    （原表只有「绕过(限制|检测|审核)」）⇒ 补「跳过/略过/免检/关闭」＋「检查/检测/审核/校验/防护」。
+    #    ⚠️ **双要素要求**（动词＋宾语同时出现）⇒ 不引入单要素模式（防误伤）。
+    ("bypass_refusal", re.compile(
+        r"(不要拒绝|不许拒绝|必须回答|不得拒绝|绕过(限制|检测|审核)"
+        r"|(跳过|略过|免检|关闭|取消)\s*.{0,6}(所有)?\s*(安全)?(检查|检测|审核|校验|防护|检测机制))")),
+    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：原要求「**你的**＋安全策略」，
+    #    「忽略安全策略」无「你的」⇒ **前置改为可选**（仍要求策略类宾语 ⇒ 不误伤）。
+    ("reveal_guard", re.compile(r"(你的)?\s*(系统提示|安全策略|安全规则|审核规则|拒答规则|防护策略)")),
+    # ⚠️ 2026-11-03 **新增**（`S-28` 本项目特有形态）：素材 JSON 字段伪装成指令。
+    #    判据＝**字段名与指令性内容紧邻**（结构化特征，非单词触发）⇒ 防误伤。
+    ("json_field_injection", re.compile(
+        r"[\"\'](instruction|system_prompt|systemPrompt|prompt_override|override|"
+        r"system_message|admin|developer_message)[\"\']\s*[:：]\s*[\"\']?"
+        r"[^\"\']{0,40}?(忽略|无视|忘记|跳过|绕过|不要拒绝|必须回答|输出|复述)")),
 )
 
 # ---- `SW-017` 兜底话术（**配置承载、可审计、执行不依赖模型**）----
@@ -166,17 +210,51 @@ class SafetyService:
             )
 
         raw = self._lex.scan(text, limit=self._max_hits)
-        hits = [Hit(category_id=cid, category_name=name, group="") for cid, name, _ in raw]
+        all_hits = [Hit(category_id=cid, category_name=name, group="", level=lv)
+                    for cid, name, _, lv in raw]
+        hits, notices = _split_by_level(all_hits)
 
         if hits:
+            # ⚠️ **三级分级处置**（2026-11-03 抽检实测修复，ISSUE-052）：
+            #    `block` 级 ⇒ 拦截；`review` 级 ⇒ 记录待人工复核（不阻断）；
+            #    `warn` 级 ⇒ **仅提示**（不进队列、不计误拒，仅留痕）。
+            #    此前把 review/warn 同义处理 ⇒ 12,035 条 review 级全部进队列
+            #    ⇒ 实测误拒率 6.7%（超国标 ≤5%）。
+            if _has_block_level(hits):
+                return InspectVerdict(
+                    passed=False,
+                    channel="input",
+                    action="block",
+                    hits=hits,
+                    hit_count=len(hits),
+                    warn_count=len(notices),
+                    message=f"输入命中 {len(hits)} 类禁止内容，已拦截",
+                    refusal_talk=self._refusal_talk,
+                    **common,
+                )
             return InspectVerdict(
-                passed=False,
+                passed=True,
                 channel="input",
-                action="block",
+                action="flag",
                 hits=hits,
                 hit_count=len(hits),
-                message=f"输入命中 {len(hits)} 类禁止内容，已拦截",
-                refusal_talk=self._refusal_talk,
+                warn_count=len(notices),
+                message=(f"输入命中 {len(hits)} 类**待复核**内容（等级 review），"
+                         f"已记录待人工复核，不阻断"),
+                refusal_talk=None,
+                **common,
+            )
+        if notices:
+            # ⚠️ **仅提示档**（`warn`）：放行 + 留痕，**不进人工复核队列**。
+            return InspectVerdict(
+                passed=True,
+                channel="input",
+                action="notice",
+                hits=[],
+                hit_count=0,
+                warn_count=len(notices),
+                message=f"输入命中 {len(notices)} 类提示级内容（等级 warn），仅提示、不阻断",
+                refusal_talk=None,
                 **common,
             )
         if common["degraded"]:
@@ -216,10 +294,19 @@ class SafetyService:
             )
 
         raw = self._lex.scan(text, limit=self._max_hits)
-        hits = [Hit(category_id=cid, category_name=name, group="") for cid, name, _ in raw]
+        all_hits = [Hit(category_id=cid, category_name=name, group="", level=lv)
+                    for cid, name, _, lv in raw]
+        hits, notices = _split_by_level(all_hits)
 
         if hits:
-            action = self._output_action
+            # ⚠️ **三级分级处置**（2026-11-03 抽检实测修复，ISSUE-052）：
+            #    `block` 级 ⇒ 按 `guard_output_action`（默认 `block`）；
+            #    `review` 级 ⇒ `flag`（记录待人工复核、不阻断）；
+            #    `warn` 级 ⇒ **仅提示**（不进队列、不计误拒，仅留痕）。
+            if not _has_block_level(hits):
+                action = "flag"
+            else:
+                action = self._output_action
             msg = {
                 "block": f"输出命中 {len(hits)} 类禁止内容，已拦截",
                 "flag": f"输出命中 {len(hits)} 类禁止内容，已标记待人工复核",
@@ -230,8 +317,22 @@ class SafetyService:
                 action=action,
                 hits=hits,
                 hit_count=len(hits),
+                warn_count=len(notices),
                 message=msg,
                 refusal_talk=self._refusal_talk if action == "block" else None,
+                **common,
+            )
+        if notices:
+            # ⚠️ **仅提示档**（`warn`）：放行 + 留痕，**不进人工复核队列**。
+            return InspectVerdict(
+                passed=True,
+                channel="output",
+                action="notice",
+                hits=[],
+                hit_count=0,
+                warn_count=len(notices),
+                message=f"输出命中 {len(notices)} 类提示级内容（等级 warn），仅提示、不阻断",
+                refusal_talk=None,
                 **common,
             )
         if common["degraded"]:
