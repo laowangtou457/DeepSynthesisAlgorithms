@@ -253,7 +253,7 @@ def cmd_sample(args):
             f.write("# 抽检清单 · %s · %s\n\n" % (LIBS[args.lib][0], cid))
             f.write("> 生成日期：%s ｜ 抽检量：%d / %d（随机种子 %d）\n" % (today, cap, v["total"], args.seed))
             f.write("> 用途：GB/T 45654—2025 §5.3(c) 人工审核留痕。判读后由**审核人**逐行填写并签署。\n")
-            f.write("> 不合格项须登记处置；若不合格率 > 10%%，该类整批返工。\n\n")
+            f.write("> 不合格项须登记处置；若不合格率 > 10%，该类整批返工。\n\n")
             f.write("\n".join(body) + "\n\n")
             f.write("审核人（签字）：____________　日期：__________　复核人（签字）：____________　日期：__________\n")
         written.append(path)
