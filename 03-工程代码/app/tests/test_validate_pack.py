@@ -1,0 +1,274 @@
+"""交付门禁 `validate_pack.py` 的 **compliance 三态式**判据测试 —— `PRO-007` 第一步＋第二步。
+
+⚠️ **为什么单独立文件**：`prompts/tests/negtest_pack_rules.py` 测的是
+   `validate_output.py`（产物侧 `R1`~`R40`）；而**交付门禁**（`validate_pack.py`）
+   是**另一套判据**（`schema.pack`／`consistency.*`／`compliance.*`／`vocab.*`），
+   **不在 negtest 的覆盖范围** ⇒ 本文件补上这一缺口。
+
+⚠️ **本文件是「新判据有测试保护」的落实**（工程纪律：判据增条必须同批补样本）——
+   `PRO-007` 第一步把 `compliance.*` 由否定式改为三态式、第二步又给
+   `CFG-006` 增了 `not_available` 档 ⇒ **必须验证三态各自落到正确的级别**：
+
+| 输入 | 期望级别 | 期望规则码 |
+| --- | --- | --- |
+| 真值（`passed`／`present`／有 `statement_id`） | 不报 | — |
+| **未取得**（占位形态／`not_available`） | **WARN** | `compliance.*_pending` |
+| 否定真值（`blocked`／`missing`） | **BLOCK** | `compliance.safety`／`compliance.marking` |
+
+⚠️ **关键防线**：`not_available` 虽已是 schema **合法枚举**，但**判据仍须判 WARN**
+   —— 否则预演包会被静默当成合规包放行（**谎称合规**，比 BLOCK 更危险）。
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(r"E:\深度合成算法工程材料\03-工程代码")
+VALIDATE = ROOT / "delivery" / "validate_pack.py"
+DEMO = ROOT / "delivery" / "examples" / "CFG-004_demo_pack.json"
+
+
+def _run_pack(pack: dict, tmp_path: Path) -> tuple[int, str]:
+    """跑交付门禁，返回 (退出码, 输出)。"""
+    p = tmp_path / "pack.json"
+    p.write_text(json.dumps(pack, ensure_ascii=False), encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(VALIDATE), str(p)],
+        cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
+    )
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+@pytest.fixture()
+def base_pack() -> dict:
+    """正式包样例（`CFG-004_demo_pack.json`）—— 全部合规字段都是真值。"""
+    return json.loads(DEMO.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- 真值：不应报
+
+
+def test_truth_values_pass_without_compliance_reports(base_pack: dict, tmp_path: Path) -> None:
+    """全真值 ⇒ 不报任何 `compliance.*`（BLOCK 也不报）。"""
+    code, out = _run_pack(base_pack, tmp_path)
+    assert "compliance." not in out, f"不应报 compliance 项：\n{out}"
+    assert "BLOCK compliance" not in out
+
+
+# ---------------------------------------------------------------- 未取得：WARN
+
+
+@pytest.mark.parametrize(
+    "path,value,expect_code",
+    [
+        ("meta.compliance.safety_check.input", "not_available", "compliance.safety_pending"),
+        ("meta.compliance.safety_check.output", "not_available", "compliance.safety_pending"),
+        ("meta.compliance.marking_check.explicit", "not_available", "compliance.marking_pending"),
+        ("meta.compliance.marking_check.implicit", "not_available", "compliance.marking_pending"),
+        ("meta.compliance.statement_id", "not_available", "compliance.statement_pending"),
+    ],
+)
+def test_not_obtained_is_warn_not_block(
+    base_pack: dict, tmp_path: Path, path: str, value: str, expect_code: str
+) -> None:
+    """⚠️ **未取得 ⇒ WARN**（不是 BLOCK）—— 这是 `PRO-007` 第一步的核心。
+
+    ⚠️ 两种「未取得」表达**都要覆盖**：占位形态（旧包）＋ `not_available`（新包）。
+    ⚠️ **不含 `copyright_check`** —— 它的「未取得」按 `SPEC-008` §8.3 第 3 项
+    「未校验 → **阻断**」是 **BLOCK**（**级别与另两项不同**，见下一个用例）。
+    """
+    p = base_pack
+    node = p
+    parts = path.split(".")
+    for k in parts[:-1]:
+        node = node[k]
+    node[parts[-1]] = value
+    code, out = _run_pack(p, tmp_path)
+    # ⚠️ 实际输出格式：`[!] WARN  <code>  <消息>`（级别后**两个空格**）
+    assert f"WARN  {expect_code}" in out, f"未报 WARN {expect_code}：\n{out}"
+    assert f"BLOCK {expect_code}" not in out, f"★ 未取得被误报为 BLOCK：\n{out}"
+    # ★ 关键防线：不得出现「未通过」的措辞（「未取得」被读成「未通过」＝ 语义污染）
+    assert "未通过" not in out, f"措辞污染（「未取得」被写成「未通过」）：\n{out}"
+
+
+@pytest.mark.parametrize(
+    "path,value,expect_code",
+    [
+        ("meta.compliance.safety_check.input", "{{PLACEHOLDER}}", "compliance.safety_pending"),
+        ("meta.compliance.safety_check.input", "占位", "compliance.safety_pending"),
+        ("meta.compliance.statement_id", "{{STATEMENT_ID}}", "compliance.statement_pending"),
+    ],
+)
+def test_placeholder_form_also_yields_pending_warn(
+    base_pack: dict, tmp_path: Path, path: str, value: str, expect_code: str
+) -> None:
+    """⚠️ **占位形态（旧包）同样判「未取得」⇒ WARN**（判据层如实）。
+
+    ⚠️ **两层结论不同，是设计使然、不是缺陷**：
+    · **schema 层**：`{{PLACEHOLDER}}` **不在 enum 内**（`CFG-006` v2.2.0 的 enum 是
+      `passed`／`blocked`／`not_available`）⇒ 报 `schema.pack` **BLOCK**
+      （契约层：占位不是合法取值）；
+    · **判据层**：`compliance.*_pending` **WARN**（语义层：「未取得」≠「未通过」）。
+
+    ⇒ 二者**并存**：契约层拦住「占位形态进了正式包」，语义层把「未取得」与「未通过」分开。
+    ⇒ 新包（服务层写 `not_available`）**只有 WARN、无 schema BLOCK** ⇒ 预演包可过门禁。
+    """
+    p = base_pack
+    node = p
+    parts = path.split(".")
+    for k in parts[:-1]:
+        node = node[k]
+    node[parts[-1]] = value
+    code, out = _run_pack(p, tmp_path)
+    assert f"WARN  {expect_code}" in out, f"未报 WARN {expect_code}：\n{out}"
+    # ⚠️ 语义层不得把「未取得」写成「未通过」
+    assert "检测**未通过**" not in out, f"措辞污染：\n{out}"
+
+
+def test_copyright_not_obtained_is_block_not_warn(base_pack: dict, tmp_path: Path) -> None:
+    """⚠️ **`copyright_check` 的「未取得」是 BLOCK**（规范原文「未校验 → 阻断」）。
+
+    ⚠️ **与 `safety_check`／`marking_check` 的 WARN 不同** —— 这是 `SPEC-008` §8.3
+    第 3 项的原文差异（「版权/改编风险校验完成…未校验 → **阻断**」），
+    **不是笔误** ⇒ 实现须如实区分。
+    """
+    p = base_pack
+    p["meta"]["compliance"]["copyright_check"]["status"] = "not_available"
+    code, out = _run_pack(p, tmp_path)
+    assert "BLOCK compliance.copyright" in out, f"未报 BLOCK compliance.copyright：\n{out}"
+
+
+def test_copyright_risk_is_warn(base_pack: dict, tmp_path: Path) -> None:
+    """⚠️ `copyright_check.status = risk`（检出来了，有风险）⇒ **WARN**（提示 + 记录）。"""
+    p = base_pack
+    p["meta"]["compliance"]["copyright_check"]["status"] = "risk"
+    code, out = _run_pack(p, tmp_path)
+    assert "WARN  compliance.copyright_risk" in out, f"未报 WARN：\n{out}"
+    assert "BLOCK compliance.copyright" not in out, f"★ risk 不应阻断：\n{out}"
+
+
+def test_missing_compliance_keys_are_warn(base_pack: dict, tmp_path: Path) -> None:
+    """**键缺失**（整个 `compliance` 块被删）⇒ 未取得。
+
+    ⚠️ **分级不同**（依 `SPEC-008` §8.3 各项原文）：
+    · `safety_check`／`marking_check`／`statement_id` 缺失 ⇒ **WARN**（能力未接入）；
+    · `copyright_check` 缺失 ⇒ **BLOCK**（规范原文「未校验 → 阻断」）。
+    ⇒ 故本用例断言**两者同时出现**（WARN 与 BLOCK 各一条）。
+    """
+    p = base_pack
+    del p["meta"]["compliance"]
+    code, out = _run_pack(p, tmp_path)
+    assert "WARN  compliance." in out, f"未报 WARN：\n{out}"
+    assert "BLOCK compliance.copyright" in out, f"★ copyright 缺失未被阻断：\n{out}"
+    assert "BLOCK compliance.safety" not in out, f"★ safety 缺失被误报为 BLOCK：\n{out}"
+    assert "BLOCK compliance.marking" not in out, f"★ marking 缺失被误报为 BLOCK：\n{out}"
+
+
+# ---------------------------------------------------------------- 否定真值：BLOCK
+
+
+@pytest.mark.parametrize(
+    "path,value,expect_code",
+    [
+        ("meta.compliance.safety_check.input", "blocked", "compliance.safety"),
+        ("meta.compliance.safety_check.output", "blocked", "compliance.safety"),
+        ("meta.compliance.marking_check.explicit", "missing", "compliance.marking"),
+        ("meta.compliance.marking_check.implicit", "missing", "compliance.marking"),
+    ],
+)
+def test_negative_truth_is_still_block(
+    base_pack: dict, tmp_path: Path, path: str, value: str, expect_code: str
+) -> None:
+    """⚠️ **否定真值仍须 BLOCK** —— 三态化**不得**放宽阻断项。
+
+    ⚠️ `missing`（查了、没有）与 `not_available`（没查）**语义不同** ⇒ 必须可分。
+    """
+    p = base_pack
+    node = p
+    parts = path.split(".")
+    for k in parts[:-1]:
+        node = node[k]
+    node[parts[-1]] = value
+    code, out = _run_pack(p, tmp_path)
+    assert f"BLOCK {expect_code}" in out, f"未报 BLOCK {expect_code}：\n{out}"
+
+
+def test_blocked_message_says_not_passed(base_pack: dict, tmp_path: Path) -> None:
+    """⚠️ 阻断项的措辞须是「**检测未通过**」（而非「未取得」）—— 两者不可混。"""
+    p = base_pack
+    p["meta"]["compliance"]["safety_check"]["input"] = "blocked"
+    code, out = _run_pack(p, tmp_path)
+    assert "未通过" in out, f"措辞缺「未通过」：\n{out}"
+
+
+# ---------------------------------------------------------------- 契约侧
+
+
+def test_schema_accepts_not_available_enum() -> None:
+    """⚠️ `CFG-006` v2.2.0：三处 enum 各含 `not_available`（契约变更已落地）。"""
+    schema = json.loads(
+        (ROOT / "delivery" / "schemas" / "CFG-006_shot_prompt_pack.v1.schema.json")
+        .read_text(encoding="utf-8")
+    )
+    comp = schema["$defs"]["meta"]["properties"]["compliance"]["properties"]
+    assert "not_available" in comp["safety_check"]["properties"]["input"]["enum"]
+    assert "not_available" in comp["safety_check"]["properties"]["output"]["enum"]
+    assert "not_available" in comp["copyright_check"]["properties"]["status"]["enum"]
+    assert "not_available" in comp["marking_check"]["properties"]["explicit"]["enum"]
+    assert "not_available" in comp["marking_check"]["properties"]["implicit"]["enum"]
+
+
+def test_schema_pack_id_pattern_accepts_placeholder() -> None:
+    """⚠️ `CFG-006` v2.2.0：`pack_id` pattern 接受「正式形态｜占位形态」二选一。"""
+    import re
+
+    schema = json.loads(
+        (ROOT / "delivery" / "schemas" / "CFG-006_shot_prompt_pack.v1.schema.json")
+        .read_text(encoding="utf-8")
+    )
+    pat = schema["$defs"]["meta"]["properties"]["pack_id"]["pattern"]
+    rx = re.compile(pat)
+    assert rx.match("FR-PK-20261103-A1B2C3D4"), "正式形态应通过"
+    assert rx.match("{{PROVIDER_CODE}}-PK-20261103-A1B2C3D4"), "占位形态应通过"
+    assert not rx.match("not-a-pack-id"), "非法形态应被拒"
+
+
+def test_schema_version_is_2_2_0() -> None:
+    """⚠️ 契约升版：`schema_version` const = 2.2.0（示例件须同步）。"""
+    schema = json.loads(
+        (ROOT / "delivery" / "schemas" / "CFG-006_shot_prompt_pack.v1.schema.json")
+        .read_text(encoding="utf-8")
+    )
+    assert schema["properties"]["schema_version"]["const"] == "2.2.0"
+    demo = json.loads(DEMO.read_text(encoding="utf-8"))
+    assert demo["schema_version"] == "2.2.0", "示例件 schema_version 未同步"
+
+
+def test_service_layer_writes_not_available_not_placeholder() -> None:
+    """⚠️ 服务层 `pack_meta` 写 `not_available`（**合法枚举**）而非占位。
+
+    ⚠️ 写占位 ⇒ schema 判 BLOCK ⇒ 结构上「逼迫填假值」（`PRO-007` 根因 A）。
+    """
+    sys.path.insert(0, str(ROOT))
+    from app.services.pack_meta import build_pack_meta
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    truth = build_pack_meta(
+        session_id="S", stage="shot_prompt",
+        templates=[{"id": "t", "version": "1"}],
+        model={"name": "m", "backend": "other", "revision": "r"},
+        settings=get_settings(), artifacts={},
+    )
+    comp = truth["compliance"]
+    assert comp["copyright_check"]["status"] == "not_available"
+    assert comp["marking_check"]["explicit"] == "not_available"
+    assert comp["marking_check"]["implicit"] == "not_available"
+    # ⚠️ `statement_id` **不在 enum 内**（普通字符串）⇒ 仍写占位（判据侧归「未取得」⇒ WARN）
+    assert "{{" in str(comp["statement_id"])

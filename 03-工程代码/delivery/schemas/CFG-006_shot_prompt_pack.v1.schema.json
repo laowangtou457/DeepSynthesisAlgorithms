@@ -1,64 +1,98 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://feixuan.example/schemas/CFG-006_shot_prompt_pack.v1.schema.json",
-  "title": "分镜提示词交付包 (shot prompt pack)",
+  "title": "分镜提示词交付包 (shot prompt pack)（v2.2.0：compliance.* 增 not_available 档；pack_id 允许占位形态）",
   "description": "NORM-DELIVERY-001《分镜提示词交付规范 v2.2》（现行版）§3 的机器可校验定义（★ V2.2 **未改动本 Schema**——V2.2 只动交付目录形态与留档要求，`schema_version` 维持 `2.1.0`、字段集与 `required` 均不变）。用于交付前门禁校验（SW-007 / SW-025 / SW-026）。★ v2.1.0 变化（约束变更 → 次版本；依 ISSUE-016/017，任务 T-062 合并为同一次升版动作）：① stage_chain.items.enum 补 revise（四值 → 五值；链路第 5 段 revise 为并行入口层，其链只含自身）；② schema_version const 2.0.0 → 2.1.0。★ v2.0.0 变化（结构变更 → 主版本；依 ISSUE-011/012/015，任务 T-054~T-056 合并为同一次升版动作）：① 顶层新增 props[]（道具锚，与 characters[] 同构）与 forbidden_items（客户侧禁止出现元素、同名原样承继）→ 顶层业务段 六段 → 八段；② shot.properties 新增 prop_refs（string[]，且列入 shot.required）→ shot.required 13 → 14 项、shot.properties 23 → 24 项（脚本实测口径；历史文本中的「镜头字段表共 24 项」同口径无法复现，故本版起一律标注测量口径）；③ prompt_en.maxLength 900 → 1200（实测 17 镜最长 1113 字符；模型侧 H3 max_prompt_chars = 7000 不构成约束）；④ schema_version const 1.1.0 → 2.0.0。历史：v1.1.0 新增生成单元 units[]、镜头语言落点 shot_language、动作三段 action、camera.amplitude/height/roll/optics/from/to、meta.task_type、style_bible.style_anchors、transition_out；negative_prompt 降为「按模型能力可选」；duration_ms 收紧为整秒整数（模型上下限由 config/CFG-001_model_adapters.yaml 提供，本 Schema 不引用模型数值——规范 §0.4 编写纪律 4）。",
   "type": "object",
-  "required": ["schema_version", "meta", "style_bible", "units", "shots", "aigc_meta"],
+  "required": [
+    "schema_version",
+    "meta",
+    "style_bible",
+    "units",
+    "shots",
+    "aigc_meta"
+  ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "2.1.0"
+      "const": "2.2.0"
     },
-    "meta": { "$ref": "#/$defs/meta" },
-    "style_bible": { "$ref": "#/$defs/styleBible" },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "style_bible": {
+      "$ref": "#/$defs/styleBible"
+    },
     "characters": {
       "type": "array",
-      "items": { "$ref": "#/$defs/character" },
+      "items": {
+        "$ref": "#/$defs/character"
+      },
       "default": []
     },
     "props": {
       "type": "array",
       "description": "道具锚列表（规范 §3.4.1，V2.0 新增）。与 characters[] 结构同构；无道具为空数组。镜头用 shots[].prop_refs 引用。",
-      "items": { "$ref": "#/$defs/prop" },
+      "items": {
+        "$ref": "#/$defs/prop"
+      },
       "default": []
     },
     "units": {
       "type": "array",
       "minItems": 1,
       "description": "生成单元列表（规范 §3.5）。每个单元 2–3 镜；单元内运镜类型不得重复。",
-      "items": { "$ref": "#/$defs/unit" }
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
     },
     "shots": {
       "type": "array",
       "minItems": 2,
       "description": "镜头列表（规范 §3.6）。镜数 ≥ 2——1 镜生成单元在质量门数学上必不达标（§4.3）。",
-      "items": { "$ref": "#/$defs/shot" }
+      "items": {
+        "$ref": "#/$defs/shot"
+      }
     },
     "forbidden_items": {
       "type": "array",
       "description": "客户侧「禁止出现的元素」原样承继（规范 §3.1，V2.0 新增；上游输入变量名 must_avoid）。⚠️ 只承接客户业务层的禁忌，不得写入受控词库分类码或词条——后者属法定合规层，由 SW-009/010 双闸承载、绝不进包（规范 §3.1.1 三层边界）。与 characters[].forbidden（角色级、内建字段）语义不同、不得合并。无禁忌为空数组。",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "default": []
     },
-    "aigc_meta": { "$ref": "#/$defs/aigcMeta" }
+    "aigc_meta": {
+      "$ref": "#/$defs/aigcMeta"
+    }
   },
   "$defs": {
     "meta": {
       "type": "object",
       "required": [
-        "pack_id", "title", "created_at", "task_type", "unsupported_task_types",
-        "generator", "generation_trace", "compliance"
+        "pack_id",
+        "title",
+        "created_at",
+        "task_type",
+        "unsupported_task_types",
+        "generator",
+        "generation_trace",
+        "compliance"
       ],
       "additionalProperties": false,
       "properties": {
         "pack_id": {
           "type": "string",
-          "pattern": "^[A-Z0-9]{2}-[A-Z]{2}-[0-9]{8}-[A-Z0-9]{8}$",
-          "description": "内容编号，格式 <企业码>-<类型码>-<YYYYMMDD>-<8位短码>，规则见规范 §5.2"
+          "pattern": "^(?:[A-Z0-9]{2}-[A-Z]{2}-\\d{8}-[0-9A-Z]{8}|\\{\\{[A-Z_]+\\}\\}-[A-Z]{2}-\\d{8}-[0-9A-Z]{8})$",
+          "description": "内容编号，格式 <企业码>-PK-<YYYYMMDD>-<8位短码>，规则见规范 §5.2。⚠️ **v2.2.0 起允许占位形态**（<企业码> 可为 {{PROVIDER_CODE}}）——此前「同 schema 内 provider_code 允许占位、pack_id 不允许」属自相矛盾（`PRO-007` 根因 B）。⚠️ **占位形态的包是「预演包」**：不得用于正式交付，须回填企业码后复检（NT-02 同纪律）。"
         },
-        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
         "created_at": {
           "type": "string",
           "format": "date-time",
@@ -67,26 +101,50 @@
         "task_type": {
           "type": "string",
           "enum": [
-            "text_to_video", "first_frame", "first_last_frame", "last_frame",
-            "keyframe_completion", "reference_generation", "video_editing",
-            "video_continuation", "audio_reuse", "audio_reference"
+            "text_to_video",
+            "first_frame",
+            "first_last_frame",
+            "last_frame",
+            "keyframe_completion",
+            "reference_generation",
+            "video_editing",
+            "video_continuation",
+            "audio_reuse",
+            "audio_reference"
           ],
           "description": "任务类型（规范 §3.2）。本期仅支持前四项；其余四项本次明确不提供。"
         },
         "unsupported_task_types": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "本期不支持的任务类型及理由，逐项写明——留空会让客户以为支持（规范 §3.2）"
         },
         "generator": {
           "type": "object",
-          "required": ["system", "version", "provider", "provider_code"],
+          "required": [
+            "system",
+            "version",
+            "provider",
+            "provider_code"
+          ],
           "additionalProperties": false,
           "properties": {
-            "system": { "type": "string", "minLength": 1 },
-            "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-            "provider": { "type": "string", "minLength": 1 },
+            "system": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
             "provider_code": {
               "type": "string",
               "minLength": 1,
@@ -96,17 +154,35 @@
         },
         "generation_trace": {
           "type": "object",
-          "required": ["session_id", "task_id", "stage_chain", "templates", "model"],
+          "required": [
+            "session_id",
+            "task_id",
+            "stage_chain",
+            "templates",
+            "model"
+          ],
           "additionalProperties": false,
           "properties": {
-            "session_id": { "type": "string", "minLength": 1 },
-            "task_id": { "type": "string", "minLength": 1 },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
             "stage_chain": {
               "type": "array",
               "minItems": 1,
               "items": {
                 "type": "string",
-                "enum": ["synopsis", "script", "storyboard", "shot_prompt", "revise"]
+                "enum": [
+                  "synopsis",
+                  "script",
+                  "storyboard",
+                  "shot_prompt",
+                  "revise"
+                ]
               },
               "description": "与 SYS-Q11 确认的 5 段链路一致"
             },
@@ -114,144 +190,316 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["id", "version"],
+                "required": [
+                  "id",
+                  "version"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "id": { "type": "string", "minLength": 1 },
-                  "version": { "type": "string", "minLength": 1 }
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1
+                  }
                 }
               }
             },
             "model": {
               "type": "object",
-              "required": ["name", "backend"],
+              "required": [
+                "name",
+                "backend"
+              ],
               "additionalProperties": false,
               "properties": {
-                "name": { "type": "string", "minLength": 1 },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "backend": {
                   "type": "string",
-                  "enum": ["vllm", "transformers", "llama_cpp", "remote_api", "other"]
+                  "enum": [
+                    "vllm",
+                    "transformers",
+                    "llama_cpp",
+                    "remote_api",
+                    "other"
+                  ]
                 },
-                "revision": { "type": "string" }
+                "revision": {
+                  "type": "string"
+                }
               }
             }
           }
         },
         "compliance": {
           "type": "object",
-          "required": ["safety_check", "copyright_check", "marking_check", "statement_id"],
+          "required": [
+            "safety_check",
+            "copyright_check",
+            "marking_check",
+            "statement_id"
+          ],
           "additionalProperties": false,
           "properties": {
             "safety_check": {
               "type": "object",
-              "required": ["input", "output", "checked_at"],
+              "required": [
+                "input",
+                "output",
+                "checked_at"
+              ],
               "additionalProperties": false,
               "properties": {
-                "input": { "type": "string", "enum": ["passed", "blocked"] },
-                "output": { "type": "string", "enum": ["passed", "blocked"] },
-                "checked_at": { "type": "string", "format": "date-time" }
+                "input": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "blocked",
+                    "not_available"
+                  ]
+                },
+                "output": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "blocked",
+                    "not_available"
+                  ]
+                },
+                "checked_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
               }
             },
             "copyright_check": {
               "type": "object",
-              "required": ["status"],
+              "required": [
+                "status"
+              ],
               "additionalProperties": false,
               "properties": {
-                "status": { "type": "string", "enum": ["passed", "warning", "risk", "skipped"] },
-                "note": { "type": "string" }
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "warning",
+                    "risk",
+                    "skipped",
+                    "not_available"
+                  ]
+                },
+                "note": {
+                  "type": "string"
+                }
               }
             },
             "marking_check": {
               "type": "object",
-              "required": ["explicit", "implicit"],
+              "required": [
+                "explicit",
+                "implicit"
+              ],
               "additionalProperties": false,
               "properties": {
-                "explicit": { "type": "string", "enum": ["present", "missing"] },
-                "implicit": { "type": "string", "enum": ["present", "missing"] }
+                "explicit": {
+                  "type": "string",
+                  "enum": [
+                    "present",
+                    "missing",
+                    "not_available"
+                  ]
+                },
+                "implicit": {
+                  "type": "string",
+                  "enum": [
+                    "present",
+                    "missing",
+                    "not_available"
+                  ]
+                }
               }
             },
-            "statement_id": { "type": "string", "minLength": 1 }
+            "statement_id": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "aspect_ratio_default": {
           "type": "string",
           "pattern": "^[0-9]{1,2}:[0-9]{1,2}$"
         },
-        "total_duration_ms": { "type": "integer", "minimum": 1 },
-        "notes": { "type": "string" }
+        "total_duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "notes": {
+          "type": "string"
+        }
       }
     },
     "styleBible": {
       "type": "object",
-      "required": ["style_id", "style_prompt_zh", "style_anchors", "negative_global"],
+      "required": [
+        "style_id",
+        "style_prompt_zh",
+        "style_anchors",
+        "negative_global"
+      ],
       "additionalProperties": false,
       "properties": {
-        "style_id": { "type": "string", "pattern": "^STYLE-[A-Z0-9-]+$" },
-        "style_prompt_zh": { "type": "string", "minLength": 1, "maxLength": 400 },
-        "style_prompt_en": { "type": "string", "maxLength": 400 },
+        "style_id": {
+          "type": "string",
+          "pattern": "^STYLE-[A-Z0-9-]+$"
+        },
+        "style_prompt_zh": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "style_prompt_en": {
+          "type": "string",
+          "maxLength": 400
+        },
         "style_anchors": {
           "type": "array",
           "minItems": 3,
           "maxItems": 5,
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "风格锚点清单，固定 3–5 条；prompt_* 中不得出现清单之外的风格词（规范 §3.3）"
         },
         "color_palette": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+          "items": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          }
         },
-        "lighting_default": { "$ref": "#/$defs/vocabRef" },
-        "film_grain": { "type": "string", "enum": ["none", "light", "medium", "heavy"] },
+        "lighting_default": {
+          "$ref": "#/$defs/vocabRef"
+        },
+        "film_grain": {
+          "type": "string",
+          "enum": [
+            "none",
+            "light",
+            "medium",
+            "heavy"
+          ]
+        },
         "negative_global": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "全局负向词，按三类组织：通用图像项 / 视频时域项 / 形变延续项（规范 §3.3）。注意：这是「负向意图容器」，目标模型不支持负向字段时须转写为正向约束句，且不得残留（§6.4）"
         }
       }
     },
     "character": {
       "type": "object",
-      "required": ["character_id", "name", "appearance_lock_zh"],
+      "required": [
+        "character_id",
+        "name",
+        "appearance_lock_zh"
+      ],
       "additionalProperties": false,
       "properties": {
-        "character_id": { "type": "string", "pattern": "^CHR-[0-9]{2,3}$" },
-        "name": { "type": "string", "minLength": 1 },
-        "appearance_lock_zh": { "type": "string", "minLength": 1 },
-        "appearance_lock_en": { "type": "string" },
-        "ref_image": { "type": "string" },
+        "character_id": {
+          "type": "string",
+          "pattern": "^CHR-[0-9]{2,3}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appearance_lock_zh": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appearance_lock_en": {
+          "type": "string"
+        },
+        "ref_image": {
+          "type": "string"
+        },
         "forbidden": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "prop": {
       "type": "object",
       "description": "道具锚（规范 §3.4.1，V2.0 新增）。与 character 同构（characters[] 与 props[] 是并列的两类内容锚）。",
-      "required": ["prop_id", "name", "appearance_lock_zh"],
+      "required": [
+        "prop_id",
+        "name",
+        "appearance_lock_zh"
+      ],
       "additionalProperties": false,
       "properties": {
-        "prop_id": { "type": "string", "pattern": "^PRP-[0-9]{2,3}$" },
-        "name": { "type": "string", "minLength": 1 },
-        "role": { "type": "string", "description": "叙事作用（如「男主标志物」／「关键信物」）" },
-        "appearance_lock_zh": { "type": "string", "minLength": 1 },
-        "appearance_lock_en": { "type": "string" }
+        "prop_id": {
+          "type": "string",
+          "pattern": "^PRP-[0-9]{2,3}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "description": "叙事作用（如「男主标志物」／「关键信物」）"
+        },
+        "appearance_lock_zh": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appearance_lock_en": {
+          "type": "string"
+        }
       }
     },
     "unit": {
       "type": "object",
-      "required": ["unit_id", "scene_no", "shot_ids", "soundscape", "music"],
+      "required": [
+        "unit_id",
+        "scene_no",
+        "shot_ids",
+        "soundscape",
+        "music"
+      ],
       "additionalProperties": false,
       "properties": {
-        "unit_id": { "type": "string", "pattern": "^U[0-9]{2,3}$" },
-        "scene_no": { "type": "integer", "minimum": 1 },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^U[0-9]{2,3}$"
+        },
+        "scene_no": {
+          "type": "integer",
+          "minimum": 1
+        },
         "shot_ids": {
           "type": "array",
           "minItems": 2,
           "maxItems": 3,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^S[0-9]{2}-SH[0-9]{3}(-[a-z])?$" },
+          "items": {
+            "type": "string",
+            "pattern": "^S[0-9]{2}-SH[0-9]{3}(-[a-z])?$"
+          },
           "description": "成员镜头编号，长度必须 ∈ [2, 3]；顺序即镜序（规范 §3.5、§4.3）"
         },
         "soundscape": {
@@ -264,69 +512,146 @@
           "minLength": 1,
           "description": "本单元画外配乐（H3 non_diegetic_music 的投影源）；无则填 N/A；不得写抽象情绪词"
         },
-        "notes": { "type": "string" }
+        "notes": {
+          "type": "string"
+        }
       }
     },
     "shot": {
       "type": "object",
       "required": [
-        "shot_id", "unit_id", "scene_no", "shot_no", "shot_size", "camera",
-        "duration_ms", "prompt_zh", "prompt_en", "action", "shot_language",
-        "style_ref", "character_refs", "prop_refs"
+        "shot_id",
+        "unit_id",
+        "scene_no",
+        "shot_no",
+        "shot_size",
+        "camera",
+        "duration_ms",
+        "prompt_zh",
+        "prompt_en",
+        "action",
+        "shot_language",
+        "style_ref",
+        "character_refs",
+        "prop_refs"
       ],
       "additionalProperties": false,
       "properties": {
-        "shot_id": { "type": "string", "pattern": "^S[0-9]{2}-SH[0-9]{3}(-[a-z])?$" },
-        "unit_id": { "type": "string", "pattern": "^U[0-9]{2,3}$" },
-        "scene_no": { "type": "integer", "minimum": 1 },
-        "shot_no": { "type": "integer", "minimum": 1 },
+        "shot_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{2}-SH[0-9]{3}(-[a-z])?$"
+        },
+        "unit_id": {
+          "type": "string",
+          "pattern": "^U[0-9]{2,3}$"
+        },
+        "scene_no": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "shot_no": {
+          "type": "integer",
+          "minimum": 1
+        },
         "shot_size": {
           "type": "string",
-          "enum": ["extreme_wide", "wide", "full", "medium", "close_up", "extreme_close_up"]
+          "enum": [
+            "extreme_wide",
+            "wide",
+            "full",
+            "medium",
+            "close_up",
+            "extreme_close_up"
+          ]
         },
         "camera": {
           "type": "object",
-          "required": ["move"],
+          "required": [
+            "move"
+          ],
           "additionalProperties": false,
           "properties": {
             "move": {
               "type": "string",
               "enum": [
-                "static", "push_in", "pull_out", "zoom_in", "zoom_out",
-                "pan_left", "pan_right", "truck_left", "truck_right",
-                "tilt_up", "tilt_down", "pedestal_up", "pedestal_down",
-                "arc", "tracking", "shake_slight", "shake_strong",
-                "pov", "roll_cw", "roll_ccw"
+                "static",
+                "push_in",
+                "pull_out",
+                "zoom_in",
+                "zoom_out",
+                "pan_left",
+                "pan_right",
+                "truck_left",
+                "truck_right",
+                "tilt_up",
+                "tilt_down",
+                "pedestal_up",
+                "pedestal_down",
+                "arc",
+                "tracking",
+                "shake_slight",
+                "shake_strong",
+                "pov",
+                "roll_cw",
+                "roll_ccw"
               ],
               "description": "内部语义标签，对齐 H3 官方 20 类运镜；非任何模型的语法，交付文本中不得直接出现（规范 §3.7.2）。已弃用别名 follow/handheld/crane_up/crane_down/orbit 不得使用。"
             },
             "amplitude": {
               "type": "string",
-              "enum": ["small", "medium", "large"],
+              "enum": [
+                "small",
+                "medium",
+                "large"
+              ],
               "description": "运镜幅度；static / pov 不得填（规范 §3.7.2）"
             },
             "speed": {
               "type": "string",
-              "enum": ["slow", "normal", "fast"],
+              "enum": [
+                "slow",
+                "normal",
+                "fast"
+              ],
               "description": "运镜速度；static / pov 不得填"
             },
-            "from": { "type": "string", "description": "运镜起幅（规范 §3.7.2）" },
-            "to": { "type": "string", "description": "运镜落幅" },
+            "from": {
+              "type": "string",
+              "description": "运镜起幅（规范 §3.7.2）"
+            },
+            "to": {
+              "type": "string",
+              "description": "运镜落幅"
+            },
             "height": {
               "type": "string",
-              "enum": ["eye_level", "low", "high", "overhead", "ground"],
+              "enum": [
+                "eye_level",
+                "low",
+                "high",
+                "overhead",
+                "ground"
+              ],
               "description": "机位高度角（规范 §3.7.3）"
             },
             "roll": {
               "type": "string",
-              "enum": ["level", "dutch", "roll_cw", "roll_ccw"],
+              "enum": [
+                "level",
+                "dutch",
+                "roll_cw",
+                "roll_ccw"
+              ],
               "description": "摄影机滚转；roll_cw/roll_ccw 与 camera.move 的同名取值不得并置（规范 §3.7.3）"
             },
             "optics": {
               "type": "string",
               "enum": [
-                "deep_focus", "shallow_focus", "rack_focus",
-                "long_lens_compression", "wide_angle_distortion"
+                "deep_focus",
+                "shallow_focus",
+                "rack_focus",
+                "long_lens_compression",
+                "wide_angle_distortion"
               ],
               "description": "光学：焦段／景深／焦点转移（规范 §3.7.4）"
             }
@@ -338,8 +663,13 @@
           "multipleOf": 1000,
           "description": "镜头时长（毫秒）——必须整秒。模型侧上下限由 config/CFG-001_model_adapters.yaml 提供，本 Schema 不引用模型数值（规范 §6.6）"
         },
-        "aspect_ratio": { "type": "string", "pattern": "^[0-9]{1,2}:[0-9]{1,2}$" },
-        "resolution": { "type": "string" },
+        "aspect_ratio": {
+          "type": "string",
+          "pattern": "^[0-9]{1,2}:[0-9]{1,2}$"
+        },
+        "resolution": {
+          "type": "string"
+        },
         "prompt_zh": {
           "type": "string",
           "minLength": 5,
@@ -354,88 +684,181 @@
         },
         "action": {
           "type": "object",
-          "required": ["start", "change", "end"],
+          "required": [
+            "start",
+            "change",
+            "end"
+          ],
           "additionalProperties": false,
           "description": "动作三段状态（规范 §4.6）——一个镜头只服务一个核心动作",
           "properties": {
-            "start": { "type": "string", "minLength": 1, "description": "起始状态" },
-            "change": { "type": "string", "minLength": 1, "description": "核心变化" },
-            "end": { "type": "string", "minLength": 1, "description": "结束状态（下一镜的起点）" }
+            "start": {
+              "type": "string",
+              "minLength": 1,
+              "description": "起始状态"
+            },
+            "change": {
+              "type": "string",
+              "minLength": 1,
+              "description": "核心变化"
+            },
+            "end": {
+              "type": "string",
+              "minLength": 1,
+              "description": "结束状态（下一镜的起点）"
+            }
           }
         },
         "shot_language": {
           "type": "object",
-          "required": ["composition", "axis", "result"],
+          "required": [
+            "composition",
+            "axis",
+            "result"
+          ],
           "additionalProperties": false,
           "description": "镜头语言落点（规范 §4.1 第 5/6/8 维）：构图 / 轴线 / 画面结果。字段承载之外，必须同时写进 prompt_zh / prompt_en 正文。",
           "properties": {
-            "composition": { "type": "string", "minLength": 1, "description": "构图：前中后景层次 + 主体在画框中的位置" },
-            "axis": { "type": "string", "minLength": 1, "description": "轴线：屏幕方位／180° 轴线，保证对手戏不跳轴" },
-            "result": { "type": "string", "minLength": 1, "description": "画面结果：动作/环境在画面上留下的可见改变（避免空气挥拳）" }
+            "composition": {
+              "type": "string",
+              "minLength": 1,
+              "description": "构图：前中后景层次 + 主体在画框中的位置"
+            },
+            "axis": {
+              "type": "string",
+              "minLength": 1,
+              "description": "轴线：屏幕方位／180° 轴线，保证对手戏不跳轴"
+            },
+            "result": {
+              "type": "string",
+              "minLength": 1,
+              "description": "画面结果：动作/环境在画面上留下的可见改变（避免空气挥拳）"
+            }
           }
         },
         "negative_prompt": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "镜头级负向词。按模型能力可选——不得作为通用必填字段；目标模型不支持负向字段时须转写为正向约束且不得残留（规范 §3.6、§6.4）"
         },
-        "lighting": { "$ref": "#/$defs/vocabRef" },
-        "style_ref": { "type": "string", "pattern": "^STYLE-[A-Z0-9-]+$" },
+        "lighting": {
+          "$ref": "#/$defs/vocabRef"
+        },
+        "style_ref": {
+          "type": "string",
+          "pattern": "^STYLE-[A-Z0-9-]+$"
+        },
         "character_refs": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^CHR-[0-9]{2,3}$" },
+          "items": {
+            "type": "string",
+            "pattern": "^CHR-[0-9]{2,3}$"
+          },
           "description": "建议 ≤ 2；多主体同框必须写出画面区隔（规范 §3.4）"
         },
         "prop_refs": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^PRP-[0-9]{2,3}$" },
+          "items": {
+            "type": "string",
+            "pattern": "^PRP-[0-9]{2,3}$"
+          },
           "description": "本镜入画的道具锚（规范 §3.6，V2.0 新增）；引用 props[].prop_id，无道具为空数组。⚠️ 留空一律用空数组，不得写空串（判据 R33）。逐镜引用是「哪一镜带哪个道具」唯一可机器校验的载体（§3.4.1）"
         },
         "ref_image": {
           "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "dialogue": {
           "type": "string",
           "description": "对白/旁白；必须通过语速校验（≤ 9 字/秒，规范 §4.5）"
         },
-        "sfx": { "type": "string" },
+        "sfx": {
+          "type": "string"
+        },
         "transition_in": {
           "type": "string",
-          "enum": ["cut", "fade_in", "fade_out", "dissolve", "wipe"],
+          "enum": [
+            "cut",
+            "fade_in",
+            "fade_out",
+            "dissolve",
+            "wipe"
+          ],
           "description": "入点转场；相邻两镜的衔接由后一镜单侧表达（规范 §3.7.5）"
         },
         "transition_out": {
           "type": "string",
-          "enum": ["cut", "fade_in", "fade_out", "dissolve", "wipe"],
+          "enum": [
+            "cut",
+            "fade_in",
+            "fade_out",
+            "dissolve",
+            "wipe"
+          ],
           "description": "出点转场；仅用于单元末镜（规范 §3.7.5）"
         },
-        "notes": { "type": "string" }
+        "notes": {
+          "type": "string"
+        }
       }
     },
     "aigcMeta": {
       "type": "object",
-      "required": ["AIGC"],
+      "required": [
+        "AIGC"
+      ],
       "additionalProperties": false,
       "description": "AIGC 元数据块，字段依 GB 45438—2025 §6.1 与附录 E；文件中仅保留一份",
       "properties": {
         "AIGC": {
           "type": "object",
           "required": [
-            "Label", "ContentProducer", "ProduceID",
-            "ReservedCode1", "ContentPropagator", "PropagateID", "ReservedCode2"
+            "Label",
+            "ContentProducer",
+            "ProduceID",
+            "ReservedCode1",
+            "ContentPropagator",
+            "PropagateID",
+            "ReservedCode2"
           ],
           "additionalProperties": false,
           "properties": {
-            "Label": { "type": "string", "enum": ["1"] },
-            "ContentProducer": { "type": "string", "minLength": 1 },
-            "ProduceID": { "type": "string", "minLength": 1 },
-            "ReservedCode1": { "type": "string" },
-            "ContentPropagator": { "type": "string", "minLength": 1 },
-            "PropagateID": { "type": "string", "minLength": 1 },
-            "ReservedCode2": { "type": "string" }
+            "Label": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "ContentProducer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ProduceID": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ReservedCode1": {
+              "type": "string"
+            },
+            "ContentPropagator": {
+              "type": "string",
+              "minLength": 1
+            },
+            "PropagateID": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ReservedCode2": {
+              "type": "string"
+            }
           }
         }
       }

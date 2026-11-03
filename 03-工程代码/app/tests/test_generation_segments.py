@@ -44,7 +44,7 @@ class RecordingBackend(TextGenerator):
 
 
 _HEAD = {
-    "schema_version": "2.1.0",
+    "schema_version": "2.2.0",
     "meta": {"pack_id": "AC-PK-20261015-ABCD1234"},
     "style_bible": {"style_id": "ST-01"},
     "characters": [{"character_id": "CHR-01"}],
@@ -155,7 +155,7 @@ def test_merge_orders_shots_even_when_segments_arrive_out_of_order() -> None:
     merged = json.loads(artifact["text"])
     assert [s["shot_id"] for s in merged["shots"]] == ["S01-SH001", "S01-SH004"]
     assert [u["unit_id"] for u in merged["units"]] == ["U01", "U02"]
-    assert merged["schema_version"] == "2.1.0"
+    assert merged["schema_version"] == "2.2.0"
 
 
 def test_every_segment_call_carries_the_output_contract_schema() -> None:
@@ -167,7 +167,7 @@ def test_every_segment_call_carries_the_output_contract_schema() -> None:
     assert artifact["constrained_decoding"] is True
     assert all(call["schema"] is not None for call in backend.calls)
     schema = backend.calls[0]["schema"]
-    assert schema["properties"]["schema_version"]["const"] == "2.1.0"
+    assert schema["properties"]["schema_version"]["const"] == "2.2.0"
 
 
 def test_segment_trace_records_each_call_for_audit() -> None:
@@ -187,7 +187,7 @@ def test_segment_trace_records_each_call_for_audit() -> None:
 # ------------------------------------------------------------------ 小包不分段
 def test_small_storyboard_stays_single_call() -> None:
     """≤6 镜走整包：1 次调用，产物直接取用（不合并）。"""
-    backend = RecordingBackend([{"schema_version": "2.1.0", "meta": {}, "style_bible": {}, "units": [], "shots": [], "aigc_meta": {}}])
+    backend = RecordingBackend([{"schema_version": "2.2.0", "meta": {}, "style_bible": {}, "units": [], "shots": [], "aigc_meta": {}}])
     service, record = _make(backend, _storyboard(4, ["U01"]))
     artifact = _run(service, record)
 

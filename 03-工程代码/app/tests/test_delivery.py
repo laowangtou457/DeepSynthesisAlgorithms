@@ -28,7 +28,7 @@ def _fake_pack(*, pack_id: str = "{{PROVIDER_CODE}}-PK-20261103-ABCD1234",
                provider_code: str = "{{PROVIDER_CODE}}") -> dict:
     """构造一个**形态合法**的交付包（顶层键齐、含占位）。"""
     return {
-        "schema_version": "2.1.0",
+        "schema_version": "2.2.0",
         "meta": {
             "pack_id": pack_id,
             "title": "测试作品",
@@ -45,7 +45,7 @@ def _fake_pack(*, pack_id: str = "{{PROVIDER_CODE}}-PK-20261103-ABCD1234",
                 "session_id": "SESS-TEST-0001",
                 "task_id": "TASK-TEST-0001",
                 "stage_chain": ["synopsis", "script", "storyboard", "shot_prompt"],
-                "templates": [{"id": "shot_prompt_v1", "version": "2.1.0"}],
+                "templates": [{"id": "shot_prompt_v1", "version": "2.2.0"}],
                 "model": {"name": "mock", "backend": "mock", "revision": "0"},
             },
             "compliance": {

@@ -31,6 +31,26 @@
 2. **「判过且通过」与「根本没判」必须可分**（`ISSUE-042` 的教训）⇒
    判定结果恒带 `checked`，判据脚本自身抛错时 `checked=False` ＋ `ok=None`，**不得**沉默放行。
 
+## `PRO-010` 批次 1（2026-11-03 项目方裁决「A′+B+C 分批执行、先跑只判不拦观测、不走外部评审」）
+
+本模块接入 `content_adequacy`（`ISSUE-045` 建的**内容足量探测**模块），做两件事：
+
+- **批次 1-C（留痕）**：`QualityVerdict` 增 `adequacy_findings`／`adequacy_checked`／`adequacy_ok`
+  三个字段，**与 `engine_errors` 分开记、不合并成一个布尔**（「结构过了」≠「内容够不够」）。
+- **批次 1-B（接入判定）**：adequacy 的失败项**进 `retryable`** ⇒ 触发重试回路。
+  ⚠️ **带去重规则**（`_ADEQUACY_EQUIV_RULES`）：同一失败若其**等效 `R` 判据已在本次判定中报出**
+  ⇒ 该 finding 只作佐证留痕（`source="engine_dup"`），**不进 `retryable`**
+  ⇒ 否则同一失败被计两次、**重试成本翻倍**、日志上像「两条不同的失败」。
+
+⚠️ **口径边界（本批次刻意不做的事）**：
+- **`adequacy` 的失败不改变 `ok`**（`ok` 仍只由判据族失败决定）⇒
+  **本批次不产生任何阻断**；`enforce=true` 时 adequacy 仍不拦下产物。
+  理由：项目方裁决「**先跑只判不拦观测**」⇒ 阻断语义待观测数据支持后再议。
+- **不改判据族**：`validate_output.py` 的 `R1`~`R40` **零改动**，判据水位仍 **40 条**；
+  `content_adequacy` 仍是**留痕级探测、不计入 `R` 计数**（`CM-002` §7 `V1.16` 既有口径）。
+- **不抄第二份口径**：本模块**只调用** `content_adequacy.assess`，
+  与「判据唯一真值是 `validate_output.py`」同一纪律。
+
 ## 并发
 
 ⚠️ `validate_output.py` 用**模块级全局** `RESULT`／`UPSTREAM`／`QUIET` 累积判定结果，
@@ -89,6 +109,115 @@ _NON_RETRYABLE_ENGINE_MARKERS: tuple[str, ...] = (
     "AIGC_META",
 )
 
+# ---------------------------------------------------------------------------------------------
+# `PRO-010` 批次 1-B：`content_adequacy` 接入判定 ＋ **去重规则**
+# ---------------------------------------------------------------------------------------------
+#: **`content_adequacy` 的 finding code → 等效判据族的 `R` 编号**。
+#:
+#: ⚠️ **为什么必须有这张表**（`PRO-010` §2.2 实测结论）：
+#: `content_adequacy` 的 7 个 finding code 在 `validate_output.py` 中**全部零命中**
+#: ⇒ 它们是**独立于 `R` 判据族的另一套口径**。但逐条核对后发现**其中 5 个有等效 `R` 判据**
+#: （下表右列）⇒ 若无去重，同一个失败会被**计两次**（一次进 `engine_errors`、
+#: 一次进 `adequacy_findings`），`retryable` 计数翻倍 ⇒ **重试成本翻倍**，
+#: 且日志上看起来像「两条不同的失败」，归因方向错。
+#:
+#: **去重规则**：某 adequacy finding 若其等效 `R` 判据**已在本次判定中报出**
+#: ⇒ 该 finding 标记 `source="engine_dup"`，**只作佐证留痕，不进 `retryable`**。
+#:
+#: ⚠️ **`scene_coverage_incomplete`（场覆盖度）刻意不在表内**——实测它是
+#: **唯一无等效 `R` 判据、且不可替代**的一条（`R10`／`R14`／`R19` 全只审**段内**，
+#: 无任何判据审「分镜是否覆盖了剧本的全部场次」）⇒ 它**必须**进 `retryable`。
+#: 这也正是 `ISSUE-045` 实测的最严重形态（「3 镜只覆盖第 1 场、第 2~5 场全部漏拍」）。
+_ADEQUACY_EQUIV_RULES: dict[str, str] = {
+    "script_total_mismatch": "R4",
+    "scene_below_duration_floor": "R22",
+    "unit_size_out_of_range": "R10",
+    "storyboard_duration_sum_mismatch": "R14",
+    "script_no_scenes": "R6",
+}
+
+#: `content_adequacy` 需要的上游**键名是变量名**（如 `script_json`），
+#: 而 `quality_gate` 的 `upstream` 用**形态名**（如 `script`）⇒ 这里做一次映射。
+#: ⚠️ 键名口径来自 `dialogue_service._UPSTREAM_VARS`，两处必须一致（否则场覆盖度判据
+#: 会因取不到上游而**静默不出结论**——`content_adequacy._expected_scenes` 取不到就返回 `None`）。
+_ADEQUACY_UPSTREAM_ALIASES: dict[str, str] = {
+    "script": "script_json",
+    "storyboard": "storyboard_json",
+    "synopsis": "synopsis_json",
+}
+
+
+def _adequacy_upstream(upstream: dict[str, str] | None) -> dict[str, str]:
+    """把门禁的**形态名** upstream 改写成 `content_adequacy` 认的**变量名**。"""
+    out: dict[str, str] = {}
+    for shape, text in (upstream or {}).items():
+        alias = _ADEQUACY_UPSTREAM_ALIASES.get(shape)
+        if alias and isinstance(text, str):
+            out[alias] = text
+    return out
+
+
+def _assess_adequacy(stage: str, text: str, upstream: dict[str, str] | None) -> dict[str, Any]:
+    """调用 `content_adequacy` 探测（**不抛错**——探测失败不得成为新的失败点）。
+
+    ⚠️ **判据唯一真值原则**：本模块**只调用** `content_adequacy`，
+    **不抄第二份**（抄一份＝两处口径，本工程已多次因「两处口径打架」返工）。
+    """
+    try:
+        from app.services import content_adequacy  # 局部导入：避免模块级循环依赖
+
+        return content_adequacy.assess(stage, text, _adequacy_upstream(upstream))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "quality_gate_adequacy_failed",
+            extra={"extra_fields": {"stage": stage, "error": type(exc).__name__}},
+        )
+        return {"checked": False, "ok": None, "stage": stage, "findings": [], "metrics": {}}
+
+
+def _merge_adequacy(
+    adequacy: dict[str, Any], engine_errors: list[str], pack_blocks: list[str]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """把 adequacy findings 与判据族失败**去重合并**。
+
+    :returns: `(合并后的 findings 列表, 新增的 retryable 项)`
+              ——`new_retryable` 只含**无等效 `R` 判据**的 finding（去重后）；
+              有等效判据的 finding 只作佐证留痕（`source="engine_dup"`）。
+    """
+    findings: list[dict[str, Any]] = []
+    new_retryable: list[str] = []
+    # 判据族已报出的 `R` 编号集合（用于去重判定）。
+    reported_rules = {
+        rule
+        for err in list(engine_errors) + list(pack_blocks)
+        for rule in _ADEQUACY_EQUIV_RULES.values()
+        if rule in err
+    }
+    for raw in adequacy.get("findings") or []:
+        if not isinstance(raw, dict):
+            continue
+        code = str(raw.get("code") or "")
+        equiv_rule = _ADEQUACY_EQUIV_RULES.get(code)
+        if equiv_rule and equiv_rule in reported_rules:
+            # ⚠️ **等效判据已报出** ⇒ 只作佐证，**不进 `retryable`**（否则同一失败计两次）。
+            findings.append({**raw, "source": "engine_dup", "equiv_rule": equiv_rule})
+            continue
+        findings.append(
+            {
+                **raw,
+                "source": "adequacy",
+                "equiv_rule": equiv_rule or "",
+                # 失败项文案：进 `retryable` 时须带 code 与关键数值，便于日志举证。
+                "detail": {
+                    k: v
+                    for k, v in raw.items()
+                    if k not in ("code",) and isinstance(v, (int, float, str, bool, list))
+                },
+            }
+        )
+        new_retryable.append(f"content_adequacy · {code}")
+    return findings, new_retryable
+
 
 class QualityVerdict(NamedTuple):
     """一次门禁判定的结果。字段与日志留痕**一一对应**，便于「判过没有」可核查。"""
@@ -106,6 +235,19 @@ class QualityVerdict(NamedTuple):
     non_retryable: list[str]
     enforced: bool
     reason: str | None = None
+    # ---- `PRO-010` 批次 1-C（留痕字段）＋ 批次 1-B（接入判定）----
+    #: `content_adequacy` 的探测结论（`ISSUE-045` 建的探测模块）。
+    #: ⚠️ **与 `engine_errors` 分开记，不合并成一个布尔**——「结构过了」与「内容够不够」
+    #:    是两件事（`T-085` 已确立此纪律）：`engine_errors`＝判据族（`R1`~`R40`）的结论，
+    #:    `adequacy_findings`＝内容足量探测的结论。
+    #: 每项形如 `{"code": …, "source": "adequacy"|"engine_dup", "detail": {…}}`。
+    adequacy_findings: list[dict[str, Any]] = []
+    #: adequacy 探测**是否执行**（`checked=False` ＝ 该段未登记内容判据，**不假装通过**）。
+    adequacy_checked: bool = False
+    #: adequacy 探测的结论（`True`／`False`／`None`＝无法判定）。
+    #: ⚠️ **不参与 `ok` 的折算**（`ok` 只由判据族失败决定）——这是「只判不拦」在
+    #:    批次 1 的落点；批次 1-B 接入的是「**失败项进 `retryable`**」，不是「改成阻断」。
+    adequacy_ok: bool | None = None
 
     def as_record(self) -> dict[str, Any]:
         """转成可 JSON 化／可入日志的扁平留痕（⚠️ 布尔与计数分开，不合并成一个结论）。"""
@@ -130,6 +272,14 @@ class QualityVerdict(NamedTuple):
             "pack_block_codes": list(self.pack_blocks),
             "retryable_codes": self.retryable[:12],
             "non_retryable_codes": self.non_retryable[:12],
+            # ---- `PRO-010` 批次 1-C：adequacy 留痕**独立成组** ----
+            # ⚠️ **不合并进 `engine_errors` 计数**：两组结论口径不同、来源不同，
+            #    合并后无法举证「哪条来自判据族、哪条来自内容探测」。
+            "adequacy_checked": self.adequacy_checked,
+            "adequacy_ok": self.adequacy_ok,
+            "adequacy_findings": len(self.adequacy_findings),
+            "adequacy_finding_codes": [f.get("code") for f in self.adequacy_findings],
+            "adequacy_finding_details": self.adequacy_findings[:12],
             "enforced": self.enforced,
             "reason": self.reason,
         }
@@ -303,6 +453,18 @@ async def check(
         failures, _NON_RETRYABLE_MARKERS + _NON_RETRYABLE_ENGINE_MARKERS
     )
 
+    # ---- `PRO-010` 批次 1-B＋1-C：`content_adequacy` 探测 ＋ **去重合并** ----
+    # ⚠️ **位置纪律**：探测放在判据族之后 ⇒ 去重时能拿到「哪些 `R` 判据已报出」。
+    # ⚠️ **口径纪律**：探测结论**不改变 `ok`**（`ok` 仍只由判据族失败决定）——
+    #    本批次接入的是「**失败项进 `retryable`**」，**不是**「改成阻断」。
+    #    ⇒ `enforce=true` 时它仍**不会**拦下产物（阻断语义待观测数据支持后再议）。
+    adequacy = _assess_adequacy(stage, text, upstream)
+    adequacy_findings, adequacy_retryable = _merge_adequacy(
+        adequacy, engine_out["errors"], pack_out["blocks"]
+    )
+    # ⚠️ **去重后新增的 retryable**：等效 `R` 判据已报出的那些**不进来**（避免同一失败计两次）。
+    retryable = list(retryable) + adequacy_retryable
+
     # ---- 「判过且通过」与「根本没判」必须可分（`ISSUE-042` 的教训，本函数**自己**也要守）----
     # ⚠️ 实测踩到（本批探针）：产物是**API 信封**（`{"request_id":…,"data":…}`）而非裸产物时，
     #    `detect_shape` 返回 `None` ⇒ 判据脚本走「无法识别形态 → 告警并跳过」⇒
@@ -329,6 +491,10 @@ async def check(
         pack_warnings=list(pack_out["warnings"]),
         retryable=retryable, non_retryable=non_retryable,
         enforced=enforced, reason=reason,
+        # ---- `PRO-010` 批次 1-C：adequacy 留痕**独立成组**（不合并进 `engine_errors`）----
+        adequacy_findings=adequacy_findings,
+        adequacy_checked=bool(adequacy.get("checked")),
+        adequacy_ok=adequacy.get("ok"),
     )
 
 

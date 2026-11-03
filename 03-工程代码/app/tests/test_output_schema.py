@@ -28,7 +28,7 @@ from app.services.segment import REQUIRED_TOP_KEYS
 def test_shot_prompt_schema_is_loadable() -> None:
     schema = load_output_schema("shot_prompt")
     assert isinstance(schema, dict)
-    assert schema["properties"]["schema_version"]["const"] == "2.1.0"
+    assert schema["properties"]["schema_version"]["const"] == "2.2.0"
 
 
 def test_stages_without_delivery_contract_return_none() -> None:

@@ -96,7 +96,7 @@ VALID_SCRIPT = {
     "unspecified": [],
 }
 VALID_PACK = {
-    "schema_version": "2.1.0",
+    "schema_version": "2.2.0",
     "meta": {"pack_id": "AC-PK-1"},
     "style_bible": {"style_id": "ST-01"},
     "characters": [],

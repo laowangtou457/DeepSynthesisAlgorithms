@@ -168,7 +168,7 @@ def _safety_verdict(safety: dict[str, Any] | None) -> dict[str, Any]:
     `flag`（放行并打标）在 `CFG-006` 里**没有对应取值**，按最严记 `blocked`。
     """
     if not isinstance(safety, dict):
-        return {"input": PLACEHOLDER_SAFETY, "output": PLACEHOLDER_SAFETY, "checked_at": ""}
+        return {"input": "not_available", "output": "not_available", "checked_at": ""}
     inp = safety.get("input") if isinstance(safety.get("input"), dict) else None
     out = safety.get("output") if isinstance(safety.get("output"), dict) else None
     if inp is None and out is None:
@@ -271,8 +271,16 @@ def build_pack_meta(
             "safety_check": _safety_verdict(safety),
             # ⚠️ `copyright_check`（`T-008`）与 `marking_check`（标识服务）**尚未接入**，
             #    服务层**确实没有真值** ⇒ 只能写占位。占了位就会 BLOCK —— 正确，见上。
-            "copyright_check": {"status": "占位（版权校验未接入，见任务 T-008）", "note": ""},
-            "marking_check": {"explicit": "占位", "implicit": "占位"},
+            # ⚠️ `CFG-006` **v2.2.0**（`PRO-007` 第二步，项目方 2026-11-03 裁定）：
+            #    三处 enum 各增 **`not_available`** 档 ⇒ 服务层**不再写占位**
+            #    （占位不在 enum 内 ⇒ schema 判 BLOCK ⇒ 结构上「逼迫填假值」）。
+            #    `not_available` 的语义＝「**没检**（能力/接入缺失）」，
+            #    **不得用于正式交付**（与 `NT-02` 同纪律）——
+            #    交付判据侧已配套改三态式（「未取得」⇒ WARN，不再误报「未通过」）。
+            #    ⚠️ **不复用 `skipped`**：那是「检过了、主动决定不做」，
+            #    与「能力尚未接入」语义不同，复用会让读者误解。
+            "copyright_check": {"status": "not_available", "note": "版权校验未接入（T-008）"},
+            "marking_check": {"explicit": "not_available", "implicit": "not_available"},
             "statement_id": statement_id,
         },
         # 对外能力声明（未配置则为空列表；覆盖与否见 `apply_service_truth` ②′）

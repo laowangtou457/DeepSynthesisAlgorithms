@@ -84,6 +84,37 @@ GATE = {
 MAX_CHARS_PER_SECOND = 9.0
 
 
+def _is_not_obtained(value) -> bool:
+    """判断某个合规字段是「**未取得**」（而非「未通过」）。
+
+    ⚠️ 「未取得」有**两种表达**（`PRO-007` 第一步＋第二步契约变更）：
+
+    | 表达 | 判据 | 出处 |
+    | --- | --- | --- |
+    | **占位形态** | 含 `{{`／含「占位」／空串／`None` | 旧包（占位符纪律） |
+    | **枚举档** | 字面 `not_available` | 新包（`CFG-006` v2.2.0 起的合法「未接入」档） |
+
+    ⚠️ **两者必须同时覆盖**：第二步让 `not_available` 成为 schema 合法枚举后，
+    若此处只认占位形态，`not_available` 会落进语义真空 ⇒ **预演包被静默当成合规包放行**
+    （比 BLOCK 更危险——BLOCK 是「拦住」，放过是「谎称合规」）。
+
+    ⚠️ **不是**「未取得」的取值（真值 `passed`／`present`，否定真值 `blocked`／`missing`）
+    一律返回 `False` ⇒ 交给调用方按「真值通过／否定真值阻断」处置。
+    """
+    if value is None:
+        return True
+    s = str(value).strip()
+    if not s:
+        return True
+    if s == "not_available":
+        return True
+    if "{{" in s:
+        return True
+    if "占位" in s:
+        return True
+    return False
+
+
 class Report:
     def __init__(self, name: str) -> None:
         self.name = name
@@ -313,15 +344,68 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
             rep.add(WARN, "prompt.quote",
                     f"镜头 {s.get('shot_id')} 的 prompt_en 含中文引号；画面可见文字必须用英文双引号（§3.7.6）")
 
-    # ⑧ 合规状态（规范 §8.3 第 1/2/7/9 项）
+    # ⑧ 合规状态（规范 §8.3 第 1/2/7/9 项）—— **三态式**（`PRO-007` 第一步，解根因 C）
+    #
+    # ⚠️ **旧判据是否定式**（`!= "passed"` ⇒ 报「未通过」）⇒ 把「**未取得**」
+    #    （占位／未接入）读成「**未通过**」—— 两者语义完全不同，且**错误结论进留痕
+    #    比缺陷本身更危险**（备案举证时「未取得」被写成「未通过」＝ 报告一处不实声明）。
+    # ⚠️ **本判据必须同时覆盖两种「未取得」表达**（二者缺一不可）：
+    #    ① **占位形态**（含 `{{`／含「占位」／空串／键缺失）—— 旧包（第一步的止血对象）；
+    #    ② **枚举档 `not_available`** —— 新包（第二步契约变更后的**合法**「未接入」档）。
+    #    ⇒ 若只认①，则第二步之后 `not_available` 落进语义真空 ⇒ **预演包会被静默
+    #      当成合规包放行**（比 BLOCK 更危险：BLOCK 是「拦住」，放过是「谎称合规」）。
+    # ⚠️ **三态**：
+    #   · **真值**（`passed`／`present`／非占位的 `statement_id`）⇒ 通过；
+    #   · **未取得**（占位形态 或 `not_available`）⇒ **WARN**，措辞如实写「结果未取得」，
+    #     并明写「**不得用于正式交付**，须回填」（`NT-02` 同纪律，与 `provider_code` 口径统一）；
+    #   · **否定真值**（`blocked`）⇒ 保持 **BLOCK**，措辞为「检测未通过」。
     comp = meta.get("compliance", {}) or {}
     sc = comp.get("safety_check", {}) or {}
-    if sc.get("input") != "passed" or sc.get("output") != "passed":
-        rep.add(BLOCK, "compliance.safety", "输入/输出内容安全检测未通过 → 阻断交付（SW-009/010）")
+    for side, label in (("input", "输入"), ("output", "输出")):
+        v = sc.get(side)
+        if _is_not_obtained(v):
+            rep.add(WARN, "compliance.safety_pending",
+                    f"{label}侧内容安全检测**结果未取得**（未接入／占位）→ 不得用于正式交付，"
+                    "须回填（NT-02 同纪律）")
+        elif v != "passed":
+            rep.add(BLOCK, "compliance.safety",
+                    f"{label}侧内容安全检测**未通过** → 阻断交付（SW-009/010）")
+    # ⚠️ **`copyright_check` 漏项（2026-11-03 实测发现并补齐）**：
+    #    `SPEC-008` §8.3 自检清单第 3 项明写「版权/改编风险校验完成…**未校验 → 阻断**」，
+    #    但本文件原先**只判** `safety_check`／`marking_check`／`statement_id`
+    #    ⇒ `copyright_check` **从未被检查**（`grep copyright` 为空）⇒ **规范要求阻断、门禁却不查**。
+    #    ⚠️ **级别与另两项不同（如实区分，非笔误）**：
+    #    · 「未取得（未校验）」⇒ **BLOCK**（规范原文「未校验 → 阻断」）；
+    #    · 「`risk`（检出来了，有风险）」⇒ **WARN**（规范原文「有高风险 → 提示 + 记录」）；
+    #    · 「`passed`／`warning`／`skipped`」⇒ 通过（`skipped`＝检过了、主动决定不做）。
+    #    ⇒ 对比：`safety_check`／`marking_check` 的「未取得」是 **WARN**（能力未接入）。
+    cp = comp.get("copyright_check", {}) or {}
+    cp_status = cp.get("status")
+    if _is_not_obtained(cp_status):
+        rep.add(BLOCK, "compliance.copyright",
+                "版权/改编风险校验**未校验**（未接入／占位）→ 阻断交付（SW-015；规范 §8.3 第 3 项）")
+    elif cp_status == "risk":
+        rep.add(WARN, "compliance.copyright_risk",
+                "版权/改编风险校验**检出风险** → 须提示并记录（SW-015；规范 §8.3 第 3 项）")
+    elif cp_status not in ("passed", "warning", "skipped"):
+        rep.add(BLOCK, "compliance.copyright",
+                f"版权/改编风险校验状态非法：{cp_status!r}（SW-015；规范 §8.3 第 3 项）")
     mk = comp.get("marking_check", {}) or {}
-    if mk.get("explicit") != "present" or mk.get("implicit") != "present":
-        rep.add(BLOCK, "compliance.marking", "标识完整性校验未通过 → 阻断交付（SW-014）")
-    if not comp.get("statement_id"):
+    for side, label in (("explicit", "显式"), ("implicit", "隐式")):
+        v = mk.get(side)
+        if _is_not_obtained(v):
+            rep.add(WARN, "compliance.marking_pending",
+                    f"{label}标识校验**结果未取得**（未接入／占位）→ 不得用于正式交付，"
+                    "须回填（NT-02 同纪律）")
+        elif v != "present":
+            rep.add(BLOCK, "compliance.marking",
+                    f"{label}标识校验**未通过** → 阻断交付（SW-014）")
+    sid_val = comp.get("statement_id")
+    if _is_not_obtained(sid_val):
+        rep.add(WARN, "compliance.statement_pending",
+                "合规声明编号**结果未取得**（未接入／占位）→ 不得用于正式交付，"
+                "须回填（NT-02 同纪律）")
+    elif not sid_val:
         rep.add(BLOCK, "compliance.statement", "缺少合规声明编号 → 阻断交付（SW-026）")
 
     # ⑨ 词表取值校验（规范 §3.7）

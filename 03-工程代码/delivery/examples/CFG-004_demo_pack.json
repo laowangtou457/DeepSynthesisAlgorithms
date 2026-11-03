@@ -1,5 +1,5 @@
 {
-  "schema_version": "2.1.0",
+  "schema_version": "2.2.0",
   "meta": {
     "pack_id": "FR-PK-20261012-DEMO0001",
     "title": "示例作品 · 雨巷",
@@ -22,17 +22,42 @@
     "generation_trace": {
       "session_id": "SESS-DEMO-0001",
       "task_id": "TASK-DEMO-0001",
-      "stage_chain": ["synopsis", "script", "storyboard", "shot_prompt"],
-      "templates": [
-        { "id": "gen_article_v1", "version": "1.0.0" },
-        { "id": "rw_polish_v1", "version": "1.0.0" }
+      "stage_chain": [
+        "synopsis",
+        "script",
+        "storyboard",
+        "shot_prompt"
       ],
-      "model": { "name": "Qwen2.5-7B-Instruct", "backend": "vllm", "revision": "main" }
+      "templates": [
+        {
+          "id": "gen_article_v1",
+          "version": "1.0.0"
+        },
+        {
+          "id": "rw_polish_v1",
+          "version": "1.0.0"
+        }
+      ],
+      "model": {
+        "name": "Qwen2.5-7B-Instruct",
+        "backend": "vllm",
+        "revision": "main"
+      }
     },
     "compliance": {
-      "safety_check": { "input": "passed", "output": "passed", "checked_at": "2026-10-12T16:29:40+08:00" },
-      "copyright_check": { "status": "passed", "note": "原创内容，无改编来源" },
-      "marking_check": { "explicit": "present", "implicit": "present" },
+      "safety_check": {
+        "input": "passed",
+        "output": "passed",
+        "checked_at": "2026-10-12T16:29:40+08:00"
+      },
+      "copyright_check": {
+        "status": "passed",
+        "note": "原创内容，无改编来源"
+      },
+      "marking_check": {
+        "explicit": "present",
+        "implicit": "present"
+      },
       "statement_id": "FR-ST-20261012-0001"
     },
     "aspect_ratio_default": "16:9",
@@ -43,14 +68,33 @@
     "style_id": "STYLE-ANIME-CN-A",
     "style_prompt_zh": "日式动画电影质感，柔和赛璐璐上色，冷蓝色调，细腻雨丝质感",
     "style_prompt_en": "Japanese anime film look, soft cel shading, cool blue palette, delicate rain texture",
-    "style_anchors": ["日式动画电影质感", "柔和赛璐璐上色", "冷蓝色调", "细腻雨丝质感"],
-    "color_palette": ["#1B2A41", "#3E5C76", "#E8C07D"],
+    "style_anchors": [
+      "日式动画电影质感",
+      "柔和赛璐璐上色",
+      "冷蓝色调",
+      "细腻雨丝质感"
+    ],
+    "color_palette": [
+      "#1B2A41",
+      "#3E5C76",
+      "#E8C07D"
+    ],
     "lighting_default": "soft_key_light",
     "film_grain": "light",
     "negative_global": [
-      "lowres", "blurry", "watermark", "text", "extra fingers", "deformed", "extra limbs",
-      "flicker", "temporal jitter", "frame inconsistency",
-      "clipping", "morphing", "limb popping"
+      "lowres",
+      "blurry",
+      "watermark",
+      "text",
+      "extra fingers",
+      "deformed",
+      "extra limbs",
+      "flicker",
+      "temporal jitter",
+      "frame inconsistency",
+      "clipping",
+      "morphing",
+      "limb popping"
     ]
   },
   "characters": [
@@ -60,14 +104,21 @@
       "appearance_lock_zh": "十六岁少女，黑色齐肩短发，深蓝色校服外套，白色衬衫，眼神平静",
       "appearance_lock_en": "16-year-old girl, black shoulder-length hair, dark blue school blazer, white shirt, calm eyes",
       "ref_image": "refs/CHR-01.png",
-      "forbidden": ["发型变化", "服装颜色变化"]
+      "forbidden": [
+        "发型变化",
+        "服装颜色变化"
+      ]
     }
   ],
   "units": [
     {
       "unit_id": "U01",
       "scene_no": 1,
-      "shot_ids": ["S01-SH001", "S01-SH002", "S01-SH003"],
+      "shot_ids": [
+        "S01-SH001",
+        "S01-SH002",
+        "S01-SH003"
+      ],
       "soundscape": "细雨持续打在屋檐与伞面上，远处偶有自行车铃，巷口水滴成串落下。",
       "music": "N/A",
       "notes": "单人戏，按单人替身法则处理：每镜点名一个光源并写出它在这一镜做了什么；静止镜里有在动的东西且已写出。"
@@ -104,7 +155,9 @@
       },
       "lighting": "golden_hour",
       "style_ref": "STYLE-ANIME-CN-A",
-      "character_refs": ["CHR-01"],
+      "character_refs": [
+        "CHR-01"
+      ],
       "prop_refs": [],
       "ref_image": null,
       "dialogue": "（旁白）那年的雨，下了很久。",
@@ -145,7 +198,9 @@
       },
       "lighting": "rim_light",
       "style_ref": "STYLE-ANIME-CN-A",
-      "character_refs": ["CHR-01"],
+      "character_refs": [
+        "CHR-01"
+      ],
       "prop_refs": [],
       "ref_image": null,
       "dialogue": "",
@@ -186,7 +241,9 @@
       },
       "lighting": "backlight",
       "style_ref": "STYLE-ANIME-CN-A",
-      "character_refs": ["CHR-01"],
+      "character_refs": [
+        "CHR-01"
+      ],
       "prop_refs": [],
       "ref_image": null,
       "dialogue": "",

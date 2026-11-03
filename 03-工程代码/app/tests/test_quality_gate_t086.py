@@ -99,7 +99,7 @@ _GOOD_STORYBOARD = {
 
 #: **模型自拟的模型侧元数据**（含实测到的「假合规」值）。
 _MODEL_PACK = {
-    "schema_version": "2.1.0",
+    "schema_version": "2.2.0",
     "meta": {
         "pack_id": "FR-PK-20261016-DEADBEEF",
         "created_at": "2026-10-16T09:47:15+08:00",
@@ -305,7 +305,7 @@ def test_service_truth_overrides_forged_compliance_values() -> None:
 def test_service_truth_never_invents_missing_keys() -> None:
     """覆盖**只覆盖已有键、不替模型补缺**：缺键是 `R27`／`R30` 的判据，补上等于替模型填洞。"""
     settings = get_settings()
-    doc = {"schema_version": "2.1.0", "meta": {"pack_id": "AC-PK-1"}, "aigc_meta": {}}
+    doc = {"schema_version": "2.2.0", "meta": {"pack_id": "AC-PK-1"}, "aigc_meta": {}}
     truth = build_pack_meta(session_id="s", stage="shot_prompt", templates=[], model={},
                             settings=settings, artifacts={}, title="t")
     apply_service_truth(doc, truth, provider_name="", provider_code="")
@@ -525,7 +525,7 @@ def test_retry_segments_locates_units_and_falls_back_to_all() -> None:
     plan = ["package_head", "unit:U01", "unit:U02"]
     # 各段都**有贡献**（否则会触发「零贡献段必重跑」这条独立规则，干扰本用例的判据）
     texts = {
-        "package_head": json.dumps({"schema_version": "2.1.0"}, ensure_ascii=False),
+        "package_head": json.dumps({"schema_version": "2.2.0"}, ensure_ascii=False),
         "unit:U01": json.dumps({"units": [{"unit_id": "U01"}],
                                 "shots": [{"shot_id": "S01-SH001"}]}, ensure_ascii=False),
         "unit:U02": json.dumps({"units": [{"unit_id": "U02"}],
@@ -557,7 +557,7 @@ def test_retry_segments_always_reruns_zero_contribution_and_unparsable() -> None
     """**零贡献／不可解析**的段一律重跑 —— 它们正是「看起来完整、实则无据」的来源。"""
     plan = ["package_head", "unit:U01", "unit:U02"]
     texts = {
-        "package_head": json.dumps({"schema_version": "2.1.0"}, ensure_ascii=False),
+        "package_head": json.dumps({"schema_version": "2.2.0"}, ensure_ascii=False),
         "unit:U01": "{}",                # 可解析但**零贡献**
         "unit:U02": "这不是 JSON",        # 解析失败
     }
