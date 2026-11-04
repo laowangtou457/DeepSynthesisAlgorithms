@@ -355,3 +355,62 @@ def test_secret_in_manifest_blocked(base_pack: dict, base_manifest: dict, tmp_pa
     m["provider"] = " deployment key: password=SuperSecret99 "
     code, out = _run_pack_with_manifest(base_pack, m, tmp_path)
     assert "BLOCK secret.leak" in out, f"清单内密钥未被阻断：\n{out}"
+
+
+# ================================================================ T-095：服务层→门禁贯通（2026-11-04）
+
+def test_service_truth_pack_gates_tri_state(tmp_path: Path) -> None:
+    """★ **端到端贯通**：服务层真装配的包过门禁 ⇒「未取得」必须落 **WARN**，不得进 `BLOCK`。
+
+    ⚠️ 这是 `T-095` 的核验闭环：`quality_gate._pack_report` 动态加载
+    `delivery/validate_pack.py`（继承式，非手抄）⇒ 判据一致性天然成立；
+    本测试把「服务层产出形态」与「门禁三态」**焊死在同一断言里**，
+    任一侧回归（服务层改回占位 / 判据改回否定式）都会在此当场报警。
+
+    模拟 `pack_delivery` 的 meta 装配：`compliance`/`pack_id`/`generator`/
+    `generation_trace` 用服务层真值覆盖，模型可影响字段一字不动。
+    """
+    sys.path.insert(0, str(ROOT))
+    from app.services.pack_meta import build_pack_meta
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    truth = build_pack_meta(
+        session_id="S", stage="shot_prompt",
+        templates=[{"id": "t", "version": "1"}],
+        model={"name": "m", "backend": "other", "revision": "r"},
+        settings=get_settings(), artifacts={},
+    )
+    pack = json.loads(DEMO.read_text(encoding="utf-8"))
+    meta = dict(pack.get("meta") or {})
+    for key in ("pack_id", "created_at", "generator", "generation_trace", "compliance"):
+        if key in truth:
+            meta[key] = truth[key]
+    pack["meta"] = meta
+    # ⚠️ 镜像 `pack_delivery` 的标识块装配：`ProduceID`/`PropagateID` 与 `pack_id` **同源**（`R30`）。
+    pack_id = str(meta["pack_id"])
+    aigc = dict((pack.get("aigc_meta") or {}).get("AIGC") or {})
+    aigc["ProduceID"] = pack_id
+    aigc["PropagateID"] = pack_id
+    pack["aigc_meta"] = {"AIGC": aigc}
+
+    code, out = _run_pack(pack, tmp_path)
+    # ① 「未取得」WARN 档（`PRO-007` 裁定）：安全判别／标识核验／声明编号 —— 服务层取不到
+    #    双闸实测 ⇒ `not_available`／占位，判据归「未取得」⇒ WARN，**不得进 BLOCK**
+    assert "WARN  compliance.safety_pending" in out, f"安全判别未取得未报 WARN：\n{out}"
+    assert "WARN  compliance.marking_pending" in out, f"标识核验未取得未报 WARN：\n{out}"
+    assert "WARN  compliance.statement_pending" in out, f"声明编号占位未报 WARN：\n{out}"
+    assert "BLOCK compliance.safety" not in out and "BLOCK compliance.marking" not in out \
+        and "BLOCK compliance.statement" not in out, f"未取得项被钉成 BLOCK：\n{out}"
+    # ② ⚠️ `copyright` 是**唯一的 BLOCK 档**（`PRO-007` 裁定＝SPEC-008 §8.3 第 3 项
+    #    「未校验 → 阻断交付」）：版权校验未接入 ⇒ 阻断是**合规本意**（不得静默放过）。
+    #    服务层交付由此**结构性**带此 BLOCK ⇒ 解除路径＝接入版权校验（`PRO-011` 三前置），
+    #    **不是**改判据放行。此断言把该档位**焊死**：若有人把 copyright 也改成 WARN，
+    #    必须先改规范并过评审，测试当场报警防止静默放宽。
+    assert "BLOCK compliance.copyright" in out, f"版权未校验未阻断（档位被静默放宽）：\n{out}"
+    # ③ 除上述设计档位外**不得有其他 BLOCK**（尤其不得有 meta.produce_id 形态类阻断）
+    other_blocks = [ln for ln in out.splitlines()
+                    if ln.strip().startswith("[X] BLOCK")
+                    and "compliance.copyright" not in ln]
+    assert not other_blocks, f"服务层真装配包出现非预期 BLOCK：\n{other_blocks}"
+    assert code != 0, "含设计内 BLOCK（copyright 未校验）⇒ 退出码应为非 0"
