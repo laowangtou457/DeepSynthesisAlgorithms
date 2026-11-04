@@ -520,3 +520,13 @@ def should_retry(verdict: QualityVerdict) -> bool:
     归因方向完全错（本工程反复踩过的同族问题）。
     """
     return bool(verdict.retryable)
+
+
+def load_pack_validator() -> Any | None:
+    """**对外**暴露交付门禁模块（`delivery/validate_pack.py`）。
+
+    ⚠️ 为什么要公开：交付端点（`SW-I04`）也要跑同一份判据（`ISSUE-055` ①′ 分档）。
+    若各写一份加载器，就会重演「同一文件两处加载」的分叉风险 —— 统一由此取，
+    **加载口径只有一处**（模块缓存、失败告警、相对路径解析全部复用）。
+    """
+    return _pack_validator()

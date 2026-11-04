@@ -56,6 +56,10 @@ class PackView(BaseModel):
     is_preview: bool = True
     pack_bytes: int = 0
     preview_note: str = Field(default="", description="预演包留痕说明（须随包保留）")
+    #: ⚠️ **交付前自检结论**（`ISSUE-055` ①′）：`checked`／`blocked`／`blocks`／`warns`／
+    #: `scope`／`manifest_checked`／`report_path`。预演包**只呈现不拒付**；
+    #: 正式包 `blocked=true` ⇒ 端点返回 **422**（`details.gate_blocks`），且自检报告仍随包留档。
+    gate: dict[str, Any] = Field(default_factory=dict, description="交付前自检结论")
 
 
 @router.post(
@@ -97,6 +101,7 @@ def pack(
             is_preview=result.is_preview,
             pack_bytes=result.pack_bytes,
             preview_note=PREVIEW_NOTE if result.is_preview else "",
+            gate=result.gate,
         ),
     )
 

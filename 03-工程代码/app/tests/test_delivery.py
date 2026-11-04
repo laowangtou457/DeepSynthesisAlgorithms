@@ -209,3 +209,211 @@ def test_manifest_counts_and_compliance_are_carried() -> None:
     # 顶层键齐备
     for k in PACK_TOP_KEYS:
         assert k in pack
+
+
+# ================================================================ ISSUE-055 ①′ 分档门禁（2026-11-04）
+
+def test_preview_pack_reports_gate_but_still_delivers(tmp_path: Path) -> None:
+    """★ **预演包**：门禁照跑、结论如实呈现，但**不拒付**（占位是常态，拒付＝端点长期不可用）。
+
+    断言要点：
+    - `gate.checked=True` 且 `blocked=True`（`compliance.copyright` 未校验 ⇒ BLOCK 档）；
+    - 四件套照常落盘，响应可读；
+    - **`gate_report.json` 随包留档**（`SW-026` 要求自检记录可调取）且**不进** `manifest.files`。
+    """
+    from app.services.delivery_service import GATE_REPORT_NAME
+
+    pack = _fake_pack()
+    out = tmp_path / "delivery"
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    d = Path(r.pack_dir)
+
+    assert r.is_preview is True
+    assert r.gate["checked"] is True, "预演包也必须跑门禁（只呈现不拒付，≠ 不检查）"
+    assert r.gate["blocked"] is True
+    codes = [b["code"] for b in r.gate["blocks"]]
+    assert "compliance.copyright" in codes, f"版权未校验未报 BLOCK：{codes}"
+    assert r.gate["scope"] == "pack"
+    assert r.gate["manifest_checked"] is False, "清单侧未校验须如实标记（不得假覆盖）"
+
+    report = d / GATE_REPORT_NAME
+    assert report.is_file(), "自检报告必须随包留档"
+    saved = json.loads(report.read_text(encoding="utf-8"))
+    assert saved["blocked"] is True and saved["is_preview"] is True
+
+    # ⚠️ 裁决③：报告**不进**交付清单 files（审计附随件，不是交付载荷）
+    mf = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+    assert GATE_REPORT_NAME not in (mf.get("files") or [])
+    assert GATE_REPORT_NAME not in (r.files or [])
+
+
+def _patch_formal(monkeypatch, *, blocked: bool):
+    """把「正式包 + 指定门禁结论」注入（当前 `statement_id` 恒为占位 ⇒ 正式态不可由 API 达成）。"""
+    from app.services import delivery_service as ds
+
+    def _truth(**kwargs):  # noqa: ANN003
+        return {
+            "pack_id": "FR-PK-20261104-ABCD1234",
+            "created_at": "2026-11-04T12:00:00+08:00",
+            "task_type": "text_to_video",
+            "generator": {"system": "S", "version": "0.1.0",
+                          "provider": "FR", "provider_code": "FR"},
+            "generation_trace": {"session_id": "SESS-TEST-0001", "task_id": "T-1",
+                                 "stage_chain": ["synopsis"], "templates": [],
+                                 "model": {"name": "mock", "backend": "mock", "revision": "0"}},
+            "compliance": {
+                "safety_check": {"input": "passed", "output": "passed"},
+                "copyright_check": {"status": "passed", "note": ""},
+                "marking_check": {"explicit": "present", "implicit": "present"},
+                "statement_id": "ST-001",
+            },
+            "_unfilled": [],  # ⚠️ 无未回填项 ⇒ 正式包
+        }
+
+    monkeypatch.setattr(ds, "build_pack_meta", _truth, raising=True)
+    monkeypatch.setattr(ds, "evaluate_gate", lambda p: {
+        "checked": True, "blocked": blocked,
+        "blocks": ([{"code": "compliance.copyright", "message": "版权未校验"}] if blocked else []),
+        "warns": [], "block_count": 1 if blocked else 0, "warn_count": 0,
+        "scope": "pack", "manifest_checked": False, "manifest_note": "test",
+    }, raising=True)
+
+
+def test_formal_pack_blocked_raises_422_and_keeps_report(tmp_path: Path, monkeypatch) -> None:
+    """★ **正式包 + BLOCK ⇒ 拒付 422**（`SW-026`「自检未通过→阻断交付并告警」）。
+
+    ⚠️ 拒付时**不得删除已落盘目录**：自检记录须留档 ≥6 个月、可随时调取。
+    """
+    _patch_formal(monkeypatch, blocked=True)
+    pack = _fake_pack(pack_id="FR-PK-20261104-ABCD1234", statement_id="ST-001", provider_code="FR")
+    out = tmp_path / "delivery"
+    try:
+        pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    except AppError as e:
+        assert e.code == "DELIVERY_PACK_INVALID", f"422 专用码不对：{e.code}"
+        assert e.details.get("gate_blocks") == ["compliance.copyright"], e.details
+        report = Path(e.details["gate_report"])
+        assert report.is_file(), "拒付也必须留下自检报告（留档要求）"
+        assert json.loads(report.read_text(encoding="utf-8"))["blocked"] is True
+        assert Path(e.details["pack_dir"]).is_dir(), "拒付不得删除目录"
+    else:
+        raise AssertionError("正式包 BLOCK 必须拒付")
+
+
+def test_formal_pack_passed_returns_gate_ok(tmp_path: Path, monkeypatch) -> None:
+    """正式包 + 无 BLOCK ⇒ 正常交付，`gate.blocked=False`、无预演说明。"""
+    _patch_formal(monkeypatch, blocked=False)
+    pack = _fake_pack(pack_id="FR-PK-20261104-ABCD1234", statement_id="ST-001", provider_code="FR")
+    out = tmp_path / "delivery"
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    assert r.is_preview is False
+    assert r.gate["blocked"] is False
+    assert r.gate["checked"] is True
+    assert (Path(r.pack_dir) / "gate_report.json").is_file()
+
+
+# ================================================================ ISSUE-055 ①′ 分档门禁（2026-11-04）
+
+def test_preview_pack_reports_gate_but_still_delivers(tmp_path: Path) -> None:
+    """★ **预演包**：门禁照跑、结论如实呈现，但**不拒付**（占位是常态，拒付＝端点长期不可用）。
+
+    断言要点：
+    - `gate.checked=True` 且 `blocked=True`（`compliance.copyright` 未校验 ⇒ BLOCK 档）；
+    - 四件套照常落盘，响应可读；
+    - **`gate_report.json` 随包留档**（`SW-026` 要求自检记录可调取）且**不进** `manifest.files`。
+    """
+    from app.services.delivery_service import GATE_REPORT_NAME
+
+    pack = _fake_pack()
+    out = tmp_path / "delivery"
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    d = Path(r.pack_dir)
+
+    assert r.is_preview is True
+    assert r.gate["checked"] is True, "预演包也必须跑门禁（只呈现不拒付，≠ 不检查）"
+    assert r.gate["blocked"] is True
+    codes = [b["code"] for b in r.gate["blocks"]]
+    assert "compliance.copyright" in codes, f"版权未校验未报 BLOCK：{codes}"
+    assert r.gate["scope"] == "pack"
+    assert r.gate["manifest_checked"] is False, "清单侧未校验须如实标记（不得假覆盖）"
+
+    report = d / GATE_REPORT_NAME
+    assert report.is_file(), "自检报告必须随包留档"
+    saved = json.loads(report.read_text(encoding="utf-8"))
+    assert saved["blocked"] is True and saved["is_preview"] is True
+
+    # ⚠️ 裁决③：报告**不进**交付清单 files（审计附随件，不是交付载荷）
+    mf = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+    assert GATE_REPORT_NAME not in (mf.get("files") or [])
+    assert GATE_REPORT_NAME not in (r.files or [])
+
+
+def _patch_formal(monkeypatch, *, blocked: bool):
+    """把「正式包 + 指定门禁结论」注入（当前 `statement_id` 恒为占位 ⇒ 正式态不可由 API 达成）。"""
+    from app.services import delivery_service as ds
+
+    def _truth(**kwargs):  # noqa: ANN003
+        return {
+            "pack_id": "FR-PK-20261104-ABCD1234",
+            "created_at": "2026-11-04T12:00:00+08:00",
+            "task_type": "text_to_video",
+            "generator": {"system": "S", "version": "0.1.0",
+                          "provider": "FR", "provider_code": "FR"},
+            "generation_trace": {"session_id": "SESS-TEST-0001", "task_id": "T-1",
+                                 "stage_chain": ["synopsis"], "templates": [],
+                                 "model": {"name": "mock", "backend": "mock", "revision": "0"}},
+            "compliance": {
+                "safety_check": {"input": "passed", "output": "passed"},
+                "copyright_check": {"status": "passed", "note": ""},
+                "marking_check": {"explicit": "present", "implicit": "present"},
+                "statement_id": "ST-001",
+            },
+            "_unfilled": [],  # ⚠️ 无未回填项 ⇒ 正式包
+        }
+
+    monkeypatch.setattr(ds, "build_pack_meta", _truth, raising=True)
+    monkeypatch.setattr(ds, "evaluate_gate", lambda p: {
+        "checked": True, "blocked": blocked,
+        "blocks": ([{"code": "compliance.copyright", "message": "版权未校验"}] if blocked else []),
+        "warns": [], "block_count": 1 if blocked else 0, "warn_count": 0,
+        "scope": "pack", "manifest_checked": False, "manifest_note": "test",
+    }, raising=True)
+
+
+def test_formal_pack_blocked_raises_422_and_keeps_report(tmp_path: Path, monkeypatch) -> None:
+    """★ **正式包 + BLOCK ⇒ 拒付 422**（`SW-026`「自检未通过→阻断交付并告警」）。
+
+    ⚠️ 拒付时**不得删除已落盘目录**：自检记录须留档 ≥6 个月、可随时调取。
+    """
+    _patch_formal(monkeypatch, blocked=True)
+    pack = _fake_pack(pack_id="FR-PK-20261104-ABCD1234", statement_id="ST-001", provider_code="FR")
+    out = tmp_path / "delivery"
+    try:
+        pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    except AppError as e:
+        assert e.code == "DELIVERY_PACK_INVALID", f"422 专用码不对：{e.code}"
+        assert e.details.get("gate_blocks") == ["compliance.copyright"], e.details
+        report = Path(e.details["gate_report"])
+        assert report.is_file(), "拒付也必须留下自检报告（留档要求）"
+        assert json.loads(report.read_text(encoding="utf-8"))["blocked"] is True
+        assert Path(e.details["pack_dir"]).is_dir(), "拒付不得删除目录"
+    else:
+        raise AssertionError("正式包 BLOCK 必须拒付")
+
+
+def test_formal_pack_passed_returns_gate_ok(tmp_path: Path, monkeypatch) -> None:
+    """正式包 + 无 BLOCK ⇒ 正常交付，`gate.blocked=False`、无预演说明。"""
+    _patch_formal(monkeypatch, blocked=False)
+    pack = _fake_pack(pack_id="FR-PK-20261104-ABCD1234", statement_id="ST-001", provider_code="FR")
+    out = tmp_path / "delivery"
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    assert r.is_preview is False
+    assert r.gate["blocked"] is False
+    assert r.gate["checked"] is True
+    assert (Path(r.pack_dir) / "gate_report.json").is_file()

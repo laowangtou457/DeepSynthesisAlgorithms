@@ -40,6 +40,7 @@ import os
 import re
 import shutil
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,7 @@ from app.services.pack_meta import (
     apply_service_truth,
     build_pack_meta,
 )
+from app.services.quality_gate import load_pack_validator
 
 #: 交付包 schema（`CFG-006`）——顶层必填键（与 `artifact_contract` 的 pack 形态同源）
 PACK_TOP_KEYS = (
@@ -86,6 +88,9 @@ class DeliveryResult:
     is_preview: bool = True
     #: 交付包本体的字节数（供留痕）
     pack_bytes: int = 0
+    #: **交付前自检结论**（`ISSUE-055` ①′）：`checked`／`blocked`／`blocks`／`warns`／
+    #: `scope`／`report_path`。预演包只呈现不拒付；正式包 `blocked=true` ⇒ 抛 422。
+    gate: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -95,6 +100,7 @@ class DeliveryResult:
             "unfilled": list(self.unfilled),
             "is_preview": self.is_preview,
             "pack_bytes": self.pack_bytes,
+            "gate": dict(self.gate),
         }
 
 
@@ -315,6 +321,59 @@ def build_manifest(pack: dict[str, Any], files: list[str],
     }
 
 
+#: 交付前自检报告文件名（**随包落盘、不进 `manifest.files`** —— `ISSUE-055` 裁决③）
+GATE_REPORT_NAME = "gate_report.json"
+
+#: ⚠️ 清单侧未纳入本次门禁的**如实说明**（不是静默跳过）
+GATE_MANIFEST_NOTE = (
+    "本次仅校验包侧（pack.json）判据：交付清单当前形态**不符** CFG-005 契约"
+    "（缺 statement_id／artifacts 四件套／self_check 18 项等字段），"
+    "直接校验会产生与内容无关的结构性 BLOCK ⇒ 清单侧暂不计入（已登记 ISSUE-056，"
+    "修复后本字段改为 true）。**不代表清单已合规**。"
+)
+
+
+def evaluate_gate(pack_path: Path) -> dict[str, Any]:
+    """跑交付门禁（`delivery/validate_pack.py`）并返回**结构化结论**。
+
+    ⚠️ 只读产物、无副作用；判据**一字不改**（`ISSUE-055`：接线不改进判据）。
+    """
+    module = load_pack_validator()
+    if module is None:
+        return {
+            "checked": False,
+            "blocked": None,
+            "reason": "validator_unavailable",
+            "blocks": [],
+            "warns": [],
+            "scope": "pack",
+            "manifest_checked": False,
+            "manifest_note": GATE_MANIFEST_NOTE,
+        }
+    rep = module.validate_pack(pack_path)
+    blocks = [
+        {"code": code, "message": msg}
+        for lv, code, msg in rep.items
+        if lv == module.BLOCK
+    ]
+    warns = [
+        {"code": code, "message": msg}
+        for lv, code, msg in rep.items
+        if lv == module.WARN
+    ]
+    return {
+        "checked": True,
+        "blocked": bool(blocks),
+        "blocks": blocks,
+        "warns": warns,
+        "block_count": len(blocks),
+        "warn_count": len(warns),
+        "scope": "pack",
+        "manifest_checked": False,
+        "manifest_note": GATE_MANIFEST_NOTE,
+    }
+
+
 def pack_delivery(
     *,
     svc: Any,
@@ -457,7 +516,36 @@ def pack_delivery(
     mf_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     files.append("manifest.json")
 
+    # ⚠️ 预演态判定**必须在门禁之前**：它是「呈现 vs 拒付」的分档依据（`ISSUE-055` ①′）
     is_preview = bool(unfilled) or "{{" in pack_id
+
+    # ---- ⑤ 交付前自检（官方第 9 项「自检记录留档」＋`SW-026`「未通过→阻断」）----
+    # ⚠️ **分档**：预演包 ⇒ 只呈现（`compliance.*` 占位必然 BLOCK，拒付会让端点长期不可用）；
+    #    正式包 ⇒ `blocked` 即拒付（422），并**保留已落盘目录**（自检记录须留档 ≥6 个月，不能删）。
+    gate = evaluate_gate(pack_path)
+    gate["is_preview"] = is_preview
+    gate["evaluated_at"] = datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds")
+    gate_path = dst / GATE_REPORT_NAME
+    gate_path.write_text(json.dumps(gate, ensure_ascii=False, indent=2), encoding="utf-8")
+    gate["report_path"] = str(gate_path)
+
+    if not is_preview and gate.get("blocked"):
+        codes = [b["code"] for b in gate.get("blocks") or []]
+        raise AppError(
+            # ⚠️ 裁决要求 422：本工程 `VALIDATION_ERROR` 映射 **400**，
+            #    而 `DELIVERY_PACK_INVALID` 才是既有 422 专用码 ⇒ 取后者（语义也更准）。
+            ErrorCode.DELIVERY_PACK_INVALID,
+            f"交付前自检未通过（BLOCK {len(codes)} 项）：{', '.join(codes[:5])}",
+            details={
+                "pack_id": pack_id,
+                "pack_dir": str(dst),
+                "gate_blocks": codes,
+                "blocks": gate.get("blocks") or [],
+                "gate_report": str(gate_path),
+                "scope": gate.get("scope"),
+                "manifest_checked": gate.get("manifest_checked"),
+            },
+        )
 
     return DeliveryResult(
         pack_id=pack_id,
@@ -466,4 +554,5 @@ def pack_delivery(
         unfilled=unfilled,
         is_preview=is_preview,
         pack_bytes=pack_path.stat().st_size,
+        gate=gate,
     )
