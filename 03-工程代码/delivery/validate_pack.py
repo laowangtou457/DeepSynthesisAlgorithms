@@ -8,6 +8,13 @@
           §6.4 负向归位 / §6.6 时长上下限 / §8.3 交付前自检（18 项）
 对应需求：SW-007、SW-013、SW-014、SW-022、SW-025、SW-026
 
+★ v1.2（2026-11-04，规范↔门禁覆盖矩阵收口，`PRO-012`）：
+    §8.3 第 8 项：manifest 侧验标识素材包完整性（4 PNG + 规格文件，判 `artifact.overlay`）
+    §8.3 第 10 项：包与清单侧密钥/外部依赖扫描（`secret.leak`／`offline.dependency`）
+    §8.3 第 9 项（manifest 侧）：`statement_id` 占位 ⇒ WARN（`manifest.statement_pending`）
+    ⚠️ §8.3 第 11 项（去标识功能入口）＝**系统级审计范畴**，交付包层面不可机器校验
+       ⇒ **范围外**（人工/系统审计承担，非静默豁免——见 `PRO-012` 覆盖矩阵）
+
 作用：作为交付前的强制门禁，对提示词包与交付清单做结构、内容质量、一致性与合规校验。
       任一 BLOCK 级问题不通过，则不允许生成交付包。
 
@@ -64,6 +71,19 @@ PARAM_PATTERN = re.compile(r"(^|\s)--(ar|v|style|stylize|chaos|no)\b", re.I)
 MARK_PATTERN = re.compile(r"(AI|人工智能).*(生成|合成)", re.I)
 # 中文引号（H3 画面可见文字必须用英文双引号）（规范 §3.7.6）
 CJK_QUOTE_RE = re.compile(r"[\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f]")
+
+# 密钥高置信形态（规范 §8.3 第 10 项；2026-11-04 覆盖矩阵缺口 E 补齐）
+SECRET_PATTERN = re.compile(
+    r"(?:sk-[A-Za-z0-9]{16,}"                    # OpenAI 形态
+    r"|ghp_[A-Za-z0-9]{20,}"                     # GitHub PAT
+    r"|AKIA[0-9A-Z]{16}"                         # AWS AccessKey
+    r"|xox[baprs]-[0-9A-Za-z-]{10,}"             # Slack token
+    r"|Bearer\s+[A-Za-z0-9_.\-]{20,}"            # Bearer 凭证
+    r"|(?:api[_-]?key|secret|password|passwd|access[_-]?token)\s*[=:：]\s*['\"]?[A-Za-z0-9_\-]{8,})",
+    re.I,
+)
+# 外部 URL（交付包须离线可用；SYS-018）
+URL_PATTERN = re.compile(r"https?://", re.I)
 
 # ── 镜头语言质量门（规范 §4.2；阈值与 audit_shots.py 的 GATE 一致）────────────
 GATE = {
@@ -623,6 +643,24 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
             except ValueError:
                 rep.add(BLOCK, "time.format", f"{field} 不是合法 ISO 8601 时间：{val!r}")
 
+    # ⑱ 密钥与外部依赖（规范 §8.3 第 10 项「交付包内无密钥、无外部依赖、离线可用」）
+    #
+    # ⚠️ **本判据为「规范↔门禁覆盖矩阵」缺口 E（2026-11-04 补齐）**：该自检项自 V1.1 起
+    #    就写明「阻断交付」，但本文件原先**从未检查**（与 `copyright_check` 漏项同族——
+    #    病根＝「只查『该有的在不在』，没查『规范要求查的查没查』」）。
+    # ⚠️ 密钥扫描只认**高置信形态**（sk-/ghp_/AKIA/xox/Bearer 前缀 + 键值对），
+    #    中文正文里出现这些形态基本可判泄漏；低置信词（如「密钥」二字）不判，避免误伤。
+    # ⚠️ 外部依赖＝`http(s)://` 链接——交付包须离线可用（SYS-018），包内出现任何
+    #    外部 URL 即阻断（示例包实测 0 处 URL，无误伤基线）。
+    raw_all = pack_path.read_text(encoding="utf-8")
+    for m in SECRET_PATTERN.finditer(raw_all):
+        rep.add(BLOCK, "secret.leak",
+                f"交付包内疑似密钥 {m.group(0)[:8]}… → 阻断交付（§8.3 第 10 项；须移出密钥并轮换）")
+        break
+    if URL_PATTERN.search(raw_all):
+        rep.add(BLOCK, "offline.dependency",
+                "交付包内含外部 URL 依赖 → 阻断交付（§8.3 第 10 项 / SYS-018 离线可用）")
+
     return rep
 
 
@@ -637,6 +675,25 @@ def validate_manifest(path: Path, pack_rep: Report | None) -> Report:
         art = (data.get("artifacts", {}) or {}).get(key, {}) or {}
         if not art.get("present"):
             rep.add(BLOCK, "artifact.missing", f"{label} 缺失 → 阻断交付（SW-014）")
+
+    # ⚠️ 标识素材包完整性（规范 §8.3 第 8 项「4 个 PNG + 规格文件存在」）
+    #    **覆盖矩阵缺口 C（2026-11-04 补齐）**：schema 的 `artifact.files`（minItems 1）
+    #    只保证「非空」，原先只判 `present` ⇒ 3 个 PNG／缺规格文件的清单照样放行。
+    ov = (data.get("artifacts", {}) or {}).get("overlay_assets", {}) or {}
+    ov_files = ov.get("files", []) or []
+    png_cnt = sum(1 for f in ov_files if str(f).lower().endswith(".png"))
+    has_spec = any("overlay_spec" in str(f) or "AST-002" in str(f) for f in ov_files)
+    if ov.get("present") and (png_cnt < 4 or not has_spec):
+        rep.add(BLOCK, "artifact.overlay",
+                f"标识素材包不完整：PNG {png_cnt}/4、规格文件{'存在' if has_spec else '缺失'}"
+                f"（§8.3 第 8 项：4 个 PNG + 规格文件）")
+
+    # ⚠️ 合规声明编号占位（与包侧 `compliance.statement_pending` 同口径，NT-02 纪律）
+    #    **覆盖矩阵缺口 D 的 manifest 侧补齐**：schema 只保证 `minLength 1`，
+    #    占位形态须由判据层如实标「未取得」。
+    if _is_not_obtained(data.get("statement_id")):
+        rep.add(WARN, "manifest.statement_pending",
+                "合规声明编号**结果未取得**（未接入／占位）→ 不得用于正式交付，须回填（NT-02 同纪律）")
 
     # 质量门报告（规范 §8.3 第 13 项）
     qg = (data.get("artifacts", {}) or {}).get("quality_gate_report", {}) or {}
@@ -691,6 +748,16 @@ def validate_manifest(path: Path, pack_rep: Report | None) -> Report:
         if a.get("negative_prompt_supported") is False and a.get("negative_residue_check") != "pass":
             rep.add(BLOCK, "adapter.negative",
                     f"{a.get('model_display')} 不支持负向字段，但未标记 negative_residue_check=pass（§8.3 第 17 项）")
+
+    # ⚠️ 清单同受 §8.3 第 10 项约束（交付包内无密钥、无外部依赖）——与包侧同扫描
+    mraw = path.read_text(encoding="utf-8")
+    for m in SECRET_PATTERN.finditer(mraw):
+        rep.add(BLOCK, "secret.leak",
+                f"交付清单内疑似密钥 {m.group(0)[:8]}… → 阻断交付（§8.3 第 10 项；须移出密钥并轮换）")
+        break
+    if URL_PATTERN.search(mraw):
+        rep.add(BLOCK, "offline.dependency",
+                "交付清单内含外部 URL 依赖 → 阻断交付（§8.3 第 10 项 / SYS-018 离线可用）")
 
     if pack_rep is not None:
         pids = {data.get("pack_id")}

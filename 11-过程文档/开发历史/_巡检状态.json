@@ -3,11 +3,11 @@
   "mechanism": "开发历史巡检（每 2 小时）",
   "owner_doc": "11-过程文档/开发历史/README.md",
   "workspace": "E:\\深度合成算法工程材料",
-  "last_scan_at": "2026-11-03T08:53:37+08:00",
-  "last_closure_at": "2026-11-03T08:53:37+08:00",
-  "prev_closure_at": "2026-11-03T06:51:37+08:00",
-  "last_closure_note": "第92轮零新增：窗口 2026-11-03T06:51:37 → 2026-11-03T08:53:37+08:00 四源交叉全零（零提交、工作区14条与第83~91轮基线逐条一致、mtime仅状态件自身、受控区23文件0更新），无新增动作故未生成 DEV、两处清单零改；DEV-20261102-002 批次（末次写入 2026-11-02T18:05:18）逾 14h 零写入，上上轮已判结算、本轮无续写，维持结算结论。",
-  "last_scanned_commit": "474239aa8d685d51e50ba261c8ca6f62c059332a",
+  "last_scan_at": "2026-11-04T09:12:22+08:00",
+  "last_closure_at": "2026-11-04T09:12:22+08:00",
+  "prev_closure_at": "2026-11-04T07:07:59+08:00",
+  "last_closure_note": "第 102 轮（窗口 2026-11-04T07:07:59+08:00 → 2026-11-04T09:12:22+08:00）：四源交叉全零——零提交（git log --all --since 空输出；main＝HEAD＝origin/main＝93e7832、local-full-names 仍 2e6c457、stash 空）；git status 14 条与第 95~101 轮基线逐条一致（4M 代码＝PRO-010 批次由 DEV-20261103-005 承载、2M README＋1M 状态文件＝机制元数据、3M PM-001/全景图/CM-002＋4?? PRO-011 与 DEV-005/006/007＝第 95~96 轮自身产物）；全量 mtime 扫描 559 文件，晚于窗口起点仅 1 件＝状态文件自身（豁免）；受控区 23 文件 0 更新（最新 2026-10-16 10:02:09）。四向编号 dir 98／RA 98／§七 98／§5.2 98，差集全空、无重复号。零新增动作 ⇒ 不生成 DEV 文档、两处清单零改，仅推进巡检状态。",
+  "last_scanned_commit": "93e7832953b78ef44733608248b5d07642957530",
   "last_scanned_branch": "main",
   "baseline_note": "留痕起点 2026-10-13。2026-10-09 ~ 2026-10-12 的历史动作未逐条回填。本文件自身变化不构成工程推进动作，不得记录。",
   "excluded_paths": [
@@ -19,15 +19,15 @@
     ".venv/"
   ],
   "last_scan_result": {
-    "round": 92,
-    "window_start": "2026-11-03T06:51:37+08:00",
-    "window_end": "2026-11-03T08:53:37+08:00",
+    "round": 102,
+    "window_start": "2026-11-04T07:07:59+08:00",
+    "window_end": "2026-11-04T09:12:22+08:00",
     "new_commits": 0,
     "new_actions": 0,
-    "recorded_actions_total": 91,
+    "recorded_actions_total": 98,
     "controlled_area_changed": false,
     "git_status_entries": 14,
-    "conclusion": "零新增动作：不生成 DEV 文档，两处清单零改；仅推进本状态文件。"
+    "conclusion": "零新增动作：零提交（git log --all --since 空输出；main＝HEAD＝origin/main＝93e7832、local-full-names 仍 2e6c457、stash 空）；git status 14 条与第 95~101 轮基线逐条一致；全量 mtime 扫描 559 文件，晚于窗口起点仅 1 件＝状态文件自身（机制元数据豁免）；受控区 23 文件 0 更新 ⇒ 不生成 DEV 文档、两处清单零改，仅推进巡检状态至第 102 轮"
   },
   "open_issues": [
     {
@@ -2054,7 +2054,127 @@
         "13-项目配置管理/CM-002_文件取号表.md"
       ],
       "note": "巡检补录（窗口 2026-11-02 16:19:15 → 18:26）：项目方 2026-11-02 决策「主线切官方 12 项材料导向」一次性落地——跳过 T-021 签核（三处代价如实登记：GB/T 45654—2025 §5.3(c)(2) 留缺口等）；官方第 10 项人工审核补位方案 A+B 就位（新建 PRO-009 V1.0 ＋ SEC-016 V1.0，30 例判读列空白待人工）；PM-001 V1.10→V1.11（T-006/T-008/T-014/T-015/T-017/T-018/T-021/T-089 行注更新＋新立 T-090/T-091/T-092）；PM-002 V1.4→V1.5（Week 7/8 重排，其余顺延 M5）；CM-002 取号（SEC 14→15 份，SEC-015 仍预约空号不复用）。64 秒内成批写入、同一意图合并为一条；作业会话未自产 DEV ⇒ 巡检补录。零 git 写操作；受控区 0 更新；悬空引用检测通过。末次写入 18:05:18 后约 20 分钟复核（短于 1h 结算判据，批次自身已收口故不回置），下轮须确认无同批续写。【2026-11-02 20:31 巡检复核（第86轮）】已结算：末次工程写入 18:05:18 后逾 2h 零写入（全量 mtime 扫描晚于 18:28:09 命中 0 件工程文件，仅第85轮状态产物 3 件豁免），确认无同批续写；依「续写宿主 DEV 不另起号」口径仅追记本事实，不另起 DEV。"
+    },
+    {
+      "id": "DEV-20261103-001",
+      "recorded_at": "2026-11-03T11:18:44+08:00",
+      "action_type": "版本控制",
+      "fingerprint": "commit 15c77db @2026-11-03 10:02:49 15 files +1004/-48 (7A/8M/0D) | push origin/main @10:03:06 (remote reflog 1793671386) | git status 14->10 | local-full-names 2e6c457 未动 | stash 空",
+      "files": [
+        "DEV-20261103-001-提交官方12项材料导向批次并推送main分支.md",
+        "09-合规资料库/05-台账与制度/SEC-016_内容安全人工抽检台账.md",
+        "09-合规资料库/05-台账与制度/抽检清单/2026-11-02-bank-A1-06.md",
+        "09-合规资料库/05-台账与制度/抽检清单/2026-11-02-lexicon-A1-06-宣扬暴力淫秽色情.md",
+        "09-合规资料库/06-构建工具/sign_off.py",
+        "11-过程文档/PRO-009_内容安全人工抽检方案.md",
+        "12-项目管理/PM-001_任务清单.md",
+        "12-项目管理/PM-002_日程表.md",
+        "13-项目配置管理/CM-002_文件取号表.md"
+      ],
+      "note": "巡检补录（第 93 轮）：14 天积压（自 474239a）一次性入库——内容侧承载 2026-11-02 两批（DEV-20261102-001 sign_off 修复+抽检清单；DEV-20261102-002 官方 12 项口径切换）+ 4 份 DEV 留痕 + 两处清单 + 状态文件；各内容动作均有既有 DEV，本件只记「入库+推送」。"
+    },
+    {
+      "id": "DEV-20261103-002",
+      "recorded_at": "2026-11-03T11:18:44+08:00",
+      "action_type": "代码 / 修复 / 合规资产 / 文档",
+      "fingerprint": "mtime 10:16:31~10:22:16 x10 files | git diff 9M+1?? 212+/60- | lexicon.py _read_words TAB 切分 (ISSUE-049) | safety_service 分级处置 block/review/warn (ISSUE-050) | Hit 增 level | SEC-017 新建 | SEC-016 V1.1 回填 16 例 | PM-001 V1.12 新登记 ISSUE-049/050/051 | CM-002 SEC 15->16 份 下一起始 SEC-018 | 223 tests green (巡检独立复跑 exit 0)",
+      "files": [
+        "DEV-20261103-002-SEC016首轮抽检暴露并修复双闸两层真实缺陷.md",
+        "03-工程代码/app/repositories/lexicon.py",
+        "03-工程代码/app/schemas/safety.py",
+        "03-工程代码/app/services/safety_service.py",
+        "03-工程代码/app/tests/test_safety.py",
+        "03-工程代码/app/tests/test_safety_chain.py",
+        "09-合规资料库/05-台账与制度/SEC-016_内容安全人工抽检台账.md",
+        "09-合规资料库/05-台账与制度/SEC-017_内容安全人工抽检首轮结果报告.md",
+        "12-项目管理/PM-001_任务清单.md",
+        "12-项目管理/PM-002_日程表.md",
+        "13-项目配置管理/CM-002_文件取号表.md"
+      ],
+      "note": "巡检补录（第 93 轮，窗口 2026-11-03 08:53:37 → 11:1x）：SEC-016 首轮人工抽检（项目方 2026-11-02「开抽」指令触发）暴露双闸两层真实缺陷并当场修复——①词表 TAB 解析缺失致双闸匹配从未生效（测试夹具纯词条恰好绕过，221 全绿而功能失效）；②运行时丢弃等级致 96% review 级被当 block、script 段 100% 误拒。修复后阻断口径误拒率 0.0%（0/45）、223 项测试全绿（巡检独立复跑实证）。遗留：ISSUE-049/050/051 与既有旧号撞号（PM-001 同表各 2 行，登记待裁定）；高频词降级口径待项目方定；14 例待实跑+16 例待双签；下轮确认无同批续写。【第 94 轮结算确认】末次工程写入 2026-11-03 10:22:16，第 94 轮复核时点（2026-11-03T13:21:15+08:00）仍零写入、无同批续写 ⇒ 判已结算。"
+    },
+    {
+      "id": "DEV-20261103-003",
+      "recorded_at": "2026-11-03T16:28:58+08:00",
+      "action_type": "代码 / 修复 / 合规资产 / 提示词资产 / 文档",
+      "fingerprint": "mtime 15:00~16:40 | commit eb2ba8a 16:34:28 (25 files +1907/-99) | 双闸三级分级 block/review/warn + 同类别取最高等级 | SW-011 注入模式补 4 处 | SW-I04 交付端点实现(delivery_service 469 行) | generation_trace.model 语义修正 | TPL-010 v2.2.2 | 词表降级 18 条 | SEC-016 表塌陷修复 + 签字包",
+      "files": [
+        "DEV-20261103-003-真机实测暴露并修复双闸交付资产三层缺陷.md",
+        "03-工程代码/app/services/safety_service.py",
+        "03-工程代码/app/services/delivery_service.py",
+        "03-工程代码/app/services/dialogue_service.py",
+        "03-工程代码/app/api/v1/endpoints/delivery.py",
+        "03-工程代码/app/repositories/lexicon.py",
+        "03-工程代码/app/schemas/safety.py",
+        "03-工程代码/prompts/templates/TPL-010_storyboard_v1.yaml",
+        "09-合规资料库/01-关键词库/词表/A2-02-信仰歧视内容.txt",
+        "09-合规资料库/01-关键词库/词表/A3-02-违反商业道德.txt",
+        "09-合规资料库/05-台账与制度/SEC-016_内容安全人工抽检台账.md"
+      ],
+      "note": "作业会话自产（16:28:58 落盘），巡检按幂等只补登记、未重复生成（第 95 轮）。其内容与本窗口提交 eb2ba8a（16:34:28，单主题）同批 ⇒ 提交不另立记录。"
+    },
+    {
+      "id": "DEV-20261103-004",
+      "recorded_at": "2026-11-03T17:00:16+08:00",
+      "action_type": "代码 / 契约变更 / 规范升版 / 文档",
+      "fingerprint": "mtime 16:44~16:53 | commit 93e7832 17:02:52 (23 files +2112/-205) 并推送 | CFG-006 compliance.* 增 not_available + pack_id pattern 扩占位形态 + schema_version 2.2.0 | validate_pack 三态式 + _is_not_obtained() | copyright_check 判据补齐 | test_validate_pack(21) + test_schema_version_consistency | SPEC-008 v2.4 | TPL-008 v2.1.1",
+      "files": [
+        "DEV-20261103-004-PRO007两步落地交付契约占位承载与合规状态档位.md",
+        "03-工程代码/delivery/validate_pack.py",
+        "03-工程代码/delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json",
+        "03-工程代码/delivery/examples/CFG-003_demo_manifest.json",
+        "03-工程代码/delivery/examples/CFG-004_demo_pack.json",
+        "03-工程代码/app/services/pack_meta.py",
+        "03-工程代码/app/inference/mock_backend.py",
+        "03-工程代码/app/tests/test_validate_pack.py",
+        "03-工程代码/app/tests/test_schema_version_consistency.py",
+        "01-架构设计/SPEC-008_分镜提示词交付规范-v2.3.md",
+        "03-工程代码/prompts/templates/TPL-008_script_v1.yaml",
+        "03-工程代码/prompts/templates/TPL-009_shot_prompt_v1.yaml",
+        "12-项目管理/PM-001_任务清单.md"
+      ],
+      "note": "作业会话自产（17:00:16 落盘），巡检按幂等只补登记、未重复生成（第 95 轮）。其内容与本窗口提交 93e7832（17:02:52，单主题、已推送 origin/main）同批 ⇒ 提交不另立记录。"
+    },
+    {
+      "id": "DEV-20261103-005",
+      "recorded_at": "2026-11-03T17:20:51+08:00",
+      "action_type": "代码 / 修复 / 文档",
+      "fingerprint": "mtime 16:41~17:25 | PRO-010 方案件 306 行 | quality_gate 增 adequacy_findings/checked/ok + 去重映射 + retryable | quality_gate_stages 扩 script | validate_output L918 类型防御 (ISSUE-049) | test_quality_gate_adequacy(9) | PM-001 T-093/ISSUE-053 | CM-002 V1.29 | 真机 3 轮观测 274 passed",
+      "files": [
+        "DEV-20261103-005-PRO010批次1批次2落地与真机观测.md",
+        "11-过程文档/PRO-010_质量门禁体系的覆盖缺口与接入方案-缺陷B处置.md",
+        "03-工程代码/app/services/quality_gate.py",
+        "03-工程代码/app/core/config.py",
+        "03-工程代码/app/tests/test_quality_gate_adequacy.py",
+        "03-工程代码/prompts/validate_output.py"
+      ],
+      "note": "作业会话自产（17:20:51 落盘），巡检按幂等只补登记、未重复生成（第 95 轮）。末次工程写入 17:32 前后与本窗口 `DEV-20261103-006` 批次相接，两者文件零重叠；本件工作区改动仍全部未提交。"
+    },
+    {
+      "id": "DEV-20261103-006",
+      "recorded_at": "2026-11-03T18:42:24+08:00",
+      "action_type": "文档 / 决策",
+      "fingerprint": "PRO-011 388 行/28514B/LF 新建 17:32:20 | CM-002 V1.30 取号 PRO-011 (PRO 10->11 份, 下一起始 PRO-012) 17:33:09 | PM-001 ISSUE-053 续写 + 修订记录 18:09:08 | 零代码/零模板/零判据改动 | pytest 274 passed exit 0 (巡检独立复跑)",
+      "files": [
+        "DEV-20261103-006-PRO011出具enforce翻转三前置处置方案并取号登记.md",
+        "11-过程文档/PRO-011_enforce翻转三前置的处置方案.md",
+        "13-项目配置管理/CM-002_文件取号表.md",
+        "12-项目管理/PM-001_任务清单.md"
+      ],
+      "note": "巡检补录（第 95 轮）：作业会话未自产 DEV。两处订正前置表述（直出率分母 0/2→0/3；补漏 ISSUE-047 为第一硬前置）＋ 六条处置线 ＋ E1/E2/E3 准入判据 ＋ 四问待裁决。登记缺陷：CM-002 表头仍 V1.28（变更记录已 V1.30）；V1.29 行把 PRO-010 归属标为 DEV-20261103-004（实际宿主 -005）。"
+    },
+    {
+      "id": "DEV-20261103-007",
+      "recorded_at": "2026-11-03T18:42:24+08:00",
+      "action_type": "文档 / 结构",
+      "fingerprint": "全景图 259 行/36518B/纯LF 全量重写 18:08:06 (h2 x5) | ISSUE-037/T-020 移入「已闭环的旧阻塞」 | PM-001 T-082 ⬜→🟨 部分完成 + 修订记录 18:09:08 | 生成器脚本化未落地 ⇒ 不判 🟩",
+      "files": [
+        "DEV-20261103-007-全景图全量重生成并按当日水位订正陈旧阻塞.md",
+        "12-项目管理/需求进度与开发顺序全景图.html",
+        "12-项目管理/PM-001_任务清单.md"
+      ],
+      "note": "巡检补录（第 95 轮）：触发＝项目方「更新全景图」指令；与 DEV-20261103-006 共用 PM-001 同一次写入（V1.13→V1.14），按主题分别归属。派生件数据源栏引 PM-001 V1.13 而同批主件已 V1.14（写入次序所致）。"
     }
   ],
-  "last_closure_action": null
+  "last_closure_action": "零新增：不生成 DEV 文档、两处清单零改；recorded_actions 恒 98"
 }

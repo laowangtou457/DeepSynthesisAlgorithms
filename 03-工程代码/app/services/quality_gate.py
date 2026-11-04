@@ -134,6 +134,20 @@ _ADEQUACY_EQUIV_RULES: dict[str, str] = {
     "unit_size_out_of_range": "R10",
     "storyboard_duration_sum_mismatch": "R14",
     "script_no_scenes": "R6",
+    # ---- 以下三条由**真实链路观测**补入（2026-11-03 批次 1 真跑）----
+    # ⚠️ **单测构造不出来的那一类**：这三个「total 缺失/非正」在离线读判据源码时
+    # **看起来**像与「Σ≠total」是**两件事**，实为**同一件事的两面**——
+    # `R4`／`R14` 对 `total` 为 `None` 报「缺 total_xxx」、对 `total` 为 **0**（非正）
+    # 走 `total != s` 分支报「Σ≠total」⇒ **已覆盖**。
+    # 若不补进本表 ⇒ 同一失败被**计两次**（`R14` 一次 ＋ adequacy 一次），
+    # 而实测 `storyboard` 段正是 `total_duration_ms=0` 这个形态（`R14` 与 adequacy 双双报出）。
+    "script_total_missing_or_nonpositive": "R4",
+    "storyboard_total_missing_or_nonpositive": "R14",
+    # ⚠️ `synopsis_total_missing_or_nonpositive`：**R 族无等效判据**（实测 `validate_output.py`
+    # 中 `synopsis` 与 `total_est_seconds` 零关联）⇒ **刻意不列入本表**，
+    # 即它**不被去重**、会进 `retryable`。但 `synopsis` 当前**不在门禁段**
+    # （`quality_gate_stages` 未含它）⇒ 该条**暂不生效**；若将来加 `synopsis` 段，
+    # 它将成为该段**唯一**能抓「total 缺失/非正」的判据。
 }
 
 #: `content_adequacy` 需要的上游**键名是变量名**（如 `script_json`），

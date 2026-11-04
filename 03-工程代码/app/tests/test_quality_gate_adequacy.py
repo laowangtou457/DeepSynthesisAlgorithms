@@ -215,3 +215,33 @@ def test_module_does_not_duplicate_adequacy_rules() -> None:
     assert "SCENE_DURATION_FLOOR_SECONDS" not in src, "抄了 `content_adequacy` 的判据常量"
     assert "UNIT_SIZE_ALLOWED" not in src, "抄了 `content_adequacy` 的判据常量"
     assert "SCRIPT_TOTAL_TOLERANCE" not in src, "抄了 `content_adequacy` 的判据常量"
+
+
+def test_total_zero_is_deduped_against_r14() -> None:
+    """⭐ **真实链路观测补入的边界**（2026-11-03 批次 1 真跑）。
+
+    `total_duration_ms=0` 这个形态下，`R14`（判据族）与
+    `storyboard_total_missing_or_nonpositive`（adequacy）**报的是同一件事**：
+    - `R14`：`total is None` → 「缺 total_duration_ms」；`total != s` → 「Σ≠total」
+      ⇒ `total=0` 走后者分支，**已被覆盖**；
+    - adequacy：`total` 非正 → `storyboard_total_missing_or_nonpositive`。
+
+    ⚠️ **离线读判据源码时看不出来**（像是「缺失」与「不等」两件事），
+    是**真跑**才暴露的 ⇒ 若不补进去重表，同一失败会被**计两次**
+    （`R14` 一次 ＋ adequacy 一次）⇒ 重试成本翻倍。
+    """
+    sb = _storyboard(shot_ms=[15000, 15000, 15000], total_ms=0)
+    v = asyncio.run(_run("storyboard", json.dumps(sb, ensure_ascii=False)))
+
+    # 判据族确实报了 R14
+    assert any("R14" in e for e in v.engine_errors), "前提失效：R14 未报出"
+
+    f = next(
+        (f for f in v.adequacy_findings if f.get("code") == "storyboard_total_missing_or_nonpositive"),
+        None,
+    )
+    assert f is not None, "前提失效：adequacy 未探测到 total 非正"
+    # ⚠️ 须被去重（等效判据 R14 已报出）
+    assert f.get("source") == "engine_dup"
+    assert f.get("equiv_rule") == "R14"
+    assert not any("storyboard_total_missing_or_nonpositive" in r for r in v.retryable)

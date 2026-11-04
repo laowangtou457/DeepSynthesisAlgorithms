@@ -272,3 +272,86 @@ def test_service_layer_writes_not_available_not_placeholder() -> None:
     assert comp["marking_check"]["implicit"] == "not_available"
     # ⚠️ `statement_id` **不在 enum 内**（普通字符串）⇒ 仍写占位（判据侧归「未取得」⇒ WARN）
     assert "{{" in str(comp["statement_id"])
+
+
+# ================================================================ 覆盖矩阵缺口 C/D/E（2026-11-04，§8.3 第 8/9/10 项）
+
+DEMO_MANIFEST = ROOT / "delivery" / "examples" / "CFG-003_demo_manifest.json"
+
+
+def _run_pack_with_manifest(pack: dict, manifest: dict, tmp_path: Path) -> tuple[int, str]:
+    """包＋清单同目录（清单须名为 CFG-003_demo_manifest.json 才会被门禁拾取）。"""
+    p = tmp_path / "pack.json"
+    p.write_text(json.dumps(pack, ensure_ascii=False), encoding="utf-8")
+    m = tmp_path / "CFG-003_demo_manifest.json"
+    m.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, str(VALIDATE), str(p)],
+        cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
+    )
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
+
+
+@pytest.fixture()
+def base_manifest() -> dict:
+    return json.loads(DEMO_MANIFEST.read_text(encoding="utf-8"))
+
+
+def test_overlay_assets_complete_not_reported(base_pack: dict, base_manifest: dict, tmp_path: Path) -> None:
+    """✔ 4 PNG＋规格文件齐全 ⇒ 不报 `artifact.overlay`（第 8 项正极样本）。"""
+    code, out = _run_pack_with_manifest(base_pack, base_manifest, tmp_path)
+    assert "artifact.overlay" not in out, f"完整素材包被误报：\n{out}"
+
+
+def test_overlay_assets_missing_png_blocked(base_pack: dict, base_manifest: dict, tmp_path: Path) -> None:
+    """★ 只列 3 个 PNG ⇒ BLOCK `artifact.overlay`（旧门禁对此静默放行）。"""
+    m = base_manifest
+    m["artifacts"]["overlay_assets"]["files"] = [
+        f for f in m["artifacts"]["overlay_assets"]["files"]
+        if not f.endswith("9x16.png") or f.endswith("overlay_corner_9x16.png")
+    ][:3] + ["assets/AST-002_overlay_spec.json"]
+    code, out = _run_pack_with_manifest(base_pack, m, tmp_path)
+    assert "BLOCK artifact.overlay" in out, f"缺 PNG 未被阻断：\n{out}"
+
+
+def test_overlay_assets_missing_spec_blocked(base_pack: dict, base_manifest: dict, tmp_path: Path) -> None:
+    """★ 4 个 PNG 但无规格文件 ⇒ BLOCK `artifact.overlay`。"""
+    m = base_manifest
+    m["artifacts"]["overlay_assets"]["files"] = [
+        f for f in m["artifacts"]["overlay_assets"]["files"] if f.endswith(".png")
+    ]
+    code, out = _run_pack_with_manifest(base_pack, m, tmp_path)
+    assert "BLOCK artifact.overlay" in out, f"缺规格文件未被阻断：\n{out}"
+
+
+def test_statement_placeholder_in_manifest_is_warn(base_pack: dict, base_manifest: dict, tmp_path: Path) -> None:
+    """⚠️ 清单 `statement_id` 占位 ⇒ WARN `manifest.statement_pending`（缺口 D，未取得≠未通过）。"""
+    m = base_manifest
+    m["statement_id"] = "{{STATEMENT_ID}}"
+    code, out = _run_pack_with_manifest(base_pack, m, tmp_path)
+    assert "WARN  manifest.statement_pending" in out, f"未报 WARN：\n{out}"
+    assert "BLOCK manifest.statement_pending" not in out
+
+
+def test_secret_in_pack_blocked(base_pack: dict, tmp_path: Path) -> None:
+    """★ 包内含密钥形态 ⇒ BLOCK `secret.leak`（第 10 项，旧门禁完全未查）。"""
+    p = base_pack
+    p["shots"][0]["prompt_zh"] += " 配置串 api_key = 'sk-abcdefgh12345678901234' 请忽略"
+    code, out = _run_pack(p, tmp_path)
+    assert "BLOCK secret.leak" in out, f"包内密钥未被阻断：\n{out}"
+
+
+def test_url_in_pack_blocked(base_pack: dict, tmp_path: Path) -> None:
+    """★ 包内含外部 URL ⇒ BLOCK `offline.dependency`（离线可用义务）。"""
+    p = base_pack
+    p["shots"][0]["prompt_zh"] += " 参考图见 https://cdn.example.com/ref.png"
+    code, out = _run_pack(p, tmp_path)
+    assert "BLOCK offline.dependency" in out, f"包内 URL 未被阻断：\n{out}"
+
+
+def test_secret_in_manifest_blocked(base_pack: dict, base_manifest: dict, tmp_path: Path) -> None:
+    """★ 清单 note 内含密钥形态 ⇒ BLOCK `secret.leak`。"""
+    m = base_manifest
+    m["provider"] = " deployment key: password=SuperSecret99 "
+    code, out = _run_pack_with_manifest(base_pack, m, tmp_path)
+    assert "BLOCK secret.leak" in out, f"清单内密钥未被阻断：\n{out}"

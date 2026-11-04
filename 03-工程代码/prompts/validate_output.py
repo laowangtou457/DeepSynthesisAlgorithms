@@ -915,7 +915,17 @@ def rule_dialogue_speed(doc, where):
     """R15：台词字数 ÷ 秒数 ≤ 9（规范 §4.5）。"""
     over, checked = [], 0
     for r in _shots(doc):
-        d = (r.get("dialogue") or "").strip()
+        # ⚠️ **类型防御**（`ISSUE-049` · 2026-11-03 `PRO-010` 批次 2 真跑复现）：
+        #    分镜层的 `shots[].dialogue` 是**数组**（`[{type,text},…]`），
+        #    而本判据按**字符串**处理 ⇒ 旧写法 `(r.get("dialogue") or "").strip()`
+        #    在**列表**上抛 `AttributeError` ⇒ **判据脚本自爆** ⇒ 门禁 `ok=None`
+        #    ⇒ **该段门禁整体失效**（实测 `storyboard` 段 `engine_validator_error:AttributeError`、
+        #    `engine_checks=0`）。
+        #    ⇒ 与同文件 L716／L972 的 `str(...)` 防御**同口径**（那两处已有，此处缺失）。
+        #    ⚠️ **判据语义零改动**：非字符串一律按「无台词」处理（跳过），
+        #    与 `not d` 的既有分支一致；真正的台词字数由 `R15` 的**脚本层**（`script` 形态）判。
+        d = r.get("dialogue")
+        d = d.strip() if isinstance(d, str) else ""
         ms = r.get("duration_ms")
         if not d or not isinstance(ms, (int, float)) or ms <= 0:
             continue

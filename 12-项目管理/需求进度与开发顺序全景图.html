@@ -50,7 +50,7 @@ svg{width:100%;height:auto;display:block}
 
 <h1>需求进度与开发顺序全景图</h1>
 <p class="sub">回答四问：做到需求几了 · 需求之间的前后关系 · 后续哪些是串行 · 整体开发顺序</p>
-<p class="meta">生成时间 2026-10-15 09:40　｜　⚠️ <b>本图数据截至 2026-10-15，主件已于 2026-10-16 更新（见 <code>PM-001</code> §9）——本图待全量重生成（<code>T-082</code>），其间<b>不得作为对外汇报依据</b></b>　｜　数据来源：<code>REQ-005</code> V2.6 · <code>REQ-004</code> V2.0 · <code>REQ-001</code> V1.6 · <code>PM-001</code> · <code>PM-002</code>　｜　性质：**派生视图**（机器生成，内容以主件为准，不取编号）</p>
+<p class="meta">生成时间 2026-11-03 18:10　｜　本图为 <code>T-082</code>「全量重生成」的首次落地，<b>数据截至 2026-11-03（第 8 次复审后）</b>；⚠️ <code>T-082</code> 余项「生成器脚本化」仍未落地，主件后续升版仍须手工同批刷新　｜　数据来源：<code>REQ-005</code> V2.6 · <code>REQ-004</code> V2.0 · <code>REQ-001</code> V1.6 · <code>PM-001</code> V1.13 · <code>PM-002</code>（2026-11-02 口径切换后）　｜　性质：**派生视图**（机器生成，内容以主件为准，不取编号）</p>
 
 <section>
 <h2>一、目前做到需求几了</h2>
@@ -59,8 +59,8 @@ svg{width:100%;height:auto;display:block}
 <div class="cards">
   <div class="card"><div class="k">需求文档 · 三层</div><div class="v">3 / 3</div><div class="s">HW-018 · SYS-021 · SW-028</div></div>
   <div class="card"><div class="k">软件级验收通过</div><div class="v">0 / 28</div><div class="s">验收以服务化跑测为准</div></div>
-  <div class="card"><div class="k">当前边界</div><div class="v">SW-008</div><div class="s">建模资产 5/5 已建齐</div></div>
-  <div class="card"><div class="k">关键路径下一站</div><div class="v">T-004</div><div class="s">生成链路接入</div></div>
+  <div class="card"><div class="k">当前边界</div><div class="v">T-004</div><div class="s">四段全通 · W4 验收未过（直出率 0/6）</div></div>
+  <div class="card"><div class="k">M4 真缺口</div><div class="v">3 项</div><div class="s">第 9 项日志 · 第 8 项标识 · 第 7 项权益文档</div></div>
 </div>
 
 <div class="bar">
@@ -70,8 +70,8 @@ svg{width:100%;height:auto;display:block}
 </div>
 <div class="legend">
   <div><span class="dot" style="background:#9FE1CB"></span><span><code>SW-001 ~ SW-003</code>　对话编排（3 条）：骨架已通 —— 状态机与 3 个端点已实现，服务化未跑测</span></div>
-  <div><span class="dot" style="background:#EF9F27"></span><span><code>SW-004 ~ SW-008</code>　内容生成与解析重构（5 条）：模板资产 5/5 建成，服务化实现 0　← <b>当前边界</b></span></div>
-  <div><span class="dot" style="background:#D3D1C7"></span><span><code>SW-009 ~ SW-028</code>　安全 / 标识 / 版权 / 治理 / 未保（20 条）：未开工</span></div>
+  <div><span class="dot" style="background:#EF9F27"></span><span><code>SW-004 ~ SW-008</code>　内容生成与解析重构（5 条）：模板资产 5/5 建成，<b>链路四段全通（服务化已实现）</b>；W4 验收不成立（直出率 0/6）　← <b>当前边界</b></span></div>
+  <div><span class="dot" style="background:#D3D1C7"></span><span><code>SW-009 ~ SW-028</code>　安全 / 标识 / 版权 / 治理 / 未保（20 条）：未开工（安全双闸代码与接线已随 <code>T-005</code> 落地，达标判定待跑测）</span></div>
 </div>
 
 <div class="mini">
@@ -170,59 +170,72 @@ svg{width:100%;height:auto;display:block}
 
 <section>
 <h2>四、后续整个工程的开发顺序</h2>
-<p class="note">上排为关键路径（顺序不可乱），下四轨为并行轨道（可同时推进，不占主干顺序）。</p>
+<p class="note">⚠️ <b>2026-11-02 口径切换（项目方决策）</b>：主线改为「<b>官方 12 项材料导向</b>」——官方《拟公示内容及提供资料（生成合成类）》12 项清单无一项要求提交词库／签核记录 ⇒ 跳过合规词库本地 review（<code>T-021</code>）。<b>M4（11/23–12/06）只交官方 12 项材料</b>；跑测／<code>T-011</code>／<code>T-013</code>／<code>T-008</code> 二期顺延 <b>M5（12/07–12/28）</b>。</p>
 
-<svg viewBox="0 0 680 336" role="img">
-<title>后续开发顺序与串并行轨道图</title>
-<desc>关键路径主干 T-004 到 T-018 必须串行；四条并行轨道可同时推进。</desc>
+<svg viewBox="0 0 680 392" role="img">
+<title>开发顺序与里程碑图（2026-11-02 口径切换后）</title>
+<desc>当前周收口与清障；M4 主线为官方 12 项材料补齐；跑测等顺延 M5；治理与外部阻断并行。</desc>
 <defs>
 <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </marker>
 </defs>
-<text x="85" y="34" font-size="12" font-weight="500" fill="#854F0B" text-anchor="middle">现在</text>
-<path d="M85 40L85 54" fill="none" stroke="#854F0B" stroke-width="1" marker-end="url(#arrow2)"/>
-<text x="40" y="80" font-size="12" font-weight="500" fill="#5f5e5a">关键路径 · 必须串行，顺序不可乱</text>
-<g><rect x="40" y="90" width="90" height="46" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="85" y="107" font-size="12" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">T-004</text><text x="85" y="123" font-size="11" fill="#854F0B" text-anchor="middle" dominant-baseline="central">生成链路</text></g>
-<path d="M130 113L140 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
-<g><rect x="142" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="187" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-005</text><text x="187" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">安全双闸</text></g>
-<path d="M232 113L242 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
-<g><rect x="244" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="289" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-013</text><text x="289" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">上机并发实测</text></g>
-<path d="M334 113L344 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
-<g><rect x="346" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="391" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-014/15</text><text x="391" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">红线跑测</text></g>
-<path d="M436 113L446 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
-<g><rect x="448" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="493" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-017</text><text x="493" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">安全评估报告</text></g>
-<path d="M538 113L548 113" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
-<g><rect x="550" y="90" width="90" height="46" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="595" y="107" font-size="12" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-018</text><text x="595" y="123" font-size="11" fill="#185FA5" text-anchor="middle" dominant-baseline="central">申报书 → 提交</text></g>
+<text x="40" y="24" font-size="12" font-weight="500" fill="#854F0B">当前 · Week 4（11/02–11/08）收口与交付契约</text>
+<g><rect x="40" y="34" width="150" height="34" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="115" y="51" font-size="11.5" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">T-004/T-005 收口</text></g>
+<path d="M190 51L202 51" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="204" y="34" width="170" height="34" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="289" y="51" font-size="11.5" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">ISSUE-047 裁决（第一前置）</text></g>
+<path d="M374 51L386 51" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="388" y="34" width="250" height="34" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="513" y="51" font-size="11.5" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">清障：ISSUE-038 余 7 项 · ISSUE-050 · T-088/089</text></g>
 
-<text x="40" y="166" font-size="12" font-weight="500" fill="#5f5e5a">并行轨道 · 可同时推进，不占用主干顺序</text>
-<text x="40" y="203" font-size="11" fill="#5f5e5a" dominant-baseline="central">可插空支线</text>
-<g><rect x="160" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-006 标识与交付四件套</text></g>
-<g><rect x="320" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-007 RAG 检索增强</text></g>
-<g><rect x="480" y="188" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="203" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-008 二期外围能力</text></g>
-<text x="40" y="245" font-size="11" fill="#5f5e5a" dominant-baseline="central">部署与数据</text>
-<g><rect x="160" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-011 数据来源说明</text></g>
-<g><rect x="320" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-012 部署运维手册</text></g>
-<g><rect x="480" y="230" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="245" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-016 QLoRA 手册（可选）</text></g>
-<text x="40" y="287" font-size="11" fill="#5f5e5a" dominant-baseline="central">合规资产</text>
-<g><rect x="160" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="234" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-020 受控 4 类编写</text></g>
-<g><rect x="320" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="394" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-058 台账回填自检</text></g>
-<g><rect x="480" y="272" width="148" height="30" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="287" font-size="11" fill="#444441" text-anchor="middle" dominant-baseline="central">T-021/022 签核与授权</text></g>
-<text x="40" y="329" font-size="11" fill="#5f5e5a" dominant-baseline="central">外部阻断</text>
-<g><rect x="160" y="314" width="148" height="30" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="234" y="329" font-size="11" fill="#633806" text-anchor="middle" dominant-baseline="central">T-026 网信办口径确认</text></g>
-<g><rect x="320" y="314" width="148" height="30" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="394" y="329" font-size="11" fill="#633806" text-anchor="middle" dominant-baseline="central">T-027 制度责任人名单</text></g>
+<text x="40" y="102" font-size="12" font-weight="500" fill="#5f5e5a">M4 主线 · 官方 12 项材料补齐（11/23–12/06，只交 12 项材料）</text>
+<g><rect x="40" y="112" width="145" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="112.5" y="129" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">第 12 项 · T-092 拟公示</text></g>
+<path d="M185 129L199 129" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="201" y="112" width="145" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="273.5" y="129" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">第 9 项 · T-090 日志留存</text></g>
+<path d="M346 129L360 129" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="362" y="112" width="145" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="434.5" y="129" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">第 8 项 · T-006 标识</text></g>
+<path d="M507 129L521 129" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="523" y="112" width="150" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="598" y="129" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">第 7 项 · T-091 权益文档</text></g>
+<g><rect x="40" y="156" width="180" height="34" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="130" y="173" font-size="11.5" font-weight="500" fill="#085041" text-anchor="middle" dominant-baseline="central">第 10 项 · SEC-016 举证 ✅</text></g>
+<path d="M220 173L232 173" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="234" y="156" width="190" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="329" y="173" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-017 安全评估报告（提为 M4）</text></g>
+<path d="M424 173L436 173" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="438" y="156" width="140" height="34" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="508" y="173" font-size="11.5" font-weight="500" fill="#0C447C" text-anchor="middle" dominant-baseline="central">T-018 申报书成稿</text></g>
+<path d="M578 173L590 173" fill="none" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="592" y="156" width="88" height="34" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="636" y="173" font-size="11.5" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">M4 齐备 12-06</text></g>
+
+<text x="40" y="224" font-size="12" font-weight="500" fill="#5f5e5a">顺延 M5（12/07–12/28）· 提交备案窗口</text>
+<g><rect x="40" y="234" width="118" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="99" y="251" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-013 并发实测</text></g>
+<path d="M158 251L168 251" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="170" y="234" width="150" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="245" y="251" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-014→T-015 跑测（按需签核）</text></g>
+<path d="M320 251L330 251" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="332" y="234" width="130" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="397" y="251" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-011 数据来源填充</text></g>
+<path d="M462 251L472 251" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="474" y="234" width="106" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="527" y="251" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-008 二期</text></g>
+<path d="M580 251L590 251" fill="none" stroke="#854F0B" stroke-width="1.5" marker-end="url(#arrow2)"/>
+<g><rect x="592" y="234" width="88" height="34" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/><text x="636" y="251" font-size="11.5" font-weight="500" fill="#633806" text-anchor="middle" dominant-baseline="central">提交备案</text></g>
+
+<text x="40" y="302" font-size="12" font-weight="500" fill="#5f5e5a">治理并行轨（不占主线顺序）</text>
+<g><rect x="40" y="312" width="180" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="130" y="329" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-093 门禁缺口批次 1+2 ✅（11-03）</text></g>
+<g><rect x="234" y="312" width="170" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="319" y="329" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">PRO-011 enforce 三前置待裁决</text></g>
+<g><rect x="418" y="312" width="160" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="498" y="329" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-088/T-089 判据与台账整备</text></g>
+<g><rect x="592" y="312" width="88" height="34" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="636" y="329" font-size="11" font-weight="500" fill="#444441" text-anchor="middle" dominant-baseline="central">T-080 §7</text></g>
+
+<text x="40" y="370" font-size="12" font-weight="500" fill="#5f5e5a">外部阻断（建议最先启动，均有外部周期且不占开发工时）</text>
+<text x="40" y="388" font-size="11" fill="#633806">T-026 属地网信办口径确认　·　T-027 八类制度责任人名单</text>
 </svg>
 
 <table>
-<tr><th style="width:14%">周次</th><th style="width:22%">主题</th><th>主干与并行</th></tr>
-<tr><td>Week 1</td><td>启动关键路径 + 清障</td><td><b>已完成</b> <code>T-001</code>／<code>T-002</code>／契约升版批次 <code>T-054~T-056</code>／<code>T-010</code></td></tr>
-<tr><td>Week 2</td><td>提示资产收口 + 回归</td><td><b>已完成</b> <code>SW-008</code> 落地 ＋ <code>T-057</code>；<code>T-012</code> 部署手册启动</td></tr>
-<tr><td>Week 3–4</td><td>工程骨架与收口</td><td><b>已完成</b> <code>T-003</code> → <b>进行中</b> <code>T-004</code> 生成链路接入</td></tr>
-<tr><td>Week 5–6</td><td>链路打通 · 安全与上机</td><td><code>T-004</code> 完成 → <code>T-005</code> 安全双闸 → <code>T-013</code> 上机并发实测</td></tr>
-<tr><td>Week 7–8</td><td>评测准备 · 技术闭环</td><td><code>T-014</code> 拒答测试集 → <code>T-015</code> 红线跑测（≥95% / ≤5% / 0%）；<code>T-006</code> 完成</td></tr>
-<tr><td>Week 9–10</td><td>评估报告 · 申报书起草</td><td><code>T-017</code> 安全评估报告 → <code>T-018</code> 申报书起草；<code>T-020</code>／<code>T-021</code> 持续</td></tr>
-<tr><td>Week 11–12</td><td>申报书成稿 · 提交备案</td><td><code>T-018</code> 成稿 → 内部预审（齐备性 / 口径一致性 / 脱敏版对照）→ <b>提交备案</b></td></tr>
-<tr><td>审核等待期</td><td>2027/01 – 2027/03</td><td>约 <b>4–8 周</b>；期间不空转：<code>T-008</code>／<code>T-007</code>／<code>T-021</code> 收尾</td></tr>
+<tr><th style="width:16%">周次</th><th style="width:26%">主题</th><th>主干与并行</th></tr>
+<tr><td>Week 1<br><span style="color:#888780">10/13–10/18</span></td><td>启动关键路径 + 清障</td><td><b>已完成并超额</b>：业务链路 <code>5/5</code> ＋ 工程骨架 <code>T-003</code> ＋ 契约升版 <code>T-054~T-056</code>（BLOCK 0）＋ 部署底座；周内追加 <code>T-083/084/085/086</code>（第 4 段打通、紧凑化、足量性探测、门禁＋重试回路）</td></tr>
+<tr><td>Week 2<br><span style="color:#888780">10/19–10/25</span></td><td><code>T-004</code> W4 验收收口 ＋ <code>T-005</code> 达标判定起跑</td><td><b>全周零启动</b>；11-02 起主线切「官方 12 项材料导向」</td></tr>
+<tr><td>Week 3<br><span style="color:#888780">10/26–11/01</span></td><td>评测闭环 ＋ 交付四件套起手</td><td>按 2026-10-17 重排口径执行；<code>ISSUE-047</code>／<code>ISSUE-041</code> 未裁决、<code>T-014</code> 未启动</td></tr>
+<tr><td><b>Week 4 ← 当前</b><br><span style="color:#888780">11/02–11/08</span></td><td><b>收口与交付契约</b></td><td>主线 <code>T-004</code>／<code>T-005</code> 收口；清障 <code>ISSUE-038</code> 余 7 项 · <code>ISSUE-047</code> · <code>ISSUE-049</code>（<b>11-03 已随 <code>T-093</code> 修复</b>）· <code>ISSUE-050</code>；并行 <code>T-006</code> 四件套 · <code>T-093</code> 批次 1+2（<b>11-03 落地</b>）· <code>T-080</code> §7；11-03 <code>SEC-016</code> 抽检就位官方第 10 项机器审核举证</td></tr>
+<tr><td>Week 5<br><span style="color:#888780">11/09–11/15</span></td><td>安全评估报告</td><td><code>T-017</code> <code>D-008</code> 技术部分成稿（⭐ 2026-11-02 提为 M4）</td></tr>
+<tr><td>Week 6<br><span style="color:#888780">11/16–11/22</span></td><td>申报书起草</td><td><code>T-018</code> 起草（⭐ 2026-11-02 提为 M4）</td></tr>
+<tr><td>Week 7<br><span style="color:#888780">11/23–11/29</span></td><td><b>官方 12 项材料补齐（一）</b></td><td><code>T-092</code> 拟公示 7 行（零依赖可开工）· <code>T-090</code> 日志留存＋截图 · <code>T-006</code> 标识四件套（<b>须先裁决 ISSUE-047</b>）· <code>T-091</code> 权益三文档（项目方法务定稿）；里程碑：官方 12 项齐备 1/2</td></tr>
+<tr><td>Week 8<br><span style="color:#888780">11/30–12/06</span></td><td><b>官方 12 项补齐（二）＋ 申报书成稿</b></td><td>官方第 10 项（<code>SEC-016</code> 机器审核举证已就位 ＋ 人工侧 16 例待双签）· <code>T-017</code>/<code>T-018</code> 成稿 · 内部预审（齐备性 / 口径一致性 / 脱敏版对照）→ <b>M4 材料齐备（待提交）</b></td></tr>
+<tr><td><b>M5</b><br><span style="color:#888780">12/07–12/28</span></td><td>提交备案窗口</td><td>顺延项一并做：跑测（<code>T-014</code>→<code>T-015</code>，改「按需签核」）· <code>T-011</code> 数据来源填充 · <code>T-013</code> 并发实测 · <code>T-008</code> 二期（含在线审核台方案 B）→ <b>提交备案</b></td></tr>
+<tr><td>审核等待期<br><span style="color:#888780">2026/12 – 2027/02</span></td><td>约 4–8 周</td><td>期间不空转：<code>T-008</code> D-005 二期 · <code>T-007</code> RAG · <code>T-021</code> 签核收尾；可选 <code>T-016</code> QLoRA 手册；接到补正通知时优先响应</td></tr>
 </table>
 </section>
 
@@ -230,14 +243,16 @@ svg{width:100%;height:auto;display:block}
 <h2>五、口径与风险提示</h2>
 <table>
 <tr><th style="width:26%">事项</th><th>说明</th></tr>
-<tr><td><b>进度风险</b></td><td>已由「提示资产未建齐」转为「<b>D-005 工程体量 + 备案审核等待期（4–8 周）</b>」；M5 提交窗口 2026-12 中下旬，<b>基本吻合、无余量</b></td></tr>
-<tr><td><b>最大外部风险</b></td><td>监管审核周期 4–8 周。⚠️ 原第一风险「固定公网 IP + ICP 备案」<b>已消除</b>——本算法挂载于宿主平台内、不单独对外运营，平台已完成 ICP 备案；替代硬约束 = <b>不得自行开对外域名或公网端口</b></td></tr>
-<tr><td><b>当前阻塞（⚠️ 已过期，见下注）</b></td><td><b>主件口径（2026-10-16）：</b>① <code>ISSUE-037</code> —— <code>shot_prompt</code> 段输入自身 ≈50,358 tokens 超窗、<b>拆段无效</b>，<code>T-004</code> 第 4 段永久阻塞，<b>待项目方就四案裁决（推荐 C／D）</b>，为当前唯一卡住主线的待决策项；② <code>T-014</code>／<code>T-015</code> 未开工（<code>06-测试评估/</code> 仍空）⇒ <code>T-005</code> 达标判定无对象。<b>原记（2026-10-15，已失效）：</b><code>T-011</code> 连续两轮未启动（<code>05-数据管理/</code> 空目录，现已有 <code>DATA-001</code> 落地）；<code>T-020</code> 受控 4 类编写 0 进度（现受控区三组实体已落盘且超配额，残余缺口收窄为 <code>T-058</code>）</td></tr>
+<tr><td><b>进度风险</b></td><td>M4（11/23–12/06）<b>只交官方 12 项材料</b>，三个真缺口 ＝ <b>第 9 项日志留存＋截图（<code>T-090</code>，现仅 stdout 无落库）· 第 8 项显式＋隐式标识（<code>T-006</code>，<code>SW-I04</code> 仍 501，须先裁决 <code>ISSUE-047</code>）· 第 7 项用户权益三文档（<code>T-091</code>，零基础）</b>；M5 提交窗口 12/07–12/28</td></tr>
+<tr><td><b>最大外部风险</b></td><td>监管审核周期 4–8 周（2026/12–2027/02）。⚠️ 原第一风险「固定公网 IP + ICP 备案」<b>已消除</b>——本算法挂载于宿主平台内、不单独对外运营，平台已完成 ICP 备案；替代硬约束 ＝ <b>不得自行开对外域名或公网端口</b></td></tr>
+<tr><td><b>当前阻塞</b></td><td>① <code>ISSUE-038</code> 余 7 项 —— <code>T-004</code> 四段全通但 W4 验收不成立（直出率 0/6），处置方案 <code>PRO-011</code>（六条线）已出具<b>待项目方裁决四问</b>；② <code>ISSUE-047</code> 未裁决 —— 交付契约与「诚实占位」互斥，是 <code>enforce=true</code> 的<b>唯一前置</b>，同时卡官方第 8 项标识（<code>T-006</code>）；③ 质量门禁缺口已部分补齐（<code>T-093</code> 批次 1+2：门禁加 <code>script</code> 段 ＋ adequacy 接入去重 ＋ <code>ISSUE-049</code> 修复），但重试收敛性未测（<code>retry_enabled=OFF</code>）</td></tr>
+<tr><td><b>2026-11-03 新动态</b></td><td><code>SEC-016</code> 首轮抽检：官方第 10 项机器审核举证<b>已就位</b>（<code>POST /api/v1/safety/*</code> 真实调用记录覆盖全部处置分支）；抽检过程<b>发现并修复双闸两层缺陷</b>（匹配从未生效／等级被丢弃 ⇒ <code>script</code> 段 100% 误拒）⇒ 修复后阻断口径误拒率 <b>0.0%</b>；人工侧 16 例待双签</td></tr>
+<tr><td><b>已闭环的旧阻塞</b></td><td><code>ISSUE-037</code>（第 4 段输入超窗，方案 D 解除，50,358→17,897 tokens）· <code>T-020</code>/<code>T-058</code>（受控 4 类已超配额并回填达标）· <code>ISSUE-049</code>（判据脚本类型自爆致整段门禁静默失效，已修复）；⚠️ <code>T-021</code> 跳过（11-02 决策）的<b>代价如实登记</b>：国标 <code>GB/T 45654—2025</code> §5.3(c)(2)「标注每一条至少经一名审核人员审核」留缺口 ⇒ 申报材料与 <code>D-008</code> <b>不得声称「标注已全部经人工审核」</b></td></tr>
 <tr><td><b>外部阻断</b></td><td><code>T-026</code> 属地网信办口径、<code>T-027</code> 八类制度责任人名单 —— <b>建议立即启动</b>，二者均有外部周期且不占开发工时</td></tr>
 </table>
 </section>
 
-<p class="foot">本图为<b>派生视图</b>（机器生成，不取编号、不作举证背书）。<b>一切以主件为准</b>：需求看 <code>00-需求/</code>、任务与状态看 <code>PM-001</code>、排期看 <code>PM-002</code>、 ISSUE 台账看 <code>PM-001</code> §8。主件升版后本图须同批刷新。</p>
+<p class="foot">本图为<b>派生视图</b>（机器生成，不取编号、不作举证背书）。<b>一切以主件为准</b>：需求看 <code>00-需求/</code>、任务与状态看 <code>PM-001</code>、排期看 <code>PM-002</code>、ISSUE 台账看 <code>PM-001</code> §8。主件升版后本图须同批刷新（<code>T-082</code>）。</p>
 
 </div>
 </body>
