@@ -87,6 +87,16 @@ class Settings(BaseSettings):
     #: **不托管下游平台密钥与成片**（`SYS-018`）。
     delivery_out_dir: str = ""
 
+    # ---- 溯源留存日志（官方第 9 项 · `T-090`；`SW-016` 溯源五要素）----
+    #: 日志落盘目录。**留空 ⇒ `<工程根>/.wb-e2e/logs`**（该目录在 `.gitignore` 内，不入库）。
+    #: ⚠️ 官方要求「生成内容溯源留存相关日志**不少于六个月**，提供截图」⇒ 本目录必须位于
+    #: **持久化磁盘**，不得指向临时目录；部署时可用 `APP_LOG_DIR` 指到大盘。
+    log_dir: str = ""
+    #: 日志留存天数。**默认 180（≥6 个月）**；调小即违反官方要求，属**受控变更**。
+    log_retention_days: int = 180
+    #: 是否落盘（`false` 仅用于单元测试/CI 隔离；生产**必须**为 `true`，否则官方第 9 项交不了）。
+    log_to_file: bool = True
+
     # ---- 提示词输入体积（`ISSUE-037` 方案 D 的**服务层**一半）----
     #: 注入上游产物变量（`*_json`）前，对其 JSON 文本做**无损紧凑化**（只去空白，语义零改动）。
     #: 背景：`TPL-009` 原先把上游全文插入 **5 次**（渲染器 `loader._interpolate` 对**每一处**
@@ -194,6 +204,21 @@ class Settings(BaseSettings):
     #: 工程侧门禁（`validate_output.py`）判的是同一批产物的**另一层**，两者**都要**。
     quality_gate_pack_check: bool = True
 
+    #: **分镜段派生量的确定性回填**（2026-11-04 项目方裁决；`ISSUE-038` 的 `R14` 一项）。
+    #: `true` ＝ 生成后、门禁前，由服务层把 `total_duration_ms` **按 `Σ shots[].duration_ms` 重算并回填**；
+    #: `false` ＝ 不动产物（只留原值，由门禁如实判失败）。
+    #:
+    #: ⚠️ **为什么必须换机制而不是继续改模板**：该项是**跨字段算术**，
+    #: JSON Schema／受约束解码**在结构上表达不了**（只能约束单字段取值，无法约束「等于另一组字段之和」）；
+    #: 而提示词路线已**四版四错**（v2.2.0 散文条款／v2.2.1 给自洽字面值 `18200`／v2.2.2 归零 ＋ 算式紧邻示例），
+    #: 真机实测 `total_duration_ms` **恒为 `0`**（照抄骨架，2026-11-04 三种样本 3/3）。
+    #:
+    #: ⚠️ **这不是「改判据」**：`R14` 判据**一字未动**。回填后它判的是「回填结果是否守恒」，
+    #: 恒等式成立属**工程保证**；模型原本那句自拟值被**完整留痕**（`artifact["derived_backfill"]`
+    #: 记 `original`／`computed`），审计时可查「模型填了什么、服务层改成了什么」。
+    #: 口径同 `service_truth`：**服务层只补自己算得出的量**，模型可影响字段一字不改。
+    storyboard_derived_backfill: bool = True
+
     #: **服务层元数据真值覆盖**（`T-086` 配套；2026-10-16 项目方裁决「服务层强制覆盖」）。
     #: `true` ＝ 交付包产物生成后，由服务层以**自己算出来的** `pack_meta` 覆盖模型自述的
     #: `meta`（`pack_id`／`created_at`／`task_type`／`unsupported_task_types`／`generator`／
@@ -204,8 +229,10 @@ class Settings(BaseSettings):
     #: `copyright_check:"passed"`、`marking_check.explicit:"present"`、`statement_id:"ST-001"`。
     #: ⇒ 客户拿到的产物**看起来已过内容安全与标识校验，而平台根本没做**。这比「缺失」更危险
     #: （缺失会被门禁拦下，假值会**通过**门禁）。⇒ 合规字段的**写入权必须归服务层**。
-    #: ⚠️ 覆盖**只针对服务层域字段**；模型可影响的字段（`title`／`total_duration_ms`／
-    #: `notes`／`shots`／`units`…）**一字不改**（本工程第一纪律：不改写模型输出）。
+    #: ⚠️ 覆盖**只针对服务层域字段**；模型可影响的字段（`title`／`notes`／
+    #: `shots`／`units`…）**一字不改**（本工程第一纪律：不改写模型输出）。
+    #: ⚠️ `total_duration_ms` **不在本开关内**（2026-11-04 起）：它是**派生量**，
+    #: 由 `storyboard_derived_backfill` 单独控制（见该开关的注释）。
     service_truth_override: bool = True
 
     #: **对外能力声明**（逗号分隔的任务类型码，写入交付包 `meta.unsupported_task_types`）。

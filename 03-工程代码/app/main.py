@@ -108,7 +108,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 def create_app(settings: Settings | None = None) -> FastAPI:
     """应用工厂。测试可传入自定义 `Settings` 以隔离环境。"""
     settings = settings or get_settings()
-    configure_logging(logging.DEBUG if settings.debug else logging.INFO)
+    # 溯源留存日志（官方第 9 项／`T-090`）：落盘目录、留存天数均由配置注入
+    configure_logging(logging.DEBUG if settings.debug else logging.INFO, settings=settings)
 
     app = FastAPI(
         title=settings.app_name,

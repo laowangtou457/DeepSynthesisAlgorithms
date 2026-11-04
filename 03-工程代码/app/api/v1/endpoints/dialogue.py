@@ -16,6 +16,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_dialogue_service
+from app.core.audit import trace_transition
 from app.core.logging import get_request_id
 from app.schemas.common import Envelope
 from app.schemas.dialogue import (
@@ -68,6 +69,8 @@ async def advance(
 ) -> Envelope[TransitionResult]:
     variables = body.variables if body else {}
     result = await svc.advance(session_id, variables)
+    # 溯源留痕（`T-090`／`SW-016` 五要素）：**只对真产出内容的动作**记（`generate`／`revise`）
+    trace_transition(result)
     return Envelope(request_id=get_request_id(), data=result)
 
 
@@ -110,4 +113,6 @@ async def revise(
     svc: DialogueService = Depends(get_dialogue_service),
 ) -> Envelope[TransitionResult]:
     result = await svc.revise(session_id, body)
+    # 溯源留痕（`T-090`）：修改同样产出**新内容**，须与首次生成同等留痕
+    trace_transition(result)
     return Envelope(request_id=get_request_id(), data=result)
