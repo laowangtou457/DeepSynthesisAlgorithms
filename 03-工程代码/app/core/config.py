@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     #: ⚠️ **本目录只放交付包文件**（提示词集 ＋ 标识素材 ＋ 合规声明 ＋ 清单），
     #: **不托管下游平台密钥与成片**（`SYS-018`）。
     delivery_out_dir: str = ""
+    #: **人工核对台账**（JSON）路径 —— `SPEC-008` §8.3 第 18 项 / §8.4 的**唯一合法来源**。
+    #: ⚠️ 留空 ⇒ 视为「未做人工核对」：交付清单 `human_review` 为空、自检第 18 项 `fail`、
+    #: 清单判据 `human_review.missing` **BLOCK**（**如实拦住**）。
+    #: ⚠️ **绝不**从模型产物读 `human_review`（模型自证被人工核对 = 假合规）。
+    human_review_ledger: str = ""
 
     # ---- 溯源留存日志（官方第 9 项 · `T-090`；`SW-016` 溯源五要素）----
     #: 日志落盘目录。**留空 ⇒ `<工程根>/.wb-e2e/logs`**（该目录在 `.gitignore` 内，不入库）。

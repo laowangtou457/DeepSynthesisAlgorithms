@@ -784,9 +784,15 @@ def main() -> int:
             continue
         r = validate_pack(t, run_gate=not args.no_quality_gate)
         reports.append(r)
-        mf = t.parent / "CFG-003_demo_manifest.json"
-        if mf.exists():
-            reports.append(validate_manifest(mf, r))
+        # ⚠️ 清单发现（`ISSUE-057` 候选① 一并修正）：原实现**硬编码**
+        #    `CFG-003_demo_manifest.json` ⇒ 真实交付目录里叫 `manifest.json`，
+        #    清单侧 4 条判据在交付场景**静默跳过**（假覆盖，比不接更危险）。
+        #    现按「先真实清单、后示例清单」探测。
+        for cand in ("manifest.json", "CFG-003_demo_manifest.json"):
+            mf = t.parent / cand
+            if mf.exists():
+                reports.append(validate_manifest(mf, r))
+                break
 
     out = "\n".join(r.render() for r in reports)
     blocked = sum(1 for r in reports if r.blocked)

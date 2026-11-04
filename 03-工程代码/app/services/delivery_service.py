@@ -28,9 +28,16 @@
 | 件 | 载体 | 状态 |
 | --- | --- | --- |
 | ① 提示词集 | `<out>/<pack_id>/pack.json` | ✅ 产物本体 |
-| ② 标识素材包 | `<out>/<pack_id>/assets/`（显式角标 PNG ＋ `AST-004` 合规声明） | ✅ 素材**已备**（`delivery/assets/`） |
-| ③ 合规声明 | `<out>/<pack_id>/AST-004_compliance_statement.md` | ✅ 由 `apply_service_truth` 的真值渲染 |
-| ④ 清单（manifest） | `<out>/<pack_id>/manifest.json` | ✅ 对齐 `CFG-005` 形态 |
+| ② AIGC 元数据块 | `<out>/<pack_id>/aigc_meta.json` | ✅ 服务层装配（`SW-013`）；**独立落盘**（§8.3 第 6 项「仅一份、可解析」） |
+| ③ 标识素材包 | `<out>/<pack_id>/assets/`（8 个角标 PNG ＋ `AST-002` 规格 ＋ `AST-001` 说明） | ✅ 素材**已备**（`delivery/assets/`） |
+| ④ 合规声明 | `<out>/<pack_id>/AST-004_compliance_statement.md` | ✅ 由服务层真值渲染（占位**原样保留**） |
+| ＋ 质量门报告 | `<out>/<pack_id>/qa/audit_report.txt` | ✅ 随包留档（§8.3 第 13 项）；内容取**真实判定**，无镜头写「未执行」 |
+| ⑤ 清单 | `<out>/<pack_id>/manifest.json` | ✅ **`CFG-005` v1.1.0**（`ISSUE-057` 候选① 重写；自检 18 项按实际判定填充） |
+
+⚠️ **`manifest.json` 不是「文件列表」**：它是 `CFG-005` 契约件（`additionalProperties:false`），
+字段集固定为 `manifest_version`／`pack_id`／`statement_id`／`created_at`／`artifacts`／
+`exports`／`adapters`／`units`／`quality_gate`／`human_review`／`self_check`／`retention`／
+`spec_version`／`provider`。**塞自拟字段会被 Schema 判 BLOCK**（旧实现即栽在这里）。
 """
 
 from __future__ import annotations
@@ -73,6 +80,47 @@ PREVIEW_NOTE = (
 #: **服务层形态**的内容编号：`<企业码>-PK-<YYYYMMDD>-<8位短码>`
 #: （企业码可为 `{{PROVIDER_CODE}}` 占位；短码为 8 位大写十六进制）
 _PACK_ID_RE = re.compile(r"^(?:\{\{[A-Z_]+\}\}|[A-Z0-9]{2,8})-PK-\d{8}-[0-9A-F]{8}$")
+
+#: 清单 `spec_version` 的取值（依据的交付规范版本）。
+#: ⚠️ 该常量**必须**与 `01-架构设计/SPEC-008_*.md` 正文版本一致 ——
+#: 由 `tests/test_delivery.py::test_spec_version_matches_norm` **互锁对拍**（`PRO-012` 变更三件套）。
+SPEC_VERSION = "NORM-DELIVERY-001 v2.4"
+
+
+def _load_human_review(settings: Any, pack_id: str) -> list[dict[str, Any]]:
+    """读**人工核对台账**中本包的记录（§8.3 第 18 项 / §8.4）。
+
+    ⚠️ **只认人工录入的台账文件**，**绝不**从模型产物里取 `human_review`——
+    那是「让模型自己证明自己被人工核对过」，属假合规。
+    台账缺失／未配置 ⇒ 返回空 ⇒ 自检第 18 项 `fail`、清单判据 `human_review.missing` BLOCK
+    （**如实拦住**，不静默放行）。
+
+    台账形态（JSON）：`{"records": [{"pack_id": "...", "no": 18, "item": "...",
+    "result": "pass|fail|warn", "checked_at": "ISO8601", "operator": "...", "detail": "..."}]}`
+    """
+    path = str(getattr(settings, "human_review_ledger", "") or "").strip()
+    if not path:
+        return []
+    ledger = Path(path)
+    if not ledger.is_file():
+        return []
+    try:
+        data = json.loads(ledger.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    rows = data.get("records") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("pack_id", "")) != pack_id:
+            continue
+        item = {k: row[k] for k in ("no", "item", "result", "checked_at", "operator", "detail")
+                if k in row}
+        out.append(item)
+    return out
 
 
 @dataclass
@@ -285,58 +333,446 @@ def _copy_assets(dst: Path) -> list[str]:
     return copied
 
 
-def build_manifest(pack: dict[str, Any], files: list[str],
-                   service_truth: dict[str, Any] | None = None) -> dict[str, Any]:
-    """构造交付清单（`CFG-005` 形态）。
+# ──────────────────────────────────────────────────────────────────────────
+# §8.3 十八项自检 ↔ 判据映射（`ISSUE-057` 候选①，2026-11-04）
+# ──────────────────────────────────────────────────────────────────────────
 
-    ⚠️ 清单**只登记文件与真值**，**不含下游平台地址与密钥**（`SYS-018`）。
+#: ⚠️ **映射口径说明**：`SPEC-008` §8.3 的 18 项是**给人看的清单**，
+#: 而工程判据粒度更细（一个自检项常对应多条判据码）⇒ 本表是**多对一**映射。
+#: `detail` 里保留**原始判据码**，使「清单说 fail／warn」可**逐条回溯**到门禁条目。
+#:
+#: `from` 取值（判据来源）：
+#: - `pack`        ⇒ 由包侧门禁（`delivery/validate_pack.py`）的条目推导
+#: - `assets`      ⇒ 由清单装配时的**实际素材清点**推导（包侧无对应判据）
+#: - `statement`   ⇒ 由 `statement_id` 实际值推导（占位 ⇒ 未取得）
+#: - `adapters`    ⇒ 由适配条目 `verify_status` 推导（§8.3 第 12 项）
+#: - `human_review`⇒ 由人工核对台账推导（§8.3 第 18 项）
+#: - `out_of_scope`⇒ 交付包层面**不可机检**（如实标 `warn`，**绝不标 `pass`**）
+#:
+#: `requires` 取值：该项的判定对象；对象为空 ⇒ **没检**（标 `warn`，不标 `pass`）。
+_SELF_CHECK_SPEC: tuple[dict[str, Any], ...] = (
+    {"no": 1, "item": "输入内容安全检测通过", "from": "pack", "match": "输入侧",
+     "codes": ("compliance.safety", "compliance.safety_pending")},
+    {"no": 2, "item": "输出内容安全复检通过", "from": "pack", "match": "输出侧",
+     "codes": ("compliance.safety", "compliance.safety_pending")},
+    {"no": 3, "item": "版权/改编风险校验完成（有风险须提示并记录）", "from": "pack",
+     "codes": ("compliance.copyright", "compliance.copyright_risk")},
+    {"no": 4, "item": "提示词包通过 JSON Schema 校验",
+     "from": "pack",
+     # ⚠️ 除 Schema 外的「取值合规」判据（词表／风格锚点／任务类型／时间格式／
+     #    单镜时长上下限）也归此项：它们同属「包的形态与取值是否合规」，
+     #    在 18 项里没有更贴切的归属（多对一映射口径见上）。
+     "codes": ("schema.pack", "schema.missing",
+               "vocab.amplitude", "vocab.camera_alias", "vocab.camera_move", "vocab.height",
+               "vocab.lighting", "vocab.lighting_default", "vocab.optics", "vocab.roll",
+               "vocab.shot_size", "vocab.speed", "vocab.transition",
+               "camera.amp_speed", "prompt.param", "prompt.quote",
+               "style.anchors", "style.drift", "task.type", "task.unsupported",
+               "provider.code", "time.format",
+               "duration.integer", "duration.min", "duration.max")},
+    {"no": 5, "item": "一致性校验（style_ref / character_refs / unit_id / 时长合计）",
+     "from": "pack", "requires": "units",
+     "codes": ("consistency.style_ref", "consistency.character_ref", "consistency.duration",
+               "unit.ref", "unit.orphan", "unit.duplicate_id", "unit.missing",
+               "unit.shot_missing")},
+    {"no": 6, "item": "AIGC 元数据块存在、字段齐全、仅一份、可解析", "from": "pack",
+     "codes": ("meta.aigc", "meta.field", "meta.duplicate", "meta.produce_id",
+               "meta.propagate_id", "meta.propagator")},
+    {"no": 7, "item": "显式标识存在于所有导出文件（按格式差异化注入）", "from": "pack",
+     "codes": ("compliance.marking", "compliance.marking_pending")},
+    {"no": 8, "item": "标识素材包完整（4 个 PNG）+ 规格文件存在", "from": "assets"},
+    {"no": 9, "item": "合规声明已生成且 8 项要素齐全", "from": "statement",
+     "codes": ("compliance.statement", "compliance.statement_pending")},
+    {"no": 10, "item": "交付包内无密钥、无外部依赖、离线可用", "from": "pack",
+     "codes": ("secret.leak", "offline.dependency")},
+    {"no": 11, "item": "系统内不存在去标识功能入口（含管理控制台）", "from": "out_of_scope"},
+    {"no": 12, "item": "适配输出与 verify_status 一致", "from": "adapters"},
+    {"no": 13, "item": "镜头语言质量门 11 项全通过（逐单元 + 整片）", "from": "pack",
+     "requires": "shots", "codes": ("gate.fail", "gate.empty", "gate.pass")},
+    {"no": 14, "item": "台词—时长校验通过（每镜 ≤ 9 字/秒）", "from": "pack",
+     "requires": "shots", "codes": ("dialogue.rate",)},
+    {"no": 15, "item": "动作复杂度—时长预算校验完成", "from": "pack",
+     "requires": "shots", "codes": ("action.incomplete",)},
+    {"no": 16, "item": "不存在单镜生成单元；单元内运镜类型不重复；每单元 2–3 镜",
+     "from": "pack", "requires": "units",
+     "codes": ("unit.size", "unit.camera_dup", "camera.roll_dup",
+               "unit.soundscape", "unit.music")},
+    {"no": 17, "item": "目标模型不支持负向字段时，交付文本中无负向残留",
+     "from": "pack", "requires": "shots",
+     # ⚠️ `negative.residue` 的判据是**逐镜**遍历 `shots`（`validate_pack.py` ⑬）⇒
+     #    镜头为空时判据根本没跑。「没跑」不等于「通过」，故必须声明 requires。
+     "codes": ("negative.residue", "adapter.negative")},
+    {"no": 18, "item": "角色一致性 / 跨镜连续性人工核对完成", "from": "human_review"},
+)
+
+#: 正向记录码（**不是问题**；仅作「检过了」的书面证据，如质量门全通过）
+_POSITIVE_CODES = frozenset({"gate.pass"})
+
+#: ⚠️ 清单侧判据码（由 `validate_manifest` 产出）——**不进**包侧自检映射，
+#: 因为自检在清单**生成时**填充（此时清单侧判据尚未运行，属循环依赖）。
+#: 它们各自的「真实来源」已在表内以 `from` 字段直接声明（assets/statement/
+#: adapters/human_review）⇒ `test_self_check_map_covers_all_codes` 据此豁免。
+_MANIFEST_SIDE_CODES = frozenset({
+    "artifact.missing", "artifact.overlay", "artifact.quality_gate",
+    "export.mark", "export.meta", "export.section",
+    "manifest.pack_id", "manifest.statement_pending",
+    "selfcheck.missing", "selfcheck.fail",
+    "human_review.missing", "human_review.field",
+    # ⚠️ 以下三条是**清单内部自洽性**检查（拿 self_check／adapters／quality_gate 相互印证），
+    #    必须等清单写完之后才能判 ⇒ 属清单侧，不进生成期的自检映射。
+    "adapter.status", "gate.status", "schema.manifest",
+})
+
+
+def _not_obtained(value: Any) -> bool:
+    """判断合规字段是否**未取得**（与 `validate_pack._is_not_obtained` **同口径**）。
+
+    ⚠️ 两处共用一套判据 ⇒ 由 `test_self_check_map` 的互锁测试对拍；
+    任一侧改口径（例如只认占位不认 `not_available`）即当场报警。
+    """
+    if value is None:
+        return True
+    text = str(value).strip()
+    if not text or text == "not_available" or "{{" in text or "占位" in text:
+        return True
+    return False
+
+
+def _spec_hits(judgements: list[tuple[str, str, str]], spec: dict[str, Any],
+               block_level: str) -> tuple[list[str], list[str]]:
+    """把某自检项对应的门禁条目分成「阻断」与「问题」两栏（各带原始码）。"""
+    codes = frozenset(spec.get("codes") or ())
+    needle = spec.get("match")
+    blocks: list[str] = []
+    problems: list[str] = []
+    for level, code, msg in judgements:
+        if code not in codes:
+            continue
+        if needle and needle not in msg:
+            continue
+        if level == block_level:
+            blocks.append(f"{code}: {msg}")
+        elif code not in _POSITIVE_CODES:
+            problems.append(f"{code}: {msg}")
+    return blocks, problems
+
+
+def build_self_check(
+    judgements: list[tuple[str, str, str]],
+    *,
+    block_level: str,
+    assets: list[str],
+    statement_id: Any,
+    adapters: list[dict[str, Any]],
+    human_review: list[dict[str, Any]],
+    has_shots: bool,
+    has_units: bool,
+    statement_file: str = "",
+) -> list[dict[str, Any]]:
+    """按 §8.3 十八项**逐项实际判定**生成自检记录（`ISSUE-057` 候选①）。
+
+    ⚠️ **铁律：不编造 `pass`**。三种「拿不到证据」的情形一律标 `warn`／`fail`：
+    1. 判定对象为空（`shots`／`units` 没有）⇒ **没检** ⇒ `warn`；
+    2. 交付包层面无判据（第 11 项系统级）⇒ `warn` ＋ 原因；
+    3. 有判据但无机器可判内容（第 9 项「8 项要素齐全」）⇒ `warn`。
+    """
+    rows: list[dict[str, Any]] = []
+    for spec in _SELF_CHECK_SPEC:
+        src = spec["from"]
+        result, detail = "pass", ""
+        need = spec.get("requires")
+        lacked = (need == "shots" and not has_shots) or (need == "units" and not has_units)
+
+        if src == "pack":
+            blocks, problems = _spec_hits(judgements, spec, block_level)
+            if lacked:
+                result = "warn"
+                detail = f"判定对象为空（{'shots' if need == 'shots' else 'units'} 无内容）⇒ 未检"
+            elif blocks:
+                result, detail = "fail", "｜".join(blocks[:3])
+            elif problems:
+                result, detail = "warn", "｜".join(problems[:3])
+            else:
+                positives = [msg for lv, code, msg in judgements
+                             if code in _POSITIVE_CODES and lv != block_level]
+                detail = "；".join(positives[:2]) or "对应判据全部通过（无异常条目）"
+
+        elif src == "assets":
+            pngs = [f for f in assets if str(f).lower().endswith(".png")]
+            spec_ok = any("overlay_spec" in str(f) or "AST-002" in str(f) for f in assets)
+            # ⚠️ 口径与清单判据 `artifact.overlay`（任意 .png ≥4 且含规格文件）**保持一致**，
+            #    否则会出现「清单说 pass、判据说 fail」的自相矛盾。
+            if len(pngs) >= 4 and spec_ok:
+                detail = f"PNG {len(pngs)} 个 ＋ 规格文件 AST-002"
+            else:
+                result = "fail"
+                detail = (f"PNG {len(pngs)}/4、规格文件{'存在' if spec_ok else '缺失'}"
+                          "（§8.3 第 8 项要求 4 个 PNG + 规格文件）")
+
+        elif src == "statement":
+            blocks, _ = _spec_hits(judgements, spec, block_level)
+            if blocks:
+                result, detail = "fail", "｜".join(blocks[:3])
+            elif _not_obtained(statement_id):
+                result = "warn"
+                detail = f"声明编号**结果未取得**（{statement_id!r}）⇒ 不得用于正式交付"
+            elif not statement_file:
+                result = "warn"
+                detail = "声明编号已填，但**声明文件未落盘** ⇒ 未取得实物证据"
+            else:
+                # ⚠️ 「8 项要素齐全」是文字要素核对，**无机器判据** ⇒ 不得标 pass
+                result = "warn"
+                detail = (f"声明已生成（{statement_file}）、编号已填，"
+                          "但「8 项要素齐全」无机检（人工核对承担，§8.3 第 9 项）")
+
+        elif src == "out_of_scope":
+            result = "warn"
+            detail = ("交付包层面**不可机检**：属系统级审计范畴"
+                      "（须核查控制台与路由表，见 `PRO-012` 覆盖矩阵第 11 项）")
+
+        elif src == "adapters":
+            if not adapters:
+                result = "warn"
+                detail = "本包无适配输出 ⇒ 该项**无判定对象**（未检）"
+            else:
+                pending = [a for a in adapters
+                           if a.get("verify_status") in ("pending", "partial")]
+                if pending:
+                    result = "warn"
+                    detail = (f"{len(pending)}/{len(adapters)} 个适配 pending/partial"
+                              "⇒ 不得标为已验证（§8.3 第 12 项）")
+                else:
+                    detail = f"{len(adapters)} 个适配均 verified"
+
+        elif src == "human_review":
+            if not human_review:
+                result = "fail"
+                detail = "**无人工核对记录**（§8.3：无记录视为未做）"
+            else:
+                bad = [h for h in human_review
+                       if any(not h.get(k) for k in ("result", "checked_at", "operator"))]
+                fails = [h for h in human_review if h.get("result") == "fail"]
+                warns = [h for h in human_review if h.get("result") == "warn"]
+                if bad:
+                    result = "fail"
+                    detail = f"{len(bad)} 条记录缺「结果/时间/检查人」字段"
+                elif fails:
+                    result = "fail"
+                    detail = f"{len(fails)} 条核对未通过"
+                elif warns:
+                    result = "warn"
+                    detail = f"{len(warns)} 条核对标 warn"
+                else:
+                    detail = f"{len(human_review)} 条核对记录齐备"
+
+        row = {"no": spec["no"], "item": spec["item"], "result": result}
+        if detail:
+            row["detail"] = detail
+        rows.append(row)
+    return rows
+
+
+def render_audit_report(
+    judgements: list[tuple[str, str, str]], *, pack_id: str, block_level: str
+) -> str:
+    """生成镜头语言质量门报告 `qa/audit_report.txt`（§8.3 第 13 项留档件）。
+
+    ⚠️ **内容只取真实判定**（`gate.*` 条目），**不编造阈值实测值**——
+    报告缺失比谎称通过更安全。
+    """
+    gate_lines = [(lv, code, msg) for lv, code, msg in judgements
+                  if code.startswith("gate.")]
+    head = [
+        "镜头语言质量门报告（SPEC-008 §4.2 / §8.3 第 13 项）",
+        f"内容编号：{pack_id}",
+        f"判定工具：delivery/validate_pack.py（11 阈值，逐单元 + 整片）",
+    ]
+    if not gate_lines:
+        head.append("结论：**未执行**（本包无可判定的镜头 ⇒ 质量门未运行，不代表通过）")
+        return "\n".join(head) + "\n"
+    bad = [x for x in gate_lines if x[0] == block_level]
+    head.append("结论：" + ("**未通过**" if bad else "全部通过"))
+    head.append("")
+    for level, code, msg in gate_lines:
+        head.append(f"  [{level}] {msg}")
+    return "\n".join(head) + "\n"
+
+
+def _artifact_entry(hit: list[str], expect: list[str], note: str = "") -> dict[str, Any]:
+    """装配 `CFG-005` 的 `artifact` 条目（`files` 须非空，故 present=False 时登记预期路径）。"""
+    entry: dict[str, Any] = {"present": bool(hit), "files": hit or expect}
+    if not hit:
+        entry["note"] = note or "文件未生成（如实登记预期路径，present=false）"
+    return entry
+
+
+def build_manifest(
+    pack: dict[str, Any],
+    files: list[str],
+    service_truth: dict[str, Any] | None = None,
+    *,
+    self_check: list[dict[str, Any]] | None = None,
+    human_review: list[dict[str, Any]] | None = None,
+    quality_gate: dict[str, Any] | None = None,
+    retention_months: int = 6,
+    spec_version: str = "",
+) -> dict[str, Any]:
+    """构造交付清单（**对齐 `CFG-005` v1.1.0**，`ISSUE-057` 候选①）。
+
+    ⚠️ **与旧实现的差别（本函数是重写，非增量）**：
+    | 维度 | 旧（`manifest_version` 1.0.0） | 新（`1.1.0`） |
+    | --- | --- | --- |
+    | 形态 | 自拟字段（`files`／`counts`／`compliance`／`is_preview`） | `CFG-005` 契约字段（`additionalProperties:false`） |
+    | 四件套 | 无 | `artifacts` 五项（四件套 + 质量门报告） |
+    | 自检 | 无 | `self_check` **18 项实际判定** |
+    | 人工核对 | 无 | `human_review`（无记录即空，**不编造**） |
+
+    ⚠️ **清单只登记文件与真值**，**不含下游平台地址与密钥**（`SYS-018`）。
+    ⚠️ `artifacts` **一律由实际落盘文件推导**（不按「应该有哪些」写死）——
+    文件没生成就 `present=false`，让门禁如实拦。
     """
     meta = pack.get("meta") or {}
     comp = meta.get("compliance") or {}
-    return {
-        "manifest_version": "1.0.0",
-        "pack_id": meta.get("pack_id", ""),
-        "created_at": meta.get("created_at", ""),
-        "title": meta.get("title", ""),
-        "schema_version": pack.get("schema_version", ""),
-        "files": list(files),
-        "counts": {
-            "shots": len(pack.get("shots") or []),
-            "units": len(pack.get("units") or []),
-            "characters": len(pack.get("characters") or []),
-            "props": len(pack.get("props") or []),
-            "forbidden_items": len(pack.get("forbidden_items") or []),
+    gen = meta.get("generator") or {}
+    statement_id = comp.get("statement_id", "")
+
+    pack_files = [f for f in files if f == "pack.json"]
+    aigc_files = [f for f in files if f == "aigc_meta.json"]
+    overlay_files = [f for f in files
+                     if f.startswith("assets/") and f.lower().endswith((".png", ".json"))]
+    stmt_files = [f for f in files if "compliance_statement" in f]
+    qa_files = [f for f in files if f.startswith("qa/")]
+
+    provider = ""
+    if gen.get("provider") or gen.get("provider_code"):
+        provider = f"{gen.get('provider', '')}/{gen.get('provider_code', '')}".strip("/")
+
+    manifest: dict[str, Any] = {
+        "manifest_version": "1.1.0",
+        "pack_id": str(meta.get("pack_id", "")),
+        "statement_id": str(statement_id),
+        "created_at": str(meta.get("created_at", "")),
+        "artifacts": {
+            "shot_prompt_pack": _artifact_entry(pack_files, ["pack.json"]),
+            "aigc_meta": _artifact_entry(
+                aigc_files, ["aigc_meta.json"],
+                "AIGC 元数据块未单独落盘（§8.3 第 6 项要求「仅一份、可解析」）",
+            ),
+            "overlay_assets": _artifact_entry(
+                overlay_files, ["assets/AST-002_overlay_spec.json"],
+                "标识素材包未生成（§8.3 第 8 项：4 个 PNG + 规格文件）",
+            ),
+            "compliance_statement": _artifact_entry(
+                stmt_files, ["AST-004_compliance_statement.md"],
+                "合规声明未生成（§8.3 第 9 项）",
+            ),
+            "quality_gate_report": _artifact_entry(
+                qa_files, ["qa/audit_report.txt"],
+                "镜头语言质量门报告未生成（§8.3 第 13 项：缺即阻断）",
+            ),
         },
-        "compliance": {
-            "safety_check": comp.get("safety_check", {}),
-            "copyright_check": comp.get("copyright_check", {}),
-            "marking_check": comp.get("marking_check", {}),
-            "statement_id": comp.get("statement_id", ""),
+        "adapters": [],
+        "units": [],
+        "human_review": list(human_review or []),
+        "self_check": list(self_check or []),
+        "retention": {
+            "months": int(retention_months),
+            "note": "交付合规声明／自检记录／质量门报告／人工核对记录／清单与校验和 "
+                    "均留存 ≥6 个月（SPEC-008 §8.4）",
         },
-        "is_preview": True,
-        "preview_note": PREVIEW_NOTE,
-        # ⚠️ 服务层真值覆盖清单（哪些字段由服务层写入）——举证用
-        "service_truth": service_truth or {},
-        "provider": (meta.get("generator") or {}),
     }
+    if spec_version:
+        manifest["spec_version"] = spec_version
+    if provider:
+        manifest["provider"] = provider
+    if quality_gate:
+        manifest["quality_gate"] = quality_gate
+
+    # 生成单元摘要（§3.5 / §4.3；**只登记真实字段**，不补造）
+    for u in pack.get("units") or []:
+        if not isinstance(u, dict):
+            continue
+        row: dict[str, Any] = {}
+        if u.get("unit_id"):
+            row["unit_id"] = str(u["unit_id"])
+        shot_ids = u.get("shot_ids") or []
+        if shot_ids:
+            row["shot_count"] = len(shot_ids)
+        if isinstance(u.get("duration_ms"), int):
+            row["duration_ms"] = u["duration_ms"]
+        shots_by_id = {s.get("shot_id"): s for s in (pack.get("shots") or [])
+                       if isinstance(s, dict)}
+        types = [((shots_by_id.get(sid) or {}).get("camera") or {}).get("move")
+                 for sid in shot_ids]
+        types = [t for t in types if t]
+        if types:
+            row["camera_types"] = types
+            row["camera_types_unique"] = len(set(types)) == len(types)
+        if row:
+            manifest["units"].append(row)
+
+    # 服务层真值覆盖清单（举证用；`CFG-005` 无此字段 ⇒ 只在有内容时以 provider 附带信息出现）
+    # ⚠️ 契约 `additionalProperties:false` ⇒ **不得**塞进清单；
+    #    真值来源已完整记录在原 `manifest` 之外的 `gate_report.json` 与 `pack.json` 中。
+    _ = service_truth  # 保留形参以兼容调用方；不写入清单（契约不允许）
+    return manifest
 
 
 #: 交付前自检报告文件名（**随包落盘、不进 `manifest.files`** —— `ISSUE-055` 裁决③）
 GATE_REPORT_NAME = "gate_report.json"
 
-#: ⚠️ 清单侧未纳入本次门禁的**如实说明**（不是静默跳过）
+#: ⚠️ 清单侧的校验说明（`ISSUE-057` 候选① 落地后：**清单已纳入门禁**）
 GATE_MANIFEST_NOTE = (
-    "本次仅校验包侧（pack.json）判据：交付清单当前形态**不符** CFG-005 契约"
-    "（缺 statement_id／artifacts 四件套／self_check 18 项等字段），"
-    "直接校验会产生与内容无关的结构性 BLOCK ⇒ 清单侧暂不计入（已登记 ISSUE-056，"
-    "修复后本字段改为 true）。**不代表清单已合规**。"
+    "清单侧判据已纳入：`manifest.json` 按 `CFG-005` v1.1.0 契约校验"
+    "（四件套＋质量门报告、自检 18 项、人工核对记录、密钥/外部依赖）。"
 )
 
 
-def evaluate_gate(pack_path: Path) -> dict[str, Any]:
+def pack_judgements(pack_path: Path) -> tuple[list[tuple[str, str, str]], str]:
+    """取**包侧**门禁条目（`(level, code, message)` 列表 ＋ BLOCK 档位名）。
+
+    ⚠️ 为什么单独暴露：清单的 `self_check` **18 项要按实际判定填充**，
+    而判定来自包侧门禁 ⇒ 必须在清单生成**之前**拿到结论。此函数与
+    `evaluate_gate` 用**同一** `validate_pack`，不另立口径。
+    """
+    module = load_pack_validator()
+    if module is None:
+        return [], "BLOCK"
+    rep = module.validate_pack(pack_path)
+    return list(rep.items), module.BLOCK
+
+
+def quality_gate_block(
+    judgements: list[tuple[str, str, str]], block_level: str
+) -> dict[str, Any] | None:
+    """由 `gate.*` 条目装配清单的 `quality_gate` 结论（§4.2／§4.8）。
+
+    ⚠️ **无 `gate.*` 条目 ⇒ 返回 `None`**（质量门没跑，例如无镜头）——
+    **不写 `passed=false` 也不写 `true`**：前者是谎称不合格，后者是谎称通过。
+    """
+    gate_items = [x for x in judgements if x[1].startswith("gate.")]
+    if not gate_items:
+        return None
+    return {
+        "tool": "delivery/validate_pack.py",
+        "command": "python delivery/validate_pack.py <pack.json>",
+        "scope": "pack（11 阈值，逐单元 + 整片）",
+        "passed": not any(lv == block_level for lv, _, _ in gate_items),
+        "report_file": "qa/audit_report.txt",
+    }
+
+
+def evaluate_gate(
+    pack_path: Path,
+    manifest_path: Path | None = None,
+    *,
+    pack_items: list[tuple[str, str, str]] | None = None,
+) -> dict[str, Any]:
     """跑交付门禁（`delivery/validate_pack.py`）并返回**结构化结论**。
 
     ⚠️ 只读产物、无副作用；判据**一字不改**（`ISSUE-055`：接线不改进判据）。
+    ⚠️ `ISSUE-057` 候选① 起：传入 `manifest_path` 即**同时校验清单侧**
+    （`validate_manifest`，与 CLI `main()` 同一函数）⇒ `manifest_checked=True`。
     """
     module = load_pack_validator()
     if module is None:
@@ -350,17 +786,25 @@ def evaluate_gate(pack_path: Path) -> dict[str, Any]:
             "manifest_checked": False,
             "manifest_note": GATE_MANIFEST_NOTE,
         }
-    rep = module.validate_pack(pack_path)
-    blocks = [
-        {"code": code, "message": msg}
-        for lv, code, msg in rep.items
-        if lv == module.BLOCK
-    ]
-    warns = [
-        {"code": code, "message": msg}
-        for lv, code, msg in rep.items
-        if lv == module.WARN
-    ]
+    if pack_items is None:
+        items: list[tuple[str, str, str]] = list(module.validate_pack(pack_path).items)
+    else:
+        items = list(pack_items)
+
+    scope = "pack"
+    manifest_checked = False
+    if manifest_path is not None and manifest_path.is_file():
+        pack_rep = module.Report(str(pack_path.name))
+        pack_rep.items = list(items)
+        mrep = module.validate_manifest(manifest_path, pack_rep)
+        items = items + list(mrep.items)
+        scope = "pack+manifest"
+        manifest_checked = True
+
+    blocks = [{"code": code, "message": msg}
+              for lv, code, msg in items if lv == module.BLOCK]
+    warns = [{"code": code, "message": msg}
+             for lv, code, msg in items if lv == module.WARN]
     return {
         "checked": True,
         "blocked": bool(blocks),
@@ -368,8 +812,8 @@ def evaluate_gate(pack_path: Path) -> dict[str, Any]:
         "warns": warns,
         "block_count": len(blocks),
         "warn_count": len(warns),
-        "scope": "pack",
-        "manifest_checked": False,
+        "scope": scope,
+        "manifest_checked": manifest_checked,
         "manifest_note": GATE_MANIFEST_NOTE,
     }
 
@@ -510,19 +954,63 @@ def pack_delivery(
     stmt_path.write_text(stmt, encoding="utf-8")
     files.append("AST-004_compliance_statement.md")
 
-    # ④ 清单
-    manifest = build_manifest(pack, files + ["manifest.json"], service_truth)
-    mf_path = dst / "manifest.json"
-    mf_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    files.append("manifest.json")
+    # ③′ AIGC 元数据块**单独落盘**（§8.3 第 6 项「存在、字段齐全、仅一份、可解析」）
+    #    ⚠️ 旧实现只在 `pack.json` 内嵌 ⇒ 四件套之②没有独立交付物，清单无法登记。
+    aigc_path = dst / "aigc_meta.json"
+    aigc_path.write_text(
+        json.dumps(pack.get("aigc_meta") or {}, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    files.append("aigc_meta.json")
 
     # ⚠️ 预演态判定**必须在门禁之前**：它是「呈现 vs 拒付」的分档依据（`ISSUE-055` ①′）
     is_preview = bool(unfilled) or "{{" in pack_id
 
-    # ---- ⑤ 交付前自检（官方第 9 项「自检记录留档」＋`SW-026`「未通过→阻断」）----
+    # ---- ④ 包侧判定（清单 `self_check` 18 项的真实来源，`ISSUE-057` 候选①）----
+    judgements, block_level = pack_judgements(pack_path)
+
+    # ④′ 镜头语言质量门报告 `qa/audit_report.txt`（§8.3 第 13 项留档件）
+    #    ⚠️ 内容只取真实 `gate.*` 条目；无镜头时写「未执行」，不写「通过」。
+    (dst / "qa").mkdir(parents=True, exist_ok=True)
+    (dst / "qa" / "audit_report.txt").write_text(
+        render_audit_report(judgements, pack_id=pack_id, block_level=block_level),
+        encoding="utf-8",
+    )
+    files.append("qa/audit_report.txt")
+
+    # ④″ 人工核对记录（§8.3 第 18 项）——**只从人工录入的台账读**，服务层不代填
+    human_review = _load_human_review(settings, pack_id)
+
+    # ---- ⑤ 清单（`CFG-005` v1.1.0；自检 18 项按实际判定填充）----
+    self_check = build_self_check(
+        judgements,
+        block_level=block_level,
+        assets=[f for f in files if f.startswith("assets/")],
+        statement_id=(pack.get("meta") or {}).get("compliance", {}).get("statement_id", ""),
+        statement_file="AST-004_compliance_statement.md",
+        adapters=[a for a in (pack.get("adapters") or []) if isinstance(a, dict)],
+        human_review=human_review,
+        has_shots=bool(pack.get("shots")),
+        has_units=bool(pack.get("units")),
+    )
+    manifest = build_manifest(
+        pack,
+        files + ["manifest.json"],
+        service_truth,
+        self_check=self_check,
+        human_review=human_review,
+        quality_gate=quality_gate_block(judgements, block_level),
+        retention_months=max(1, int(getattr(settings, "log_retention_days", 180)) // 30),
+        spec_version=SPEC_VERSION,
+    )
+    mf_path = dst / "manifest.json"
+    mf_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    files.append("manifest.json")
+
+    # ---- ⑥ 交付前自检（官方第 9 项「自检记录留档」＋`SW-026`「未通过→阻断」）----
     # ⚠️ **分档**：预演包 ⇒ 只呈现（`compliance.*` 占位必然 BLOCK，拒付会让端点长期不可用）；
     #    正式包 ⇒ `blocked` 即拒付（422），并**保留已落盘目录**（自检记录须留档 ≥6 个月，不能删）。
-    gate = evaluate_gate(pack_path)
+    # ⚠️ `ISSUE-057` 候选① 起：**清单侧一并校验**（`manifest_checked=True`）。
+    gate = evaluate_gate(pack_path, mf_path, pack_items=judgements)
     gate["is_preview"] = is_preview
     gate["evaluated_at"] = datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds")
     gate_path = dst / GATE_REPORT_NAME
