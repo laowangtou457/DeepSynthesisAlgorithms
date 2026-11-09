@@ -1,10 +1,20 @@
 id: shot_prompt_v1
 name: 分镜提示词生成
-version: "2.2.0"
+version: "2.3.1"
 task_type: generate
 stage: shot_prompt
 language: zh-CN
 
+# 版本说明（v2.3.1，2026-11-04）：**`ISSUE-058` 产能对齐**（授权落地；与 `TPL-008` v2.1.2 同族）。
+#   v2.3.1 修订说明：`sampling.max_tokens` 8192 → **12288**。实测依据（2026-11-04
+#   `artifacts_t086_units_smoke` 段级 token 留痕）：`package_head` 段**正常输出即 5,319
+#   tokens**（占 8192 上限的 65%）——n=6 跑测 2/6 轮该段 `finish_reason=length`
+#   是真产能边界（模型在 style_bible 等自由文本上多写即触顶），与 storyboard 截断的
+#   退化 ramble 根因不同族。窗口对账：vLLM `max_model_len=32768`，本层单次调用
+#   prompt ≈8k + completion ≤12k < 32k 安全。`max_tokens` 不涉产物合法性
+#   （soundness 无关项），仅防「合法产物被长度切断」。
+# 版本说明（v2.3.0，2026-11-04）：**`T-098` vocabRef 枚举化同步升版**（`PRO-011` 线 3，授权落地）。
+#   v2.3.0 修订说明：输出常量 `schema_version` 2.2.0 → 2.3.0（与 `CFG-006` v2.3.0 的 `const` 对齐；取值域变更升次版本先例）。
 # 版本说明（v2.2.0，2026-11-03）：**同步 `CFG-006` 契约升版**（`PRO-007` 第二步，项目方裁定）。
 #   v2.2.0 修订说明（**次版本**——`output` 字段集**未增删**，只改输出常量与文案）：
 #     ① 输出常量 `schema_version` 由 **2.0.0** 升 **2.2.0**（与 `CFG-006` v2.2.0 的 `const` 对齐）。
@@ -206,7 +216,7 @@ sampling:
   top_p: 0.9
   top_k: 50
   repetition_penalty: 1.05
-  max_tokens: 8192
+  max_tokens: 12288
   # ⚠️ 本层输出为**受约束解码**的 JSON（服务层以 jsonschema 为 FSM 约束采样，
   #    `delivery/schemas/CFG-006_shot_prompt_pack.v1.schema.json`）。temperature 取 0.7 而非 0：
   #    结构由 FSM 保证，温度只作用于 prompt_zh／prompt_en 的**文字表达**——太低会让每一镜的
@@ -437,7 +447,7 @@ sections:
     字段结构（字段名与《分镜提示词交付规范》§3.1~§3.6 逐字对齐；本层产出是**完整包**，不再是真子集）：
 
     {
-      "schema_version": "2.2.0",
+      "schema_version": "2.3.0",
       "meta": {
         "pack_id": "取自 pack_meta，形如 FR-PK-20261013-XXXXXXXX（§5.2 编码规则）",
         "title": "取自 pack_meta",

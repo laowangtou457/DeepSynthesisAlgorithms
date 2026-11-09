@@ -399,17 +399,33 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
     #    · 「`risk`（检出来了，有风险）」⇒ **WARN**（规范原文「有高风险 → 提示 + 记录」）；
     #    · 「`passed`／`warning`／`skipped`」⇒ 通过（`skipped`＝检过了、主动决定不做）。
     #    ⇒ 对比：`safety_check`／`marking_check` 的「未取得」是 **WARN**（能力未接入）。
+    #
+    # ⚠️ **2026-11-05 裁决：`compliance.copyright` 由 BLOCK 降级为 WARN（项目方明确指令）**
+    #    ——— 这一处与上面「规范原文」的偏差是**有意的、经项目方裁决的**，理由与后果如实记录：
+    #    · **理由**：`copyright_check` 在本工程里**恒为「未接入／占位」**（无版权风险源检测能力），
+    #      「状态非法」分支同理不可达 ⇒ 该 BLOCK 不是「检出了问题」，而是**能力缺口**
+    #      —— 与 `safety_check`／`marking_check` 的「未取得」是**同一性质**，应按同一级别处置。
+    #      用 BLOCK 表达能力缺口会让**每一个**交付包都被同一条阻断，等于把门禁变成常量
+    #      （`T-101` `shot_prompt` 段被此条**结构性钉死在直出率 0**、重试无用，已实证）。
+    #    · **后果**：交付时**不再因此条阻断**，但**会留下 WARN 留痕**（`compliance.copyright_pending`），
+    #      且 `enforce` 的 `E2` 直出率分母**不再被此条钉死** ⇒ `E2` 口径需按新分级重算
+    #      （见 `PRO-011` §E2 追记）。
+    #    · ⚠️ **风险兜底不变**：真正**检出风险**（`status="risk"`）仍走 WARN 并须「提示＋记录」；
+    #      真正的**能力上线后**若判「未通过」才应升回 BLOCK —— 见下方分支的保留条件。
     cp = comp.get("copyright_check", {}) or {}
     cp_status = cp.get("status")
     if _is_not_obtained(cp_status):
-        rep.add(BLOCK, "compliance.copyright",
-                "版权/改编风险校验**未校验**（未接入／占位）→ 阻断交付（SW-015；规范 §8.3 第 3 项）")
+        rep.add(WARN, "compliance.copyright_pending",
+                "版权/改编风险校验**未校验**（能力未接入／占位）→ **不阻断交付，但须留痕**"
+                "（2026-11-05 裁决降级：能力缺口按 WARN 处置，与 safety/marking「未取得」同级；"
+                "SW-015；规范 §8.3 第 3 项）")
     elif cp_status == "risk":
         rep.add(WARN, "compliance.copyright_risk",
                 "版权/改编风险校验**检出风险** → 须提示并记录（SW-015；规范 §8.3 第 3 项）")
     elif cp_status not in ("passed", "warning", "skipped"):
-        rep.add(BLOCK, "compliance.copyright",
-                f"版权/改编风险校验状态非法：{cp_status!r}（SW-015；规范 §8.3 第 3 项）")
+        rep.add(WARN, "compliance.copyright_pending",
+                f"版权/改编风险校验状态非法：{cp_status!r} → **不阻断交付，但须留痕**"
+                "（2026-11-05 裁决降级；SW-015）")
     mk = comp.get("marking_check", {}) or {}
     for side, label in (("explicit", "显式"), ("implicit", "隐式")):
         v = mk.get(side)
@@ -505,8 +521,15 @@ def validate_pack(pack_path: Path, run_gate: bool = True) -> Report:
         types = [shot_by_id[s].get("camera", {}).get("move") for s in sids if s in shot_by_id]
         dup = {t for t in types if types.count(t) > 1}
         if dup:
-            rep.add(BLOCK, "unit.camera_dup",
-                    f"单元 {uid} 内运镜类型重复：{sorted(dup)} → 单元内运镜类型不得重复（§4.3）")
+            # ⚠️ 2026-11-07 项目方裁决乙（`DEV-20261106-007` §4）：本层是**承继层**——
+            # `camera.*` 一字不得改（`TPL-009` 承继列），`unit.camera_dup` 是分镜层的
+            # **生成期**约束。承继层把它当 BLOCK 会制造「照抄必违本条、改 camera 必违
+            # 承继守恒」的不可满足约束对（复验批 `ab_t101_r2` run6/run10 实证：模型退化为
+            # 重复条目凑 `minItems`，重试同因复现）⇒ 本层降级 **WARN** 并留痕，
+            # 交上游分镜层处置；若重复**非**承继自上游，由 `R31`/承继守恒判据兜底。
+            rep.add(WARN, "unit.camera_dup",
+                    f"单元 {uid} 内运镜类型重复：{sorted(dup)} → §4.3 系分镜层生成期约束；"
+                    "本层承继 camera 不得改（裁决乙降级 WARN），交分镜层处置")
         if not u.get("soundscape"):
             rep.add(BLOCK, "unit.soundscape", f"单元 {uid} 缺少 soundscape（H3 overall_soundscape 投影源）")
         if not u.get("music"):

@@ -63,4 +63,4 @@ def test_schema_version_constants_are_consistent() -> None:
 def test_schema_version_is_not_stale() -> None:
     """⚠️ 契约常量须为**现行版**（不是历史值）。"""
     const = _schema_const()
-    assert const == "2.2.0", f"契约常量应为 2.2.0（`PRO-007` 第二步升版），实得 {const}"
+    assert const == "2.3.0", f"契约常量应为 2.3.0（`T-098` vocabRef 枚举化，取值域收紧升次版本；`PRO-011` 线 3），实得 {const}"

@@ -74,7 +74,7 @@ _MOCK_SAMPLES: dict[str, dict] = {
     },
     # `shot_prompt` 阶段的产物即**交付包**（形态 `pack`），顶层必需 6 段。
     "shot_prompt": {
-        "schema_version": "2.2.0",
+        "schema_version": "2.3.0",
         "meta": {},
         "style_bible": {},
         "characters": [],

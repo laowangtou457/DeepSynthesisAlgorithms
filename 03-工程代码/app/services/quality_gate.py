@@ -124,9 +124,11 @@ _NON_RETRYABLE_ENGINE_MARKERS: tuple[str, ...] = (
 #: **去重规则**：某 adequacy finding 若其等效 `R` 判据**已在本次判定中报出**
 #: ⇒ 该 finding 标记 `source="engine_dup"`，**只作佐证留痕，不进 `retryable`**。
 #:
-#: ⚠️ **`scene_coverage_incomplete`（场覆盖度）刻意不在表内**——实测它是
-#: **唯一无等效 `R` 判据、且不可替代**的一条（`R10`／`R14`／`R19` 全只审**段内**，
-#: 无任何判据审「分镜是否覆盖了剧本的全部场次」）⇒ 它**必须**进 `retryable`。
+#: ⚠️ **`scene_coverage_incomplete`（场覆盖度）已于 2026-11-05 进表（等效 `R41`）**——
+#: 此前它是「**唯一无等效 `R` 判据、且不可替代**的一条」（`R10`／`R14`／`R19` 全只审
+#: **段内**），故**必须**进 `retryable`；`PRO-013` 落地 `R41`（场次覆盖，`C1`）后
+#: 等效判据出现 ⇒ 进表去重（同一失败不再计两次）；**重试触发不丢**——`R41` 的引擎
+#: 失败自身即 retryable（非 `_NON_RETRYABLE_*` 标记），由 `R41` 驱动重试。
 #: 这也正是 `ISSUE-045` 实测的最严重形态（「3 镜只覆盖第 1 场、第 2~5 场全部漏拍」）。
 _ADEQUACY_EQUIV_RULES: dict[str, str] = {
     "script_total_mismatch": "R4",
@@ -143,6 +145,9 @@ _ADEQUACY_EQUIV_RULES: dict[str, str] = {
     # 而实测 `storyboard` 段正是 `total_duration_ms=0` 这个形态（`R14` 与 adequacy 双双报出）。
     "script_total_missing_or_nonpositive": "R4",
     "storyboard_total_missing_or_nonpositive": "R14",
+    # `PRO-013`（2026-11-05）：`R41`（场次覆盖，`C1`）落地 ⇒ 场覆盖度有了等效 `R` 判据，
+    # 进表去重（同一失败不再计两次）；`R41` 引擎失败自身 retryable，重试触发不丢。
+    "scene_coverage_incomplete": "R41",
     # ⚠️ `synopsis_total_missing_or_nonpositive`：**R 族无等效判据**（实测 `validate_output.py`
     # 中 `synopsis` 与 `total_est_seconds` 零关联）⇒ **刻意不列入本表**，
     # 即它**不被去重**、会进 `retryable`。但 `synopsis` 当前**不在门禁段**
@@ -371,7 +376,7 @@ def _engine_errors(module: Any, doc: Any, where: str, upstream: dict[str, str]) 
     import tempfile as _tf
 
     module.QUIET = True
-    module.RESULT = {"checks": 0, "errors": [], "warnings": []}
+    module.RESULT = {"checks": 0, "errors": [], "warnings": [], "not_tested": []}
     module.UPSTREAM = {"doc": None, "src": None, "sb_doc": None, "sb_src": None}
     tmp = _tf.TemporaryDirectory()
     try:
@@ -390,6 +395,10 @@ def _engine_errors(module: Any, doc: Any, where: str, upstream: dict[str, str]) 
             "checks": module.RESULT["checks"],
             "errors": list(module.RESULT["errors"]),
             "warnings": list(module.RESULT["warnings"]),
+            # ⚠️ 三态化（PRO-013 §4.1，2026-11-05）：`validate_output.py` 的 `not_tested`
+            #    （分母基线/缺上游 ⇒ 未测）随 `errors` 一并带回——**只作可观测留痕**，
+            #    不进 `failures`、不改 `ok`（未测 ≠ 失败，`SW-017`「不足即判未测」口径）。
+            "not_tested": list(module.RESULT.get("not_tested", [])),
         }
     finally:
         module.UPSTREAM = {"doc": None, "src": None, "sb_doc": None, "sb_src": None}
@@ -437,7 +446,7 @@ async def check(
 
     shape = None
     engine = _engine_validator()
-    engine_out = {"checks": 0, "errors": [], "warnings": []}
+    engine_out = {"checks": 0, "errors": [], "warnings": [], "not_tested": []}
     if engine is None:
         reason = "engine_validator_missing"
     else:
@@ -496,6 +505,16 @@ async def check(
         ok, reason = None, "nothing_checked"
     else:
         ok = True
+    if engine_out.get("not_tested"):
+        # 三态化（PRO-013 §4.1）：「未测」只可见化（不进 failures、不改 ok、不触发重试）。
+        logger.info(
+            "quality_gate_not_tested",
+            extra={"extra_fields": {
+                "stage": stage,
+                "count": len(engine_out["not_tested"]),
+                "items": [str(x)[:160] for x in engine_out["not_tested"][:8]],
+            }},
+        )
     return QualityVerdict(
         stage=stage, shape=shape, checked=True, ok=ok,
         engine_checks=engine_out["checks"],

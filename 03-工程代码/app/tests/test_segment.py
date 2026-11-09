@@ -181,3 +181,42 @@ def test_merge_skips_body_items_missing_identifier() -> None:
     merged, warnings = merge_segments([part])
     assert merged["units"] == [] and merged["shots"] == []
     assert len([w for w in warnings if "已跳过" in w]) == 2
+
+
+# ------------------------------------------------- `丙`（2026-11-07 裁决）：段内重复凑数检出
+def test_merge_flags_intra_segment_dup_as_retryable_marker() -> None:
+    """同一段内同一 `shot_id` 重复（凑 `minItems` 形态）⇒ 检出 `merge.shot_dup_in_segment` 机器可读码。"""
+    part = {
+        "units": [],
+        "shots": [
+            {"shot_id": "S01-SH001", "shot_no": 1, "prompt_zh": "甲"},
+            {"shot_id": "S01-SH002", "shot_no": 2, "prompt_zh": "乙"},
+            {"shot_id": "S01-SH002", "shot_no": 2, "prompt_zh": "乙"},  # 全同重复（旧静默）
+        ],
+    }
+    merged, warnings = merge_segments([_head(), part])
+    assert len(merged["shots"]) == 2  # 去重保留先到者
+    marker = [w for w in warnings if w.startswith("merge.shot_dup_in_segment｜")]
+    assert len(marker) == 1 and "S01-SH002" in marker[0] and "2 次" in marker[0]
+
+
+def test_merge_flags_intra_segment_dup_even_when_content_differs() -> None:
+    """段内重复且内容不同：除既有「保留先到者」告警外，同样给出机器可读码。"""
+    part = {
+        "units": [],
+        "shots": [
+            {"shot_id": "S01-SH002", "shot_no": 2, "prompt_zh": "先到"},
+            {"shot_id": "S01-SH002", "shot_no": 2, "prompt_zh": "后到"},
+        ],
+    }
+    merged, warnings = merge_segments([_head(), part])
+    assert merged["shots"][0]["prompt_zh"] == "先到"
+    assert any(w.startswith("merge.shot_dup_in_segment｜") for w in warnings)
+
+
+def test_merge_cross_segment_dup_is_not_flagged_as_intra() -> None:
+    """跨段重复（合法的首到先得场景）**不**报段内凑数码。"""
+    a = {"units": [], "shots": [{"shot_id": "S01-SH001", "shot_no": 1, "prompt_zh": "甲"}]}
+    b = {"units": [], "shots": [{"shot_id": "S01-SH001", "shot_no": 1, "prompt_zh": "甲"}]}
+    _, warnings = merge_segments([_head(), a, b])
+    assert not any(w.startswith("merge.shot_dup_in_segment｜") for w in warnings)

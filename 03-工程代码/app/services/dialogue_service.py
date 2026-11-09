@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from app.core.config import get_settings
@@ -16,6 +17,7 @@ from app.inference.registry import get_backend
 from app.prompts.loader import PromptRepository, Template
 from app.repositories.session_repo import SessionRecord, SessionRepository
 from app.services.output_schema import (
+    cap_pack_array_bounds,
     engine_schema_source,
     load_engine_schema,
     stripped_paths,
@@ -25,8 +27,12 @@ from app.services import artifact_contract, content_adequacy, quality_gate
 from app.services.segment import (
     is_multi_part,
     merge_segments,
+    merge_storyboard_parts,
     parse_json_object,
+    plan_scene_segments,
     plan_segments,
+    scene_by_no,
+    scope_storyboard_for_segment,
     shot_count_of,
     unit_ids_of,
 )
@@ -622,6 +628,29 @@ class DialogueService:
         if not any(v["name"] == "segment" for v in template.variables):
             return ["all"]
 
+        # ---- `T-100`／`PRO-014`：分镜段逐场编排（每场一次调用）----
+        # ⚠️ 计划来源是**上游剧本的场号清单**（不是分镜产物自己的场分组——后者正是要消灭的
+        #    空真来源：产物缺哪场，它自己的场分组就少哪场）。
+        # ⚠️ 与 `shot_prompt` 的 `auto` 不同，本分支**没有「镜数阈值」**：逐场的动机是
+        #    **场覆盖**而非输出体积，3 场与 30 场同样需要。
+        if tpl_stage == "storyboard":
+            if not get_settings().storyboard_scene_orchestration:
+                return ["all"]
+            script = _upstream_json(rec.artifacts.get("script"))
+            if script is None:
+                logger.warning(
+                    "scene_plan_upstream_unparsed",
+                    extra={
+                        "extra_fields": {
+                            "session_id": rec.session_id,
+                            "note": "上游剧本无法解析为 JSON，逐场编排退为整片一次调用"
+                            "（⚠️ 形态闸生效时本分支不可达——上游准入闸已先阻断）",
+                        }
+                    },
+                )
+                return ["all"]
+            return plan_scene_segments(script)
+
         value = merged.get("segment") or template.default_of("segment") or "auto"
         shot_count, unit_ids = 0, []
         if tpl_stage == "shot_prompt":
@@ -651,12 +680,20 @@ class DialogueService:
         supports_segment: bool,
         json_schema: dict[str, Any] | None,
         backend: Any,
+        scene_ctx: dict[int, dict[str, Any]] | None = None,
+        scope_ctx: dict[str, Any] | None = None,
     ) -> tuple[dict[str, str], list[dict[str, Any]], int, int, list[str]]:
         """按 `segs` 逐段调用引擎，返回 `(段→文本, 本批留痕, prompt_tokens, completion_tokens, 截断段)`。
 
         ⚠️ 抽出来是为 `T-086` 的**按段重试**服务：重试时只传「失败的段」，
         未失败的段**沿用上一轮的采样结果**（各自独立，互不牵连）。
         ⚠️ **本方法只做调用与留痕，不改写、不润色模型输出。**
+        ⚠️ `scene_ctx`（`T-100` 逐场编排）：场号 → 该场对象；非空且段名为 `scene:<no>` 时，
+        按段注入 `scene_scope`／`scene_json`／`prev_scene_tail`／`scene_budget`
+        ——**段间存在前向依赖**（上一场末镜喂下一场的衔接参照），故逐场必须**串行**。
+        ⚠️ `scope_ctx`（`T-101`／`PRO-015` 段级输入裁剪）：`{"storyboard": <已解析的上游>}`；
+        非空且段名为 `package_head`／`unit:<id>` 时，把 `storyboard_json` 换成**按段裁剪副本**。
+        裁剪失败 ⇒ 原样整份（`scope_storyboard_for_segment` 返回 `None` 时），留痕在 trace。
         """
         produced: dict[str, str] = {}
         trace: list[dict[str, Any]] = []
@@ -665,11 +702,60 @@ class DialogueService:
             seg_vars = dict(merged)
             if supports_segment:
                 seg_vars["segment"] = seg
+            if scene_ctx is not None and seg.startswith("scene:"):
+                seg_vars.update(self._scene_seg_vars(seg, scene_ctx, produced))
+            storyboard_scope = "full"
+            scoped_doc: dict[str, Any] | None = None
+            if scope_ctx is not None and (
+                seg == "package_head" or seg.startswith("unit:")
+            ):
+                scoped_doc, scope_warnings = scope_storyboard_for_segment(
+                    seg, scope_ctx.get("storyboard") or {}
+                )
+                if scoped_doc is not None:
+                    # 紧凑序列化（与 `_compact_upstream_json` 的「去空白」动机一致：
+                    # 交给模型的是变量值，不是留档原文）
+                    seg_vars["storyboard_json"] = json.dumps(
+                        scoped_doc, ensure_ascii=False, separators=(",", ":")
+                    )
+                    storyboard_scope = "scoped"
+                for note in scope_warnings:
+                    logger.warning(
+                        "segment_scope_fallback",
+                        extra={
+                            "extra_fields": {"segment": seg, "note": note}
+                        },
+                    )
+            # ---- 引擎 schema 按段收窄（`T-101`／`PRO-015` §7：产出侧的结构闸）----
+            # ⚠️ A 期实测证伪了「输入回声」主因：输入裁剪后 `package_head` 仍产出
+            # 8,433 tokens（合并后头部仅 ≈1.2K）——产出体积由引擎 schema 的允许面决定。
+            # 头部段 `units`/`shots` 上限 0；单元段 `units` 上限 1、`shots` 上限＝
+            # 该单元在上游的镜数（`scoped_doc` 已算好）。超出上游的镜本来就该被判据拦
+            # （`R31`/`R7`），这里只是把「事后判」升级为「事中不生成」。
+            seg_schema = json_schema
+            schema_capped = False
+            if scope_ctx is not None and scoped_doc is not None and isinstance(json_schema, dict):
+                if seg == "package_head":
+                    seg_schema = cap_pack_array_bounds(
+                        json_schema, units_cap=0, shots_cap=0)
+                    schema_capped = True
+                elif seg.startswith("unit:"):
+                    seg_shots = len(scoped_doc.get("shots") or [])
+                    seg_schema = cap_pack_array_bounds(
+                        json_schema,
+                        units_cap=1,
+                        shots_cap=seg_shots,
+                        # `R31`（镜数低于上游）裁决 2 修法 A：把镜数下限抬到上游镜数——
+                        # 事后判 → 事中不可少写。B 期实测 on 臂 `pack_shots_lt_upstream`
+                        # 2/11、`R31` 5/11（重试救回 3、失守 2）。
+                        shots_floor=seg_shots,
+                    )
+                    schema_capped = True
             rendered = self.prompts.render(template, seg_vars)
             result = await backend.generate(
                 f"[stage:{tpl_stage}]\n{rendered.as_text()}",
                 _params_of(template.sampling),
-                json_schema,
+                seg_schema,
             )
             produced[seg] = result.text
             prompt_tokens += result.prompt_tokens
@@ -680,10 +766,87 @@ class DialogueService:
                     "chars": len(result.text),
                     "digest": digest(result.text, 12),
                     "finish_reason": result.finish_reason,
+                    # ---- 段级输入裁剪留痕（`T-101`／`PRO-015`）----
+                    # `scoped`＝本段注入的是裁剪副本；`full`＝整份（开关关／段名不匹配／裁剪回退）。
+                    "storyboard_scope": storyboard_scope,
+                    # 引擎 schema 是否按段收窄（`cap_pack_array_bounds`）——与输入裁剪同一开关族。
+                    "schema_capped": schema_capped,
+                    # ---- 段级 token 留痕（`ISSUE-058` 发生率统计的观测补强）----
+                    # ⚠️ 此前 trace 只有 chars／finish_reason：502 截断轮**无产物落盘**，
+                    #    「真 8192 跑满」与「其他原因」只能靠延迟推断（186s≈全量生成
+                    #    时间）。补段级 token 后，截断归因可直接对账 usage。
+                    "prompt_tokens": result.prompt_tokens,
+                    "completion_tokens": result.completion_tokens,
                 }
             )
         truncated = [t["segment"] for t in trace if t.get("finish_reason") == "length"]
         return produced, trace, prompt_tokens, completion_tokens, truncated
+
+    def _scene_seg_vars(
+        self,
+        seg: str,
+        scene_ctx: dict[int, dict[str, Any]],
+        produced: dict[str, str],
+    ) -> dict[str, str]:
+        """`scene:<no>` 段的**逐场变量**（`T-100`／`PRO-014` §3.3）。
+
+        ⚠️ 逐场变量**只补充"本段干什么"**，不裁剪全局上下文——`script_json` 仍整份注入
+        （`character_refs`／`prop_refs`／风格一致性都依赖它）。裁了会出现「角色引用瞎编」的新失败类。
+        """
+        try:
+            no = int(seg.split(":", 1)[1])
+        except (IndexError, ValueError):
+            return {}
+        scene = scene_ctx.get(no) or {}
+        total = len(scene_ctx)
+        est = scene.get("est_seconds")
+        floor = 2  # `R42` 每场下限（与 `R22`「场 ≥ 8s ＝ 4s × 2 镜」同源推导）
+        if isinstance(est, (int, float)) and not isinstance(est, bool) and est > 0:
+            ceiling = max(floor, int(est) // 4)  # 单镜下限 4s ⇒ 场秒数 ÷ 4
+            budget = (
+                f"本场 est_seconds = {int(est)} 秒 ⇒ 镜头数须在 **{floor} ~ {ceiling}** 之间"
+                f"（下限＝最小合规单元 2 镜；上限＝⌊场秒数 ÷ 单镜下限 4s⌋）；"
+                f"本场各镜 duration_ms 之和须 ≈ {int(est) * 1000} ms（允许 ±10%，超出须在 unspecified 说明）。"
+            )
+        else:
+            budget = (
+                f"本场 est_seconds 缺失 ⇒ 镜头数须 ≥ {floor} 镜，且各镜时长之和不得明显超出剧本该场预算。"
+            )
+        scope = (
+            f"**单场模式**——本次调用**只**输出剧本第 {no} 场（共 {total} 场）的镜头。"
+            f"其他场由别的调用负责：**不要写别的场、不要留占位、不要替别的场补内容**。"
+            f"`shots[]` 与 `units[]` 只含本场；所有 `shots[].scene_no` 与 `units[].scene_no` "
+            f"一律填 **{no}**；`shot_id` 形如 `S{no:02d}-SH<镜号三位>`（场号两位固定为 {no:02d}）。"
+        )
+        return {
+            "scene_scope": scope,
+            "scene_json": json.dumps(scene, ensure_ascii=False, indent=2),
+            "prev_scene_tail": self._prev_scene_tail(no, produced),
+            "scene_budget": budget,
+        }
+
+    @staticmethod
+    def _prev_scene_tail(no: int, produced: dict[str, str]) -> str:
+        """上一场末镜摘要（跨场衔接的唯一信息来源；拿不到就如实说、并给保守口径）。"""
+        raw = produced.get(f"scene:{no - 1}")
+        if not raw:
+            return "无（本场为第一场，或上一场尚未产出）——本场首镜 `transition_in` 填 `cut`。"
+        try:
+            doc = parse_json_object(raw)
+        except AppError:
+            return "（上一场产物不可解析）——本场首镜 `transition_in` 一律填 `cut`。"
+        shots = doc.get("shots")
+        if not isinstance(shots, list) or not shots:
+            return "（上一场无镜头产出）——本场首镜 `transition_in` 一律填 `cut`。"
+        last = shots[-1] if isinstance(shots[-1], dict) else {}
+        action = last.get("action") if isinstance(last.get("action"), dict) else {}
+        tail = (
+            f"上一场（第 {no - 1} 场）末镜：`shot_id`={last.get('shot_id')}"
+            f"；`action.end`={action.get('end')}"
+            f"；`transition_out`={last.get('transition_out', '（省略）')}。"
+            f"本场首镜的 `transition_in` 须与之衔接；无把握时填 `cut`。"
+        )
+        return tail
 
     def _retry_segments(
         self, plan: list[str], verdict: Any, texts: dict[str, str]
@@ -714,6 +877,44 @@ class DialogueService:
                 uid = seg.split(":", 1)[1]
                 if uid and uid in joined:
                     picked.append(seg)
+            # ---- `T-100` 逐场编排：按场定位（判据报错里的「场 k」与 shot_id 前缀两种形态）----
+            # 真机形态：`R41`／`R42` 报「场 4 ...」；`R10`／`R11`／`R19` 报单元号或 `shot_id`。
+            if seg.startswith("scene:"):
+                no = seg.split(":", 1)[1]
+                try:
+                    prefix = f"S{int(no):02d}-"
+                except ValueError:
+                    prefix = ""
+                if f"场 {no}" in joined or (prefix and prefix in joined):
+                    picked.append(seg)
+        # ---- `T-101`／`PRO-015`：shot_id 定位（`R34` 等判据**只列 shot_id**，无 `U` 字面）----
+        # 885s 轮实锤：`R34` 报「S02-SH002；S03-SH002；…」⇒ 规则 1 的 `U` 字面定位不到
+        # ⇒ `scope_fallback` **全部 6 段重跑**（第 2 次 17.2K completion 基本白烧）。
+        # 定位①（包含关系）：shot 的属主段必含其 id——报错 shot_id 出现在某段产物文本
+        #   ⇒ 该段重跑（无需全局映射表）；
+        # 定位②（场前缀兜底，**宁多勿漏**）：`S<场>-` 前缀 → 场号 → 段产物 `units[].scene_no`
+        #   命中即重跑——覆盖「镜整段没生成出来、任何段文本里都找不到」的形态。
+        #   解析失败的段交给下方「解析失败 ⇒ 必须重跑」规则统一兜（不在②里抢跑）。
+        err_shot_ids = sorted(set(re.findall(r"S\d{2}-SH\d{3}", joined)))
+        if err_shot_ids:
+            for seg in plan:
+                if seg.startswith("unit:") and any(
+                    sid in texts.get(seg, "") for sid in err_shot_ids
+                ):
+                    picked.append(seg)
+            scene_hits = {int(m) for m in re.findall(r"S(\d{2})-SH", joined)}
+            if scene_hits:
+                for seg in plan:
+                    if seg in picked or not seg.startswith("unit:"):
+                        continue
+                    try:
+                        doc = parse_json_object(texts.get(seg, ""))
+                    except AppError:
+                        continue
+                    for u in doc.get("units") or []:
+                        if isinstance(u, dict) and u.get("scene_no") in scene_hits:
+                            picked.append(seg)
+                            break
         if any(k in joined for k in ("meta.", "total_duration_ms", "package_head", "package")):
             if "package_head" in plan:
                 picked.append("package_head")
@@ -786,6 +987,465 @@ class DialogueService:
         if not overrides:
             return text, None
         return json.dumps(doc, ensure_ascii=False), overrides
+
+    def _apply_derived_backfill(
+        self, tpl_stage: str, text: str, gate_upstream: dict[str, str] | None = None
+    ) -> tuple[str, dict[str, Any] | None]:
+        """**派生量**的确定性回填（`R14`／`R4`／`R31` 总量守恒 ＋ `R8` 场内镜号序列 ＋ `R24` 道具覆盖；2026-11-04 授权落地，`R8`/`R24` 于 2026-11-05 同构扩展）。
+
+        背景（实测，`ISSUE-038` ＋ `PRO-011` 真基线）：`total_duration_ms`／
+        `total_est_seconds` 是**跨字段算术**——「等于子项之和」。这类约束
+        **受约束解码表达不了**（schema 只能约束单字段取值，无法表达字段间求和），
+        提示词路线已**四版四错**（v2.2.0 散文条款／v2.2.1 给自洽字面值 `18200`／
+        v2.2.2 归零 ＋ 算式紧邻示例），真机三种样本 **3/3** 产物 `total_duration_ms`
+        **恒为 `0`**（照抄骨架）；`script` 的 `total_est_seconds` 真基线 **3/3 轮**
+        与 Σ 各场不等；交付包 `meta.total_duration_ms` 真基线 **2/2 轮**失守。
+
+        ⚠️ **不改判据**：`R14`／`R4`／`R31` 一字未动；回填后它们判的是
+        「回填结果是否守恒」。
+        ⚠️ **不改创作**：只改**由子项唯一决定**的量，镜数／时长／运镜／场内容均不动。
+        ⚠️ **必须留痕**：模型原值一并记入 `derived_backfill`——否则等于**悄悄改产物**，
+           而「产物被动过却查不出来」比「字段填错」更危险（本层第一纪律）。
+        ⚠️ 生效时产物会**重新序列化**（`json.dumps(ensure_ascii=False)`，与交付包 `pack`
+           的真值覆盖同口径）：只影响空白与缩进，不改语义、不改键序。
+        ⚠️ 分段开关（`PRO-011` 附 4 真值归属方案 A）：`storyboard_derived_backfill`（`R14`，
+           2026-11-04 项目方裁决）· `script_derived_backfill`（`R4`，含 `synopsis` 形态）·
+           `pack_derived_backfill`（`R31` 算术侧）· `storyboard_shot_no_backfill`（`R8`，
+           2026-11-05 同构扩展）· `storyboard_prop_coverage_backfill`（`R24`，2026-11-05
+           同构扩展、需 `gate_upstream` 的剧本原文）各自独立、默认 `true`。
+        """
+        settings = get_settings()
+        if tpl_stage == "storyboard":
+            # 三项派生量各自独立回填（R14 总量守恒 ＋ R8 场内镜号序列 ＋ R24 道具覆盖），
+            # 留痕合并进同一个 `derived_backfill` 字典（键不冲突：
+            # `total_duration_ms` vs `shots[].shot_no` vs `shots[].prop_refs`）。
+            backfills: dict[str, Any] = {}
+            if settings.storyboard_derived_backfill:
+                text, rec = self._backfill_total_sum(
+                    text, rule="R14", field="total_duration_ms",
+                    item_field="duration_ms", item_label="shot_count",
+                )
+                if rec:
+                    backfills.update(rec)
+            if settings.storyboard_shot_no_backfill:
+                text, rec = self._backfill_shot_no_seq(text)
+                if rec:
+                    backfills.update(rec)
+            if settings.storyboard_prop_coverage_backfill:
+                script_text = (gate_upstream or {}).get("script")
+                if script_text:
+                    text, rec = self._backfill_prop_coverage(text, script_text)
+                    if rec:
+                        backfills.update(rec)
+            return text, (backfills or None)
+        if tpl_stage in ("script", "synopsis"):
+            if not settings.script_derived_backfill:
+                return text, None
+            return self._backfill_total_sum(
+                text, rule="R4", field="total_est_seconds",
+                item_field="est_seconds", item_label="scene_count",
+            )
+        if tpl_stage == "shot_prompt":
+            if not settings.pack_derived_backfill:
+                return text, None
+            return self._backfill_total_sum(
+                text, rule="R31", field="meta.total_duration_ms",
+                item_field="duration_ms", item_label="shot_count",
+            )
+        return text, None
+
+    def _backfill_total_sum(
+        self,
+        text: str,
+        *,
+        rule: str,
+        field: str,
+        item_field: str,
+        item_label: str,
+    ) -> tuple[str, dict[str, Any] | None]:
+        """按「`field` ＝ Σ 子项 `item_field`」复算覆写（三段共用，逐段开关在调用方）。
+
+        子项定位与判据同源：`storyboard`／`pack` 取 `shots[]`；`script` 取
+        `acts[].scenes[]`；`synopsis` 取 `scenes_outline[]`（与 `validate_output.py`
+        的 `iter_scenes` 同口径）。子项值**非整数**时**不兜底**（交 `R12`／`R13`
+        等对应判据判），只如实留痕 `skipped`。
+        """
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None          # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        # ---- 取子项值 ----
+        vals: list[int] = []
+        if field.startswith("meta."):
+            shots = doc.get("shots")
+            container = doc.get("meta") if isinstance(doc.get("meta"), dict) else None
+            if not isinstance(shots, list) or not shots or container is None:
+                return text, None
+        elif field == "total_est_seconds":
+            # `script`（acts[].scenes[]）与 `synopsis`（scenes_outline[]）同游标（R4 口径）
+            scenes: list[Any] = []
+            if "acts" in doc:
+                for act in doc.get("acts") or []:
+                    if isinstance(act, dict):
+                        scenes.extend(act.get("scenes") or [])
+            else:
+                scenes = list(doc.get("scenes_outline") or [])
+            if not scenes:
+                return text, None
+            shots = scenes
+            container = doc
+        else:
+            shots = doc.get("shots")
+            container = doc
+            if not isinstance(shots, list) or not shots:
+                return text, None
+        for it in shots:
+            v = it.get(item_field) if isinstance(it, dict) else None
+            if isinstance(v, bool) or not isinstance(v, int):
+                # 非整数时长／秒数属对应判据（`R12`／`R13` 等）的判定对象，**不在此处兜底**
+                return text, {field: {
+                    "field": field, "rule": rule, "changed": False,
+                    "action": "skipped_non_integer_item",
+                    "note": f"存在非整数 {item_field} ⇒ 交对应判据判，本层不回填",
+                }}
+            vals.append(v)
+        computed = sum(vals)
+        # ---- 取原值（支持 `meta.` 前缀的嵌套目标）----
+        if field.startswith("meta."):
+            sub = field.split(".", 1)[1]
+            original = container.get(sub)
+        else:
+            original = container.get(field)
+        record: dict[str, Any] = {
+            "field": field, "rule": rule,
+            "original": original, "computed": computed,
+            "changed": original != computed,
+            item_label: len(vals),
+            "action": "recomputed" if original != computed else "noop",
+        }
+        if original == computed:
+            return text, {field: record}
+        if field.startswith("meta."):
+            container[field.split(".", 1)[1]] = computed
+        else:
+            doc[field] = computed
+        return json.dumps(doc, ensure_ascii=False), {field: record}
+
+    def _backfill_shot_no_seq(self, text: str) -> tuple[str, dict[str, Any] | None]:
+        """`R8`（`shots[].shot_no` 场内从 1 连续）的确定性回填（2026-11-05 落地，`T-087` 余项）。
+
+        ⚠️ **为什么是派生量**：`shot_no` 是**位置投影**——`TPL-010` 数量要求 1 明写
+           「`shots` 的顺序即全片镜序」，故场内第 k 个镜头的 `shot_no` 恒等于 k，
+           由数组结构**唯一决定**（与 `R14`「总量＝Σ 子项」同类的字段间/字段-结构
+           算术，受约束解码表达不了）。真基线反证：2026-11-04 冒烟（`sess_2738d84570fe`
+           storyboard 第 2 轮）实测模型按**单元内**编号产出 `[1,1,2,2]`——
+           提示词「场内连续编号」条款（v2.2.0 起一直在）拦不住 7B 对编号的自配解读。
+        ⚠️ **比 `R14` 多一层承重性**：`shot_no` 是**排序键**——`segment.py` 镜序
+           （`scene_no → shot_no` 升序）、`export_models.py`／`E4` 导出序都吃它；
+           单元内编号会让场景级排序出现平键、按 `shot_id` 兜底成**错序**。回填把
+           排序键修回与镜序（数组序）一致。
+        ⚠️ **不改创作**：只重编编号，不动 `shots` 的顺序／内容／单元归属；
+           数组序本身是模型的创作声明，回填只是把它投影成判据要的连续整数。
+        ⚠️ **必须留痕**：模型原值（按 `shot_id` 键控、只记被改动的镜头）记入
+           `derived_backfill["shots[].shot_no"]`——否则等于悄悄改产物（第一纪律）。
+        ⚠️ **非整数场景号不兜底**：任一头 `scene_no` 不是整数（分组语义已破坏）
+           ⇒ 如实留痕 `skipped_non_integer_scene_no`、交由 `R8`/`R9` 判。
+        """
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None          # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        shots = doc.get("shots")
+        if not isinstance(shots, list) or not shots:
+            return text, None
+        for r in shots:
+            if not isinstance(r, dict) or isinstance(r.get("scene_no"), bool) \
+                    or not isinstance(r.get("scene_no"), int):
+                return text, {"shots[].shot_no": {
+                    "field": "shots[].shot_no", "rule": "R8", "changed": False,
+                    "action": "skipped_non_integer_scene_no",
+                    "note": "存在非整数 scene_no ⇒ 场内分组语义已破坏，交 R8/R9 判，本层不回填",
+                }}
+        counters: dict[int, int] = {}
+        changed: dict[str, Any] = {}
+        for idx, r in enumerate(shots):
+            sc = r["scene_no"]
+            counters[sc] = counters.get(sc, 0) + 1
+            want = counters[sc]
+            old = r.get("shot_no")
+            if old != want:
+                key = r.get("shot_id") if isinstance(r.get("shot_id"), str) else f"shots[{idx}]"
+                changed[key] = old
+                r["shot_no"] = want
+        record: dict[str, Any] = {
+            "field": "shots[].shot_no", "rule": "R8",
+            "changed": bool(changed),
+            "action": "renumbered" if changed else "noop",
+            "scene_count": len(counters),
+            "shot_count": len(shots),
+        }
+        if changed:
+            record["original"] = changed
+        if not changed:
+            return text, {"shots[].shot_no": record}
+        return json.dumps(doc, ensure_ascii=False), {"shots[].shot_no": record}
+
+    def _backfill_prop_coverage(
+        self, text: str, script_text: str
+    ) -> tuple[str, dict[str, Any] | None]:
+        """`R24`（道具覆盖：某场 `props_present` 非空 ⇒ 该场至少一镜标进 `prop_refs`）的
+        确定性回填（2026-11-05 落地，`T-087` 余项后续）。
+
+        ⚠️ **为什么是派生量**：道具「在场」由**上游剧本声明**（`scenes[].props_present`），
+           分镜层的义务（`BR-03`「有道具入画必标」）只是把它落到镜——「该场至少一镜」
+           是上游数据的**逻辑后承**（与 `R8` 位置投影同类：结构＋上游唯一决定）。
+           「补进哪一镜」是创作决策，本回填用**约定**承担：该场**首镜**（数组序第一个，
+           建立镜惯例——该场出场面的第一镜最可能拍到在场景物）。
+           真基线反证：2026-11-05 冒烟（`sess_dac62518e40c` storyboard 第 2 轮）实测
+           场 4 `props_present=['PRP-01']` 而该场无一镜标出——`TPL-010` 数量要求 14
+           「有道具入画必标」条款（v2.1.0 起一直在）拦不住 7B 的漏标。
+        ⚠️ **与纯算术回填的差异（如实标注）**：`R14` 纯算术、`R8` 纯位置投影；
+           本项是「上游声明 × 场首镜约定」的**语义层投影**——承载镜选择是约定而非
+           唯一真值，故留痕必须完整（模型原 `prop_refs` 按 `shot_id` 键控全记）。
+        ⚠️ **不改创作**：只补**缺失的** `prop_id`（已标的绝不动、不重排、不去重改写）；
+           `prop_refs` 只引用剧本已定义的 `prop_id`，不新增道具。
+        ⚠️ **必须留痕**：`derived_backfill["shots[].prop_refs"]`——否则等于悄悄改产物
+           （第一纪律）。
+        ⚠️ **场无镜头不兜底**：该场在 `shots` 中无任一镜（3 镜吸引子等场覆盖缺失形态）
+           ⇒ 留痕 `skipped_scene_without_shots`、交 `R24`/场覆盖判据如实判——本回填
+           不制造「道具已覆盖」的假象。
+        ⚠️ 语义镜像 `validate_output.py` 的 `_upstream_props_by_scene`（剧本场键＝
+           `acts[].scenes[].no`／`scenes_outline[].no`；分镜镜键＝`scene_no`）。
+        """
+        try:
+            doc = parse_json_object(text)
+            script = parse_json_object(script_text)
+        except AppError:
+            return text, None          # 解析不了由形态闸/上游准入闸报出（不抢先归因）
+        if not isinstance(doc, dict) or not isinstance(script, dict):
+            return text, None
+        shots = doc.get("shots")
+        if not isinstance(shots, list) or not shots:
+            return text, None
+        # ---- 上游场→props（与判据 `_upstream_props_by_scene` 逐字同口径）----
+        pres: dict[Any, list] = {}
+        for act in (script.get("acts") or []):
+            if not isinstance(act, dict):
+                continue
+            for sc in (act.get("scenes") or []):
+                if isinstance(sc, dict):
+                    pres[sc.get("no")] = sc.get("props_present") or []
+        for sc in (script.get("scenes_outline") or []):
+            if isinstance(sc, dict):
+                pres.setdefault(sc.get("no"), sc.get("props_present") or [])
+        pres = {k: v for k, v in pres.items() if v}
+        if not pres:
+            return text, None
+        # ---- 本层场→已标道具并集（只认 list[str] 的 prop_refs）----
+        def _refs(r: dict) -> set:
+            v = r.get("prop_refs")
+            if isinstance(v, list):
+                return {x for x in v if isinstance(x, str)}
+            return set()
+
+        by_scene: dict[Any, list[dict]] = {}
+        for r in shots:
+            if isinstance(r, dict):
+                by_scene.setdefault(r.get("scene_no"), []).append(r)
+        changed: dict[str, Any] = {}
+        skipped_scenes: list[Any] = []
+        covered_scenes = 0
+        for s, need in pres.items():
+            need_set = {p for p in need if isinstance(p, str)}
+            scene_shots = by_scene.get(s)
+            if not scene_shots:
+                skipped_scenes.append(s)      # 场覆盖缺失（吸引子形态）⇒ 不造假，交判据
+                continue
+            got: set = set()
+            for r in scene_shots:
+                got |= _refs(r)
+            miss = sorted(need_set - got)
+            if not miss:
+                covered_scenes += 1
+                continue
+            first = scene_shots[0]            # 场首镜（数组序第一个）承载约定
+            key = first.get("shot_id") if isinstance(first.get("shot_id"), str) \
+                else f"shots[{shots.index(first)}]"
+            changed[key] = list(first.get("prop_refs") or []) \
+                if isinstance(first.get("prop_refs"), list) else None
+            first["prop_refs"] = sorted(set(_refs(first)) | set(miss))
+            covered_scenes += 1
+        record: dict[str, Any] = {
+            "field": "shots[].prop_refs", "rule": "R24",
+            "changed": bool(changed),
+            "action": "covered_first_shot" if changed else "noop",
+            "scene_with_props": len(pres),
+            "scene_covered": covered_scenes,
+        }
+        if changed:
+            record["original"] = changed
+        if skipped_scenes:
+            record["skipped_scene_without_shots"] = skipped_scenes
+        if not changed:
+            return text, {"shots[].prop_refs": record}
+        return json.dumps(doc, ensure_ascii=False), {"shots[].prop_refs": record}
+
+    def _normalize_storyboard_identity(
+        self, tpl_stage: str, text: str
+    ) -> tuple[str, dict[str, Any] | None]:
+        """**分镜标识归一化**（`R7`／`R9` 的派生量；`T-100` 配套，2026-11-05 授权代决）。
+
+        为什么是派生量
+        --------------
+        `shot_id` 的格式 `S<场号两位>-SH<镜号三位>`（`R7`）是 `scene_no` 与**数组序位**的
+        **纯函数**——与 `R8` 的 `shot_no`（场内位置投影）同族。逐场编排下每次调用各自从
+        `S01-SH001` 起编，跨场必然重号；而 `merge_segments` 的 `setdefault` 语义会把重号
+        静默丢成一份（丢哪一场取决于遍历顺序）。
+
+        两条纪律
+        --------
+        - **不猜**：`scene_no` 非整数的镜头**不重编**（分组语义已破坏），如实留痕；
+        - **不洗白**：`units[].shot_ids` 与 `shots[].unit_id` 不是双向一致时（`R9` 已失败），
+          `unit_id` **不重编**——否则会把链接错误改成"看起来对了"，掩掉真实缺陷。
+
+        ⚠️ 本方法**不改任何创作字段**（`action`／`camera`／`duration_ms` 等一字不动），
+        只写标识；且位置在**合并后、门禁前**（门禁要判最终入库的那一份）。
+        """
+        if not get_settings().storyboard_identity_normalize:
+            return text, None
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) != "storyboard":
+            return text, None
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None  # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        shots = doc.get("shots")
+        units = doc.get("units")
+        if not isinstance(shots, list) or not isinstance(units, list):
+            return text, None
+
+        # ---- ① `shot_id`：按场内数组序重编（`R7`）----
+        # ⚠️ 映射键**必须带场号**：逐场编排下各场都从 `S01-SH001` 起编，只按旧串映射会串场
+        #    （实测：把第 1 场单元的 `shot_ids` 改成了第 2 场的编号）。
+        old_to_new: dict[tuple[Any, str], str] = {}
+        counter: dict[int, int] = {}
+        renamed_shots = 0
+        skipped_non_int = 0
+        samples: dict[str, str] = {}
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            scene_no = shot.get("scene_no")
+            if not isinstance(scene_no, int) or isinstance(scene_no, bool):
+                skipped_non_int += 1
+                continue
+            counter[scene_no] = counter.get(scene_no, 0) + 1
+            new_id = f"S{scene_no:02d}-SH{counter[scene_no]:03d}"
+            old_id = shot.get("shot_id")
+            if old_id != new_id:
+                if isinstance(old_id, str) and old_id:
+                    old_to_new[(scene_no, old_id)] = new_id
+                shot["shot_id"] = new_id
+                renamed_shots += 1
+                if len(samples) < 5:
+                    samples[f"{scene_no}:{old_id}"] = new_id
+
+        # ---- ② `units[].shot_ids` 随 `shot_id` 同步映射（否则 `R9` 的链接会断）----
+        renamed_units_refs = 0
+        for unit in units:
+            if not isinstance(unit, dict):
+                continue
+            ids = unit.get("shot_ids")
+            if not isinstance(ids, list):
+                continue
+            scene_no = unit.get("scene_no")
+            mapped = [
+                old_to_new.get((scene_no, x), x) if isinstance(x, str) else x for x in ids
+            ]
+            if mapped != ids:
+                unit["shot_ids"] = mapped
+                renamed_units_refs += 1
+
+        # ---- ③ `unit_id`：按 `(scene_no, 原 unit_id)` 定位后重编（`R9`）----
+        # ⚠️ 为什么带 `scene_no`：逐场编排下**各场独立从 U01 起编**是必然形态，
+        #    合并后同名不同场。只按名字重编会把两个场的单元混成一个（正是要消灭的错）。
+        unit_keys: list[tuple[Any, str]] = []
+        declared: dict[tuple[Any, str], list[str]] = {}
+        for unit in units:
+            if not isinstance(unit, dict):
+                continue
+            uid = unit.get("unit_id")
+            if uid in (None, ""):
+                continue
+            key = (unit.get("scene_no"), str(uid))
+            if key in declared:
+                continue  # 同场同名单元：无法区分，交 R9 判
+            unit_keys.append(key)
+            declared[key] = [x for x in (unit.get("shot_ids") or []) if isinstance(x, str)]
+        claims: dict[tuple[Any, str], list[str]] = {}
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            uid, sid = shot.get("unit_id"), shot.get("shot_id")
+            if isinstance(uid, str) and isinstance(sid, str):
+                claims.setdefault((shot.get("scene_no"), uid), []).append(sid)
+        consistent = set(claims).issubset(set(declared)) and all(
+            set(claims.get(key, [])) == set(ids) for key, ids in declared.items()
+        )
+        unit_map: dict[tuple[Any, str], str] = {}
+        renamed_units = 0
+        unit_record: dict[str, Any] = {"rule": "R9", "changed": False}
+        if not unit_keys:
+            unit_record["skipped"] = "units_empty"
+        elif not consistent:
+            unit_record["skipped"] = "unit_shot_link_inconsistent（交 R9 判，不重编）"
+        else:
+            for i, key in enumerate(unit_keys, start=1):
+                if key[1] != f"U{i:02d}":
+                    unit_map[key] = f"U{i:02d}"
+                    renamed_units += 1
+            if unit_map:
+                for unit in units:
+                    if isinstance(unit, dict):
+                        key = (unit.get("scene_no"), str(unit.get("unit_id")))
+                        if key in unit_map:
+                            unit["unit_id"] = unit_map[key]
+                for shot in shots:
+                    if isinstance(shot, dict):
+                        key = (shot.get("scene_no"), str(shot.get("unit_id")))
+                        if key in unit_map:
+                            shot["unit_id"] = unit_map[key]
+            unit_record["changed"] = bool(unit_map)
+            unit_record["renumbered"] = renamed_units
+
+        shot_record: dict[str, Any] = {
+            "rule": "R7",
+            "field": "shots[].shot_id",
+            "changed": bool(renamed_shots or renamed_units_refs),
+            "renumbered": renamed_shots,
+            "unit_shot_ids_remapped": renamed_units_refs,
+        }
+        if samples:
+            shot_record["original_sample"] = samples
+        if skipped_non_int:
+            shot_record["skipped_non_integer_scene"] = skipped_non_int
+
+        if not (shot_record["changed"] or unit_record["changed"] or unit_record.get("skipped")):
+            return text, {
+                "shots[].shot_id": {**shot_record, "action": "noop"},
+                "units[].unit_id": {**unit_record, "action": "noop"},
+            }
+        return json.dumps(doc, ensure_ascii=False), {
+            "shots[].shot_id": shot_record,
+            "units[].unit_id": unit_record,
+        }
+
 
     async def _maybe_generate(
         self, rec: SessionRecord, target: Stage, variables: dict[str, Any]
@@ -862,6 +1522,38 @@ class DialogueService:
 
         # ---- 分段调用（`T-004`）＋ 生成后门禁与重试回路（`T-086`）----
         plan = self._segment_plan(template, tpl_stage, rec, merged)
+        # ---- `T-100` 逐场编排：场号 → 该场对象（供 `scene:<no>` 段动态注入变量）----
+        # ⚠️ 只在计划确有 `scene:` 段时解析：整片模式（开关关）不必多解析一次剧本。
+        scene_ctx: dict[int, dict[str, Any]] | None = None
+        if any(str(s).startswith("scene:") for s in plan):
+            scene_ctx = scene_by_no(_upstream_json(rec.artifacts.get("script")))
+        # ---- `T-101`／`PRO-015`：`shot_prompt` 段级输入裁剪的上下文 ----
+        # ⚠️ 解析对象是 `merged["storyboard_json"]`（**已紧凑化**的变量值）——
+        #    裁剪副本切的是「模型本来要看见的那份」，与门禁的 `gate_upstream`（原文）
+        #    是两条独立通道，互不影响（`R23`/`R24`/`R31` 判的是原文）。
+        # ⚠️ 解析失败 ⇒ `scope_ctx` 置 `None`（各段整份注入）＋留痕——不猜测。
+        scope_ctx: dict[str, Any] | None = None
+        if (
+            get_settings().shot_prompt_segment_scope
+            and tpl_stage == "shot_prompt"
+            and any(s == "package_head" or str(s).startswith("unit:") for s in plan)
+        ):
+            try:
+                storyboard_doc = parse_json_object(merged.get("storyboard_json") or "")
+            except AppError:
+                storyboard_doc = None
+            if isinstance(storyboard_doc, dict):
+                scope_ctx = {"storyboard": storyboard_doc}
+            else:
+                logger.warning(
+                    "segment_scope_ctx_unparsed",
+                    extra={
+                        "extra_fields": {
+                            "session_id": rec.session_id,
+                            "note": "storyboard_json 无法解析，段级裁剪不生效（各段整份注入）",
+                        }
+                    },
+                )
         # ⚠️ 交给引擎的必须是**引擎可编译形态**（剥离 `ENGINE_UNSUPPORTED_KEYS`）——
         #    契约真值形态含 `uniqueItems`，xgrammar 编译期即 400 拒收（`OPS-002` §4.3.1）。
         json_schema = load_engine_schema(tpl_stage)
@@ -892,6 +1584,8 @@ class DialogueService:
         truncated_segments: list[str] = []
         segment_contributions: list[dict[str, Any]] = []
         meta_overrides: dict[str, Any] | None = None
+        derived_backfill: dict[str, Any] | None = None
+        identity_norm: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -901,7 +1595,8 @@ class DialogueService:
             trace_len_before = len(trace)
             try:
                 produced, seg_trace, pt, ct, _truncated_now = await self._run_segments(
-                    template, tpl_stage, merged, segs, supports_segment, json_schema, backend
+                    template, tpl_stage, merged, segs, supports_segment, json_schema,
+                    backend, scene_ctx, scope_ctx,
                 )
                 for record in seg_trace:
                     record["attempt"] = attempt  # 留痕：这一条是第几次尝试采到的
@@ -924,9 +1619,27 @@ class DialogueService:
                     segment_contributions = self._guard_segment_contributions(
                         tpl_stage, plan, ordered
                     )
-                    final_text, warnings = _merge_parts(ordered)
+                    # `ISSUE-062`（裁决 5）：storyboard 合并需要**上游剧本产物**来识别
+                    # 「继承项」——`fill_stage` 锁回 `script` 的前提是知道上游那条的定责阶段。
+                    # ⚠️ 解析失败 ⇒ 传 `None`（合并侧不改写、只留「查无对应条目」痕迹）。
+                    merge_upstream: dict[str, Any] | None = None
+                    if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
+                        try:
+                            _up = parse_json_object(merged.get("script_json") or "")
+                        except AppError:
+                            _up = None
+                        merge_upstream = _up if isinstance(_up, dict) else None
+                    final_text, warnings = _merge_parts(ordered, tpl_stage, merge_upstream)
                 else:
                     final_text, warnings = ordered[0], []
+
+                # ---- `T-100` 标识归一化（`R7`／`R9` 派生量；合并后、门禁前）----
+                # ⚠️ 顺序纪律与真值覆盖/派生回填一致：门禁要判**最终入库的那一份**。
+                # ⚠️ 必须在 `R8` 回填**之前**：两者都按「场内数组序」定位，先定 `shot_id`
+                #    再定 `shot_no`，同一个序位口径，不会互相打架。
+                final_text, identity_norm = self._normalize_storyboard_identity(
+                    tpl_stage, final_text
+                )
 
                 # ---- 安全双闸 · 输出侧（`T-005`：`SW-010` 输出复检）----
                 # ⚠️ 复检对象是**模型产出的那一份正文**（合并后的最终产物），
@@ -942,6 +1655,25 @@ class DialogueService:
                 text_penultimate = final_text
                 final_text, meta_overrides = self._apply_service_truth(
                     tpl_stage, final_text, rec, backend, guard_input, guard_output
+                )
+
+                # ---- 镜集合守恒兜底（`T-101` r3 呈报·裁决甲，2026-11-07）**必须在派生回填之前** ----
+                # ⚠️ 顺序硬约束：补进来的占位镜也带 `duration_ms`，必须参与 `Σ`
+                #    （`pack_derived_backfill` 的 `meta.total_duration_ms`）——
+                #    先回填再补镜会让补入镜的时长漏出总量。
+                # ⚠️ 只补「上游有、本层缺」的镜；占位条目 `notes` 明写服务层构造，
+                #    告警进 `merge_warnings`（兜底不洗白，模型漏镜率可离线统计）。
+                final_text, conservation_fills = _reconcile_pack_conservation(
+                    tpl_stage, final_text, gate_upstream
+                )
+                if conservation_fills:
+                    warnings.extend(conservation_fills)
+
+                # ---- 派生量回填（`R14`；2026-11-04 项目方裁决）**必须在门禁之前** ----
+                # ⚠️ 与 `_apply_service_truth` 同一顺序纪律：门禁要判「最终入库的那一份」。
+                # ⚠️ 只补「由模型自己的数据唯一决定」的量（`Σ duration_ms`），不动创作字段。
+                final_text, derived_backfill = self._apply_derived_backfill(
+                    tpl_stage, final_text, gate_upstream
                 )
 
                 # ---- `ISSUE-042` 生成后形态闸（**单段与多段收敛到同一条路径**）----
@@ -970,6 +1702,20 @@ class DialogueService:
                 final_text, meta_overrides = self._apply_service_truth(
                     tpl_stage, text_penultimate, rec, backend, guard_input, guard_output
                 )
+                final_text, identity_norm = self._normalize_storyboard_identity(
+                    tpl_stage, final_text
+                )
+                # 回退路径同样须先守恒兜底再派生回填（占位镜参与 `Σ`）；
+                # 快照 `warnings` 已含同码 ⇒ 去重追加（同一 `text_penultimate` 重放）。
+                final_text, conservation_fills = _reconcile_pack_conservation(
+                    tpl_stage, final_text, gate_upstream
+                )
+                for _c in conservation_fills:
+                    if _c not in warnings:
+                        warnings.append(_c)
+                final_text, derived_backfill = self._apply_derived_backfill(
+                    tpl_stage, final_text, gate_upstream
+                )
                 retry_scope_note = "retry_degraded_fallback"
                 logger.warning(
                     "quality_gate_retry_degraded",
@@ -991,6 +1737,7 @@ class DialogueService:
                 "artifact_verdict": artifact_verdict,
                 "text_penultimate": text_penultimate,
                 "meta_overrides": meta_overrides,
+                "derived_backfill": derived_backfill,
                 "truncated_segments": list(truncated_segments),
             }
 
@@ -1000,6 +1747,16 @@ class DialogueService:
             quality_verdict = await quality_gate.check(
                 tpl_stage, text=final_text, upstream=gate_upstream
             )
+            # ---- `丙`（2026-11-07 裁决）：合并侧「段内重复凑数」→ 可重试失败 ----
+            # `uniqueItems` 不在引擎允许面 ⇒ `shots_floor`（`minItems`）只能管个数、
+            # 管不住互异；模型重复同一条目凑数时，合并去重会把凑数转化为终态镜数失守
+            # （`ab_t101_r2` run6/run10 实证）。`merge_segments` 已把该形态检出为
+            # `merge.shot_dup_in_segment｜…` 告警；这里把它**升级为可重试失败**——
+            # 报错文本含 `shot_id`，`_retry_segments` 的包含定位可精确命中属主段，
+            # 且重试反馈明写「不得重复条目凑数」，打破确定性退化解。
+            dup_codes = [w for w in warnings if w.startswith("merge.shot_dup_in_segment｜")]
+            if dup_codes:
+                quality_verdict = _inject_merge_dup_verdict(quality_verdict, dup_codes)
             gate_verdicts.append({"attempt": attempt, **quality_verdict.as_record()})
             if quality_verdict.ok is True:
                 break
@@ -1079,6 +1836,25 @@ class DialogueService:
                     "stage": tpl_stage,
                     "backend": backend.name,
                     "segment_plan": plan,
+                    # ---- 段级 token 与 finish_reason 留痕（`ISSUE-058` 观测补强）----
+                    # ⚠️ 截断轮 502 无产物落盘，服务日志是唯一留痕点；
+                    #    「segment＋finish_reason＋completion_tokens」三元组足够
+                    #    归因「真跑满上限」vs「其他」，避免下一轮再靠延迟反推。
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "segment_trace": [
+                        {
+                            "segment": t.get("segment"),
+                            "finish_reason": t.get("finish_reason"),
+                            "completion_tokens": t.get("completion_tokens"),
+                            # `T-101`／`PRO-015`：裁剪与收窄是否生效——
+                            # 否则「以为开了、实际没开」在留痕上无法区分
+                            #（`ISSUE-042` 同源教训：缺布尔就无法举证）。
+                            "storyboard_scope": t.get("storyboard_scope", "full"),
+                            "schema_capped": bool(t.get("schema_capped", False)),
+                        }
+                        for t in trace
+                    ],
                     "constrained_decoding": json_schema is not None,
                     # `ISSUE-042`：只留一个布尔看不出「约束从哪来」——
                     # 三段此前恒为 false（无落点），现为 derived，须可核查。
@@ -1183,6 +1959,21 @@ class DialogueService:
             # 与「覆盖**改过**哪些字段」是两件事（同 `checked`/`ok` 分列的纪律）。
             artifact["service_truth"] = meta_overrides
             artifact["service_truth_text_changed"] = final_text != text_penultimate
+        if derived_backfill:
+            # 派生量回填留痕（`R14`）：`original` 是**模型自拟值**，`computed` 是服务层重算值。
+            # ⚠️ 必须留 `original`——只留 `computed` 就等于「产物被动过但查不出来」。
+            artifact["derived_backfill"] = derived_backfill
+            artifact["derived_backfill_text_changed"] = any(
+                v.get("changed") for v in derived_backfill.values()
+            )
+        if identity_norm:
+            # 标识归一化留痕（`R7`/`R9`；`T-100` 逐场编排配套）：`original_sample` 是
+            # **模型原值样例**——逐场各从 `S01-SH001`／`U01` 起编是必然形态，必须能查出
+            # 「产物里的编号是模型写的还是服务层改的」。
+            artifact["identity_normalize"] = identity_norm
+            artifact["identity_normalize_changed"] = any(
+                bool(v.get("changed")) for v in identity_norm.values() if isinstance(v, dict)
+            )
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:
@@ -1191,6 +1982,13 @@ class DialogueService:
             artifact["upstream_compaction"] = compact_trace
         if warnings:
             artifact["merge_warnings"] = warnings
+        # `ISSUE-063`／裁决 6：storyboard 合并后的外观锚逐场重述分布**留痕**（只观测不裁决）
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
+            anchor_probe = _probe_storyboard_anchor_echo(
+                final_text, (merged or {}).get("script_json")
+            )
+            if anchor_probe is not None:
+                artifact["appearance_anchor_echo_probe"] = anchor_probe
         if guard_input is not None or guard_output is not None:
             # 留痕（`T-005`）：可核查的是**分类码与计数**，命中词明文**不入库**
             artifact["safety"] = {"input": guard_input, "output": guard_output}
@@ -1298,13 +2096,236 @@ def _upstream_json(artifact: Any) -> dict[str, Any] | None:
     return artifact
 
 
-def _merge_parts(texts: list[str]) -> tuple[str, list[str]]:
+def _probe_storyboard_anchor_echo(final_text: str, script_json: str | None) -> dict[str, Any] | None:
+    """`ISSUE-063`／裁决 6（2026-11-05 按 B）：合并后外观锚「逐场重述分布」**留痕级探测**。
+
+    背景：逐场编排（`T-100`）下每场只看到全局 `style_bible` ＋ `prev_scene_tail`，
+    看不到其他场已落地的具体外观写法 ⇒ 实测 `R23` off 2/12 → on 4/12。
+    本探测把「每场各有多少镜重述了外观锚、重述了哪些锚」量化留痕，供
+    「是否扩 `prev_scene_tail`（修法候选①）」的裁决取证。
+
+    ⚠️ 纪律：**只观测、不裁决**——不进 `retryable`／不改 `ok`／不动 `R23` 语义
+    （裁决 6 明写不新造 `R` 判据）。n-gram 口径直接复用门禁已加载的
+    `validate_output` 模块（`_anchors`／`_anchor_ngrams`／`_semantic_text`），
+    不抄第二份（与「判据唯一」同族纪律：两套口径漂移即失真）。
+    返回 `None` 表示不适用（非 storyboard／无上游剧本／判据模块缺失）。
+    """
+    engine = quality_gate._engine_validator()  # noqa: SLF001 - 复用判据模块的官方加载口
+    if engine is None:
+        return None
+    try:
+        sb = json.loads(final_text)
+    except Exception:  # noqa: BLE001 - 探测对象非法 ⇒ 探测不适用（生成侧另有报错链）
+        return None
+    script: Any = None
+    if script_json:
+        try:
+            script = json.loads(script_json)
+        except Exception:  # noqa: BLE001
+            script = None
+    if not isinstance(sb, dict) or not isinstance(script, dict):
+        return None
+    anchors = engine._anchors(script)  # noqa: SLF001
+    if not anchors:
+        return {"probe": "ISSUE-063", "anchors": 0, "note": "上游无 appearance_lock_zh，无可比对象"}
+    gram_src = [(label, engine._anchor_ngrams(a)) for label, a in anchors]  # noqa: SLF001
+    scenes: dict[str, dict[str, Any]] = {}
+    for shot in sb.get("shots") or []:
+        if not isinstance(shot, dict):
+            continue
+        sc = str(shot.get("scene_no"))
+        st = scenes.setdefault(
+            sc, {"shots": 0, "echo_shots": 0, "echo_grams": 0, "anchors_touched": set()}
+        )
+        st["shots"] += 1
+        text = engine._semantic_text(shot)  # noqa: SLF001
+        if not text:
+            continue
+        hit_grams = 0
+        hit_labels: set[str] = set()
+        for label, grams in gram_src:
+            got = {g for g in grams if g in text}
+            if got:
+                hit_grams += len(got)
+                hit_labels.add(label)
+        if hit_grams:
+            st["echo_shots"] += 1
+            st["echo_grams"] += hit_grams
+            st["anchors_touched"] |= hit_labels
+    rows = []
+    rates = []
+    for sc in sorted(scenes, key=lambda x: (len(x), x)):
+        st = scenes[sc]
+        rate = (st["echo_shots"] / st["shots"]) if st["shots"] else 0.0
+        rates.append(rate)
+        rows.append({
+            "scene_no": sc,
+            "shots": st["shots"],
+            "echo_shots": st["echo_shots"],
+            "echo_rate": round(rate, 4),
+            "echo_grams": st["echo_grams"],
+            "anchors_touched": sorted(st["anchors_touched"]),
+        })
+    return {
+        "probe": "ISSUE-063",
+        "note": "留痕级探测（裁决 6）：只观测不裁决、不改 R23；n-gram 口径复用 validate_output",
+        "anchors": len(anchors),
+        "scenes": rows,
+        "spread": {
+            "echo_rate_min": round(min(rates), 4) if rates else None,
+            "echo_rate_max": round(max(rates), 4) if rates else None,
+        },
+    }
+
+
+def _reconcile_pack_conservation(
+    tpl_stage: str, text: str, gate_upstream: dict[str, str] | None
+) -> tuple[str, list[str]]:
+    """`甲`（2026-11-07 项目方裁决，`DEV-20261107-004` §五）：`shot_prompt` 包镜集合守恒的构造保证。
+
+    **背景**（r2／r3 两批实证）：`uniqueItems` 不在引擎允许面 ⇒ `shots_floor`
+    （`minItems`）管得住个数、管不住互异；事后闸（裁决丙的 dup 检出）只能拦
+    「已生成的退化解」，拦不住「首轮无凑数、次轮才掉镜」（`ab_t101_r3` on#01／
+    on#08，缺的恒为上游 `S01-SH003`）⇒ **集合守恒类硬约束只能由构造保证**
+    （与 `T-100` 场覆盖的构造保证同源）。
+
+    **做法**：门禁判定前，校验「`shots[]` ⊇ 上游分镜镜集合」；上游有而本层缺的镜，
+    按上游镜定义**补占位条目**——`camera`／`duration_ms`／`action`／`shot_language`
+    等**两层同形态**的机械承继字段照抄上游（与承继层「一字不得改」同口径），
+    `prompt_zh` 由 `action` 三段派生，**`prompt_en` 留空**（不伪造创作内容，交
+    `R27` 等判据如实判）；`notes` 明写「服务层构造占位」。
+    补镜后 `shots[]` **按上游镜序重排**（v1.1 修正，`DEV-20261107-006`）——
+    `R31 PACK_DURATION_LOCK` 是**位置 zip 比对**（`zip(up_ids, now_ids)`），
+    追加在尾部会使缺位之后所有镜位置错位、整串误报「时长被改动」。
+
+    ⚠️ **只补「上游有、本层缺」**；本层凭空多出的镜（幻觉镜号）**不删**——另一类错误，
+       交 `R31` 逐镜比对如实判。
+    ⚠️ **不洗白**：每次补镜产生 `merge.shot_conservation_fill｜…` 告警（进
+       `merge_warnings`／run 记录），模型真实漏镜率可离线统计。
+    ⚠️ 产物不可解析／无上游／非 `shot_prompt` 段 ⇒ **原样返回**（不猜测、不静默）。
+    """
+    if tpl_stage != "shot_prompt":
+        return text, []
+    settings = get_settings()
+    if not settings.pack_conservation_fill:
+        return text, []
+    upstream_text = (gate_upstream or {}).get("storyboard")
+    if not upstream_text:
+        return text, []
+    try:
+        upstream_doc = json.loads(upstream_text)
+    except Exception:
+        return text, []
+    upstream_shots = upstream_doc.get("shots")
+    if not isinstance(upstream_shots, list) or not upstream_shots:
+        return text, []
+    try:
+        doc = parse_json_object(text)
+    except Exception:
+        return text, []
+    shots = doc.get("shots")
+    if not isinstance(shots, list):
+        return text, []
+    have = {
+        s.get("shot_id") for s in shots if isinstance(s, dict) and s.get("shot_id")
+    }
+    style_ref_default = upstream_doc.get("style_ref")
+    fills: list[str] = []
+    for up in upstream_shots:
+        if not isinstance(up, dict):
+            continue
+        sid = up.get("shot_id")
+        if not sid or sid in have:
+            continue
+        action = up.get("action") if isinstance(up.get("action"), dict) else {}
+        prompt_zh = "；".join(
+            str(action.get(k, "")).strip()
+            for k in ("start", "change", "end")
+            if str(action.get(k, "")).strip()
+        )
+        placeholder = {
+            "shot_id": sid,
+            "unit_id": up.get("unit_id"),
+            "scene_no": up.get("scene_no"),
+            "shot_no": up.get("shot_no"),
+            "shot_size": up.get("shot_size"),
+            "camera": up.get("camera"),
+            "duration_ms": up.get("duration_ms"),
+            "prompt_zh": prompt_zh,
+            "prompt_en": "",
+            "action": up.get("action"),
+            "shot_language": up.get("shot_language"),
+            "style_ref": style_ref_default,
+            "character_refs": up.get("character_refs") or [],
+            "prop_refs": up.get("prop_refs") or [],
+            # ⚠️ v1.1（DEV-20261107-006）：`lighting`／`dialogue`／`sfx`／`transition_*`
+            #    **不照抄**——它们是层间形态不同的表达层字段（上游分镜层 `lighting`
+            #    是「词表值——说明」散文形态，shot_prompt 层 R32 要纯词表 code；
+            #    R33 的规则即「留空须省略键」）。占位镜没有真实表达内容，省略这些键
+            #    交判据如实判／后续补写。
+            "notes": "服务层构造占位（2026-11-07 裁决甲）：模型漏生成本镜；"
+            "机械承继字段引用上游分镜镜定义，prompt_zh 由 action 派生，"
+            "prompt_en 留空待补——占位本身不构成创作合格，交判据如实判。",
+        }
+        shots.append({k: v for k, v in placeholder.items() if v is not None})
+        fills.append(
+            f"merge.shot_conservation_fill｜服务层按裁决甲补占位镜「{sid}」"
+            f"（单元 {up.get('unit_id')}；上游有而本层缺——机械字段引上游，"
+            "prompt_en 留空如实待判；兜底不洗白，本告警计入模型漏镜率）"
+        )
+    if not fills:
+        return text, []
+    # ⚠️ v1.1：按上游镜序重排（R31 位置 zip 比对要求位置同序）；本层多出的
+    #    幻觉镜号不进上游序，保持原相对顺序置于末尾，交 R31 如实判。
+    up_order = {
+        up.get("shot_id"): i for i, up in enumerate(upstream_shots)
+        if isinstance(up, dict) and up.get("shot_id")
+    }
+    known = [s for s in shots if isinstance(s, dict) and s.get("shot_id") in up_order]
+    unknown = [s for s in shots if not (isinstance(s, dict) and s.get("shot_id") in up_order)]
+    known.sort(key=lambda s: up_order[s["shot_id"]])
+    doc["shots"] = known + unknown
+    return json.dumps(doc, ensure_ascii=False, indent=2), fills
+
+
+def _inject_merge_dup_verdict(verdict: Any, dup_codes: list[str]) -> Any:
+    """`丙`（2026-11-07 裁决）：把合并侧检出的「段内重复凑数」注入门禁结论。
+
+    `uniqueItems` 不在引擎允许面 ⇒ `shots_floor`（`minItems`）只管个数、管不住互异；
+    模型重复同一条目凑数时，合并去重会把凑数转化为终态镜数失守（`ab_t101_r2`
+    run6/run10 实证）。`merge_segments` 检出为 `merge.shot_dup_in_segment｜…` 告警；
+    本函数把它**升级为可重试失败**（`ok=False` ＋ `retryable` 追加）——报错文本含
+    `shot_id`，`_retry_segments` 的包含定位可精确命中属主段，且重试反馈明写
+    「不得重复条目凑数」，打破确定性退化解。
+    """
+    return verdict._replace(
+        ok=False,
+        retryable=verdict.retryable
+        + [f"{w}（裁决丙：重试纪律——不得用重复条目凑 minItems 下限）" for w in dup_codes],
+    )
+
+
+def _merge_parts(
+    texts: list[str],
+    tpl_stage: str = "",
+    upstream: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
     """多段产物 → 合并后的完整包文本（＋合并告警）。
 
     ⚠️ **合并 ≠ 通过门禁**：`CFG-008` 明写「分段产物本身不可能单独过交付包 schema」
     （`required` 六项不齐）。合并结果的合规判定属**交付层**（`validate_pack.py`），
     此处只做**结构合并与留痕**，不越界裁决。
+
+    ⚠️ **按形态分派（`T-100`）**：`storyboard` 的头部键与交付包**不是同一套**
+    （`title`/`genre`/`style_ref`/`aspect_ratio_default` vs `meta`/`style_bible`/…），
+    用 `merge_segments` 会把前者整体丢掉 ⇒ 必须走 `merge_storyboard_parts`。
+
+    `upstream`（`ISSUE-062` 裁决 5）：storyboard 形态下传上游剧本产物，供合并侧把
+    `unspecified` **继承项**的 `fill_stage` 锁回 `script`；其余形态不使用。
     """
     parsed = [parse_json_object(text) for text in texts]
-    merged, warnings = merge_segments(parsed)
+    if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
+        merged, warnings = merge_storyboard_parts(parsed, upstream=upstream)
+    else:
+        merged, warnings = merge_segments(parsed)
     return json.dumps(merged, ensure_ascii=False, indent=2), warnings

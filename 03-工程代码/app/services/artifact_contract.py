@@ -112,6 +112,204 @@ STAGE_TO_SHAPE: dict[str, str] = {
     "shot_prompt": "pack",
 }
 
+#: 引擎侧**可表达**的字段级约束（`PRO-011` 线 3 契约下沉；2026-11-04 授权落地）。
+#:
+#: 背景（真基线实测，`DEV-20261104-009`）：`required` 投影只约束「键必须在」，
+#: **不约束取值** ⇒ `R6`（幕数）、`R16`（景别／运镜枚举）在解码期零约束、
+#: 只能靠生成后门禁抓 → 重试。其中**离散取值型**判据可由引擎 schema 表达
+#: （xgrammar 实测支持 `minItems`×7／`enum`×19，见 `OPS-002` §4.3.1）。
+#:
+#: ⚠️ **真值归属（`PRO-011` 附 4 方案 A，2026-11-04 授权拍板）**：本表是
+#: **判据常量的运行期投影、不是第二真值**——每个条目登记判据出处，且由
+#: `app/tests/test_contract_engine_constraints.py` 与离线判据常量**互锁**
+#: （任一侧单独改 ⇒ 测试即红，`PRO-012` 变更三件套纪律）。改本表 === 改判据约束面，
+#: 须同批核对：① 离线判据（`prompts/validate_output.py`）② 互锁测试 ③ 本表。
+#:
+#: ⚠️ **声音性（soundness）自查**：约束只能**收窄到判据也要求**的程度——
+#: 引擎按本表拒掉的取值，判据层必然也判失败 ⇒ 不会「引擎放过、门禁拦」之外的
+#: 「引擎拦了合法产物」。
+FIELD_CONSTRAINTS: dict[str, dict[str, Any]] = {
+    # R6 ACT_STRUCTURE（仅 script）：acts 恰为 3 幕（TPL-008 v2.1.1 L85/L137/L242/L381 同款条款）。
+    # ⚠️ **引擎边界（2026-11-04 真机实测）**：`minItems` **不带 `items` 键**时，
+    #    vLLM `structured_outputs`（xgrammar 新路径）**编译期 500**（`OPS-002` §4.3.1
+    #    的「minItems 通过」系旧 `guided_json` 路径实测）——故本表所有 `minItems`
+    #    **必须伴随 `items` 键**；新增条目须过「structured_outputs 直连探测」。
+    "script": {
+        "acts": {"type": "array", "items": {}, "minItems": 3, "maxItems": 3},
+    },
+    # R16 ENUM_VALUES：景别六值、运镜 20 类（validate_output.py L241~L251 常量的运行期投影）
+    #
+    # ⚠️ **字段塌缩教训（2026-11-04 n=6 跑测 + 直连探测实证，`ISSUE-059`）**：
+    #    本条目首版（T-098 批次）的 items 只描述 `shot_size`/`camera.move` 两字段、
+    #    **未列其余字段也无 `required`** ⇒ xgrammar 把 `items.properties`
+    #    **未列出的字段一律禁止**（`additionalProperties` 缺省被按禁止处理），
+    #    4/4 轮 shots 元素塌缩为 `{shot_size, camera}` 两字段、R7/R8/R9/R12 全爆。
+    #    直连探测三变体对照（`.wb-e2e/_probe_schema_collapse.py`）：
+    #    A 现状窄 schema ⇒ 复现塌缩；B/C 全字段＋required ⇒ 14~17 字段全出
+    #    ⇒ **塌缩由「字段清单不全」引起、与 enum 无关**。
+    #    ⇒ 纪律：**引擎侧任何 `items.properties` 必须列全该层产物真值字段集**
+    #       （真值出处见 `STORYBOARD_SHOT_KEYS` 注记），且**必须带 `required`**。
+    "storyboard": {
+        "shots": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "shot_id": {"type": "string"},
+                    "unit_id": {"type": "string"},
+                    "scene_no": {"type": "integer"},
+                    "shot_no": {"type": "integer"},
+                    "shot_size": {
+                        "type": "string",
+                        "enum": [
+                            "extreme_wide", "wide", "full", "medium",
+                            "close_up", "extreme_close_up",
+                        ],
+                    },
+                    "camera": {
+                        "type": "object",
+                        "properties": {
+                            "move": {
+                                "type": "string",
+                                "enum": [
+                                    "static", "push_in", "pull_out", "zoom_in", "zoom_out",
+                                    "pan_left", "pan_right", "tilt_up", "tilt_down",
+                                    "truck_left", "truck_right", "pedestal_up", "pedestal_down",
+                                    "arc", "tracking", "shake_slight", "shake_strong",
+                                    "pov", "roll_cw", "roll_ccw",
+                                ],
+                            },
+                            # R19 六维（角度/光学）＋ R17/R26 参数面——枚举值＝判据常量
+                            # PACK_ENUM_OPTIONAL 的运行期投影。
+                            # ⚠️ 全部【不进 required】：判据口径「默认值＝省略键」（R26/R17），
+                            #    required 会强制输出枚举值、消灭「省略」路径；
+                            #    列入 properties 的意义是**解除 xgrammar 禁止**、给模型可写路径。
+                            "height": {
+                                "type": "string",
+                                "enum": ["eye_level", "low", "high", "overhead", "ground"],
+                            },
+                            "roll": {
+                                "type": "string",
+                                "enum": ["level", "dutch", "roll_cw", "roll_ccw"],
+                            },
+                            "optics": {
+                                "type": "string",
+                                "enum": [
+                                    "deep_focus", "shallow_focus", "rack_focus",
+                                    "long_lens_compression", "wide_angle_distortion",
+                                ],
+                            },
+                            # ⚠️ `medium`／`normal` **不在引擎 enum 内**（`ISSUE-065` 裁决 1 修法 A，
+                            #    2026-11-06）：`R26` 早已判它们「须省略该键」——引擎却允许生成，
+                            #    属「能生成但不合规」的结构错配。段级裁剪使正例密度下降后，模型
+                            #    重新开始选这两值（on 臂 163 镜 21 处、off 臂 180 镜零处）。
+                            #    修法＝把「事后判」升级为「事中不生成」（与 `R8`/`R14` 回填、C 期
+                            #    schema 收窄同族）；直连编译探测已证 xgrammar 接受两值 enum。
+                            "amplitude": {
+                                "type": "string",
+                                "enum": ["small", "large"],
+                            },
+                            "speed": {
+                                "type": "string",
+                                "enum": ["slow", "fast"],
+                            },
+                        },
+                        # ⚠️ required 含 height／optics 的理由（2026-11-04 真机两轮实证）：
+                        #    引擎解禁＋模板积极引导（TPL-010 v2.2.3）后模型仍**整键省略**
+                        #    ⇒ R19 角度／光学覆盖恒 0%。required 化是**生成引导**（非事后
+                        #    拒绝）：产物仍全合规（eye_level 是合法枚举值、不在 R26 判禁区；
+                        #    R17 只禁 static／pov 携带 amplitude／speed，不管 height／optics）。
+                        #    amplitude／speed／roll 维持可选（默认值＝省略键口径，R26）。
+                        "required": ["move", "height", "optics"],
+                    },
+                    "duration_ms": {"type": "integer"},
+                    "action": {"type": "object"},
+                    # R19 六维之构图/轴线/画面结果——判据只查「有值」（覆盖率门槛），无枚举；
+                    # 显式列出字段名使模型有稳定落点（无 properties 时虽放行但模型容易漏写）。
+                    "shot_language": {
+                        "type": "object",
+                        "properties": {
+                            "composition": {"type": "string"},
+                            "axis": {"type": "string"},
+                            "result": {"type": "string"},
+                        },
+                    },
+                    "dialogue": {},
+                    "sfx": {},
+                    "lighting": {"type": "string"},
+                    "transition_in": {"type": "string"},
+                    "transition_out": {"type": "string"},
+                    "character_refs": {"type": "array", "items": {}},
+                    "prop_refs": {"type": "array", "items": {}},
+                    "notes": {"type": "string"},
+                },
+                "required": [
+                    "shot_id", "unit_id", "scene_no", "shot_no", "shot_size", "camera",
+                    "duration_ms", "action", "shot_language", "dialogue", "sfx", "lighting",
+                    "transition_in", "transition_out", "character_refs", "prop_refs", "notes",
+                ],
+            },
+            # minItems=2 由 R10（单元成员须 2 或 3）×「至少 1 单元」推出；
+            # **不设 maxItems** —— 判据层无整片镜数上限，soundness 禁止引擎拒判据允许的产物。
+            "minItems": 2,
+        },
+        # ⚠️ **units 骨架（2026-11-04，`ISSUE-058` storyboard 截断根因）**：
+        #    首版无 items ⇒ xgrammar 对 units 元素**任意放行**（无字段清单＝自由文本
+        #    任意堆叠）⇒ 模型在 `soundscape`/`notes` 等自由文本上退化重复、
+        #    n=6 跑测 2/6 轮 storyboard "all" 段真实跑满 8192 tokens 触发
+        #    `finish_reason=length`（502 `segment_truncated`，延迟 ≈186s 与全量
+        #    生成时间吻合）。补骨架后元素形态固定，退化空间收窄。
+        #    真值出处：**CFG-006 `$defs/unit`**（`additionalProperties:false` 的
+        #    契约字段集，R36 唯一真值来源）——6 字段与真实产物字段集一致；
+        #    `required` 5 项＝契约 required（`notes` 契约级可选）。
+        #    `shot_ids` 的 minItems/maxItems＝**R10 UNIT_SIZE**（成员恰为 2 或 3）
+        #    的引擎投影——判据硬性口径，soundness 成立。
+        #    units 的 minItems=1 由 R9（所有镜头须归入单元）× shots≥2 × R10 推出；
+        #    **不设 maxItems** —— 判据层无单元数上限（`ISSUE-058` 产能规划归 SW-006）。
+        "units": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "unit_id": {"type": "string"},
+                    "scene_no": {"type": "integer"},
+                    "shot_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 2,
+                        "maxItems": 3,
+                    },
+                    "soundscape": {"type": "string"},
+                    "music": {"type": "string"},
+                    "notes": {"type": "string"},
+                },
+                "required": ["unit_id", "scene_no", "shot_ids", "soundscape", "music"],
+            },
+        },
+        # ⚠️ **quality_gate 数值字段收口（2026-11-05，`T-087` 余项 `R25`）**：
+        #    立约前提「数值字段填了就必须等于复算」在 7B 真基线上不成立——
+        #    2026-11-04 冒烟实测（17 镜产物）`shot_count=22 ≠ 复算 17`、
+        #    `move_types` 混入**转场**词表值（fade_in/fade_out/cut ≠ 运镜枚举）。
+        #    v2.2.0 移除 `move_type_min_required` 时保留前三个数值字段所依据的
+        #    「shot_count/static_shot_count 实测可靠」是 **3 镜小样本**结论，
+        #    n 上到 17 即崩（数数是 7B 的已知弱项）。⇒ 按 `BR-12` 口径
+        #    「统计量不由模型承诺」把引擎字段面收窄到**仅 self_check（叙述性）**，
+        #    数值字段被 xgrammar 禁止输出 ⇒ `R25` 回到「未填数值字段不罚」合法态。
+        #    ⚠️ 声音性说明：本约束比判据**更严**（判据允许正确填写数值字段），
+        #      与 camera.height/optics 的 required 化同属「生成引导」先例——产物
+        #      不含数值字段时**完全合法可交付**，拒掉的只是「7B 填了必错的路径」；
+        #      判据零改动：`R25` 仍逐项比对任何**自发填写**的数值字段
+        #      （本约束只作用于受约束解码路径，不审离线产物）。
+        "quality_gate": {
+            "type": "object",
+            "properties": {
+                "self_check": {"type": "string"},
+            },
+        },
+    },
+}
+
 
 def detect_shape(doc: Any) -> str | None:
     """按产物顶层**签名键**识别形态；无法识别返回 `None`。
@@ -155,22 +353,25 @@ def missing_required(shape: str, doc: Any) -> tuple[str, ...]:
 
 
 def derived_engine_schema(shape: str) -> dict[str, Any] | None:
-    """由形态真值**现算**受约束解码用的 JSON Schema（`required` 投影）。
+    """由形态真值**现算**受约束解码用的 JSON Schema（`required` 投影 ＋ 字段级约束）。
 
     设计取舍（**刻意如此，不是遗漏**）：
-    - 只给 `required` ＋ 空 schema 的 `properties`（＝「这些键必须在，值是什么不管」）；
+    - `required` ＋ 空 schema 的 `properties`（＝「这些键必须在，值是什么不管」）；
     - **不设 `additionalProperties: false`** —— 见模块 docstring 的实测依据；
-    - **不写字段类型** —— 类型真值只在 `CFG-006`（交付包）与 `validate_output.py`（中间层）
-      里有，凭空补类型＝**自造比契约更严的私有口径**（本工程已多次登记该类缺陷）。
+    - **不凭空补类型** —— 字段级约束**只**来自 `FIELD_CONSTRAINTS`（每条登记判据出处、
+      与离线判据常量互锁），`FIELD_CONSTRAINTS` 未登记的键仍为空 schema（`T-096` 线 3）。
 
     返回 `None` 表示该形态无派生契约（当前四形态全部有）。
     """
     need = REQUIRED_TOP_KEYS.get(shape)
     if need is None:
         return None
+    props: dict[str, Any] = {k: {} for k in need}
+    for key, constraint in (FIELD_CONSTRAINTS.get(shape) or {}).items():
+        props[key] = constraint
     return {
         "type": "object",
-        "properties": {k: {} for k in need},
+        "properties": props,
         "required": list(need),
     }
 

@@ -39,7 +39,7 @@ def _fake_pack(*, pack_id: str = "{{PROVIDER_CODE}}-PK-20261103-ABCD1234",
                provider_code: str = "{{PROVIDER_CODE}}") -> dict:
     """构造一个**形态合法**的交付包（顶层键齐、含占位）。"""
     return {
-        "schema_version": "2.2.0",
+        "schema_version": "2.3.0",
         "meta": {
             "pack_id": pack_id,
             "title": "测试作品",
@@ -56,7 +56,7 @@ def _fake_pack(*, pack_id: str = "{{PROVIDER_CODE}}-PK-20261103-ABCD1234",
                 "session_id": "SESS-TEST-0001",
                 "task_id": "TASK-TEST-0001",
                 "stage_chain": ["synopsis", "script", "storyboard", "shot_prompt"],
-                "templates": [{"id": "shot_prompt_v1", "version": "2.2.0"}],
+                "templates": [{"id": "shot_prompt_v1", "version": "2.3.1"}],
                 "model": {"name": "mock", "backend": "mock", "revision": "0"},
             },
             "compliance": {
@@ -262,8 +262,10 @@ def test_self_check_has_18_items_and_never_fabricates_pass(tmp_path: Path) -> No
     assert "不可机检" in sc[11]["detail"]
     # 第 18 项：无人核对台账 ⇒ fail（§8.3「无记录视为未做」）
     assert sc[18]["result"] == "fail"
-    # 第 3 项：版权未接入（占位）⇒ BLOCK 档 ⇒ fail
-    assert sc[3]["result"] == "fail"
+    # 第 3 项：版权未接入（占位）⇒ **2026-11-05 裁决降级 WARN** 档 ⇒ warn（不再是 fail）
+    #   ⚠️ 语义不得漂移：「warn」表示**如实呈现「未校验」**，绝不等于「版权已校验通过」。
+    assert sc[3]["result"] == "warn"
+    assert "copyright" in sc[3]["detail"], "降级后仍须在 detail 里留原始判据码（可回溯）"
     # 第 9 项：声明编号占位 ⇒ warn（未取得），且 detail 说明 8 项要素无机检
     assert sc[9]["result"] == "warn"
     # 每一项都必须带 detail（可回溯到原始判据码或原因）
@@ -359,8 +361,14 @@ def test_preview_pack_reports_gate_but_still_delivers(tmp_path: Path) -> None:
     assert r.gate["scope"] == "pack+manifest", "清单侧须纳入门禁"
     assert r.gate["manifest_checked"] is True
     codes = [b["code"] for b in r.gate["blocks"]]
-    assert "compliance.copyright" in codes, f"版权未校验未报 BLOCK：{codes}"
+    # ⚠️ **2026-11-05 裁决**：`compliance.copyright` 降级为 WARN ⇒ **不得**再出现在 blocks 里，
+    #    但必须出现在 warnings 里（「不拦」≠「不报」——留痕义务未取消）。
+    assert "compliance.copyright" not in codes, f"版权阻断已降级，不应再 BLOCK：{codes}"
     assert "human_review.missing" in codes, f"无人工核对记录未报 BLOCK：{codes}"
+    warns = [w["code"] for w in r.gate.get("warns", [])]
+    assert "compliance.copyright_pending" in warns, (
+        f"版权降级后必须在 warns 留痕（`compliance.copyright_pending`）：{warns}"
+    )
 
     report = d / GATE_REPORT_NAME
     assert report.is_file(), "自检报告必须随包留档"

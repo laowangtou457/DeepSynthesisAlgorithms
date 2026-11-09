@@ -96,7 +96,7 @@ VALID_SCRIPT = {
     "unspecified": [],
 }
 VALID_PACK = {
-    "schema_version": "2.2.0",
+    "schema_version": "2.3.0",
     "meta": {"pack_id": "AC-PK-1"},
     "style_bible": {"style_id": "ST-01"},
     "characters": [],
@@ -366,10 +366,21 @@ def test_content_adequacy_is_traced_but_never_blocks() -> None:
 
     artifact = rec.artifacts["storyboard"]
     assert artifact["artifact_shape_ok"] is True, "形态（结构）确实合规——拦不住它正是本缺陷"
+    # ⚠️ 2026-11-04 机制变更（`DEV-20261104-004`：`R14` 派生量回填，门禁前生效）：
+    #    `total_duration_ms` 45000 → 15000 由服务层复算覆写（留痕在案），
+    #    ⇒ `storyboard_duration_sum_mismatch` **不再出现**（守恒已由工程保证），
+    #    「模型原值 vs 复算值」改由 `derived_backfill` 留痕举证。
+    backfill = artifact.get("derived_backfill") or {}
+    rb = backfill.get("total_duration_ms") or {}
+    assert rb.get("original") == 45000 and rb.get("computed") == 15000 \
+        and rb.get("changed") is True and rb.get("rule") == "R14", \
+        f"回填留痕不符：{rb}"
     adequacy = artifact["content_adequacy"]
     assert adequacy["checked"] is True and adequacy["ok"] is False
     codes = {f["code"] for f in adequacy["findings"]}
-    assert {"storyboard_duration_sum_mismatch", "scene_coverage_incomplete"} <= codes
+    assert "scene_coverage_incomplete" in codes, codes
+    assert "storyboard_duration_sum_mismatch" not in codes, \
+        "回填后 Σ==total 守恒，该发现不应再出现"
     coverage = next(f for f in adequacy["findings"] if f["code"] == "scene_coverage_incomplete")
     assert coverage["scenes_covered"] == [1] and coverage["scenes_missing"] == [2, 3]
 

@@ -66,6 +66,24 @@
   R25 GATE_SELF_CHECK      **质量门自声明与复算比对**（v2.1.0 依 BR-10 新增）——
                            quality_gate 的数值字段为可选参考；**填写即须等于由 shots 复算的真值**。
                            模型可写「11 项全通过」而无人比对，是全链路唯一「声明值可被证伪却无人证伪」处。
+  R41 SCENE_COVERAGE       **场次覆盖**（v2.1.0 后续；2026-11-05 依 PRO-013 §4.2 C1 落地；**需 --script**）——
+                           产物 shots[].scene_no 的集合必须 ⊇ 上游剧本 scenes[].no 的集合；
+                           缺场逐条列出（`scenes_missing`）。无上游时判 **not_tested**（不得判通过）。
+                           这是「分镜是否拍完了剧本的全部场次」的第一条判据——此前判据族
+                           全部只审「段内」，论域随产物缩小而缩小（空真），68% 的「3 镜退化」
+                           产物在此前三项全绿（PRO-013 §2.4／§3.3）。
+  R42 SCENE_SHOT_FLOOR     **每场镜数下限**（2026-11-05 依 PRO-013 §4.2 C2 落地）——
+                           每场 ≥ 2 镜（＝最小合规单元，与 R22「场 ≥ 8s ＝ 4s × 2 镜」同源推导）；
+                           全片镜数 ≥ ⌈Σ场 est_seconds ÷ 单镜上限 15s⌉（仅上游可用时算）。
+                           自足（按 scene_no 分组即可判，无上游也判每场下限）。
+  R43 SCENE_SHOT_CAP       **单场镜数上限**（2026-11-05 立项；`TPL-010` 数量要求 7(a) 判据化；
+                            **需 --script**）——
+                           每场镜数 ≤ ⌊该场 est_seconds ÷ 4s⌋（4s ＝单镜时长下限）。
+                           与 R42 成对（下限／上限）但论域不同：R43 的场时长只能取**上游**，
+                           上游不可用时判 **not_tested**——绝不按产物自己 duration_ms 求和反推
+                           （那等于「镜数写多、单镜写短」也能自证合格，正是本条要防的形态）。
+                           立条依据：T-100 b 期 `off#01`/`#08` 场 1 分到 9 镜（上限 4＝2.25 倍）
+                           而 R42（只管下限）仍判通过 ⇒ 镜数失控族此前**零覆盖**。
 
 交付包层规则（SW-007 `shot_prompt_v1`，2026-10-13 新增；形态 pack）：
   R26 MOVE_PARAM_OMISSION  运镜幅度／速度的**省略规则**（规范 §3.7.2）——
@@ -237,6 +255,13 @@ OWNER_CLIENT = "客户"
 # 场时长下限（秒）—— 单镜时长下限 4s × 生成单元最少 2 镜（SR-08：场时长＝该场的镜数预算）
 SCENE_MIN_SECONDS = 8
 
+# 单场镜数上限的换算常量（`R43`，2026-11-05 依 `R43` 立项裁决落地）——
+# 规范 `TPL-010` 数量要求 7(a)：「单场镜数上限 ＝ ⌊场秒数 ÷ 4s⌋」（4s ＝单镜时长下限）。
+# ⚠️ `R42` 只管**下限**（每场 ≥2 镜＋全片下限），上限此前**全文无判据** ——
+#    `T-100` `b` 期实测 `off#01`/`#08` 场 1 分到 **9 镜**（该场上限 4 ＝ 2.25 倍）
+#    而 `R42` 仍判通过。故立 `R43` 补这个缺口。
+SHOT_MIN_SECONDS = 4
+
 # 分镜层封闭枚举（规范 §3.7.1 / §3.7.2 / §3.7.5）
 SHOT_SIZE_ENUM = ["extreme_wide", "wide", "full", "medium", "close_up", "extreme_close_up"]
 MOVE_ENUM = [
@@ -257,8 +282,15 @@ SPEED_ENUM = ["", "slow", "fast"]
 #   交付 schema 的枚举/vocabRef **不含空串**（门禁会判 `'' is not one of [...]`），
 #   故「留空」必须以「省略键」表达。这是本层产出能过 delivery/validate_pack.py 的必要条件。
 PACK_ENUM_OPTIONAL = {
-    "camera.amplitude": ["small", "medium", "large"],
-    "camera.speed": ["slow", "normal", "fast"],
+    # ⚠️ 2026-11-05（`ISSUE-065` 裁决 1 修法 A）**幅度/速度二值化**：
+    #   原为 `["small","medium","large"]` / `["slow","normal","fast"]`——`medium`/`normal`
+    #   是「通常省略」的默认值，`R26` 判它们为**必填误用**（应省略该键）；但只要它们
+    #   还在引擎允许面内，模型就会偶发选中（`T-101` B 期 A/B：上下文收窄后 on 臂
+    #   163 镜 21 处违例、off 臂 180 镜 0 处 ⇒ **值分布漂移**，非「多写键」）。
+    #   现三处口径统一为**只允许强调用两值**（引擎 `artifact_contract.FIELD_CONSTRAINTS`
+    #   ≡ 交付契约 `CFG-006` ≡ 本常量），`R26` 从「事后判」升级为「**事中不可生成**」。
+    "camera.amplitude": ["small", "large"],
+    "camera.speed": ["slow", "fast"],
     "camera.height": ["eye_level", "low", "high", "overhead", "ground"],
     "camera.roll": ["level", "dutch", "roll_cw", "roll_ccw"],
     "camera.optics": ["deep_focus", "shallow_focus", "rack_focus",
@@ -333,6 +365,11 @@ KNOWN_STYLE_TAGS = [
 ]
 
 # 镜头语言质量门阈值 —— **直接引用 audit_shots.py 的 GATE**，不得另立一套（规范 §4.2）
+
+# 分母基线（PRO-013 §6 待裁决 3 的裁决结果：取 **6** ＝ 3 场 × 每场 2 镜；2026-11-05
+#   授权代决落地）。`R10`／`R11`／`R19` 的论域是产物自身的 shots —— 镜数低于该基线时
+#   这些「全称式」判据的量化域随之缩小（空真风险），按 §4.1 三态化判 **not_tested**。
+N_MIN_DENOMINATOR = 6
 GATE = {
     "运镜覆盖": 1.00,       # 每镜都要有
     "景别覆盖": 1.00,       # 每镜都要有
@@ -400,7 +437,7 @@ EXAMPLES_UPSTREAM = {
     "CASE-007_modify-pack-case01.md": [],
 }
 
-RESULT = {"checks": 0, "errors": [], "warnings": []}
+RESULT = {"checks": 0, "errors": [], "warnings": [], "not_tested": []}
 QUIET = False
 # 当前生效的上游产物：script 供 R23/R24；storyboard 供 R31（时长守恒）。
 UPSTREAM = {"doc": None, "src": None, "sb_doc": None, "sb_src": None}
@@ -424,6 +461,20 @@ def err(msg):
 def warn(msg):
     RESULT["warnings"].append(msg)
     out(f"  [WARN] {msg}")
+
+
+def not_tested(msg):
+    """**三态化**（PRO-013 §4.1；2026-11-05 落地）：「未测 ≠ 通过」。
+
+    适用性前置不满足（分母基线 `N_MIN`／缺上游）时输出 **not_tested**，
+    与「通过」「失败」分开列。`passed` **不含** not_tested（只可见化、不判死——
+    把未测计入失败等价于「样本不足即不合格」，会一次性判死 68% 产物，
+    与 `SW-017`「不足即判未测」原意不符；PRO-013 §4.5 明确不做）。
+    ⚠️ 用 `setdefault` 兜底：`quality_gate._engine_errors` 会整体重置 `RESULT`，
+    若其重置字典滞后未带该键，此处不炸（互锁测试锚住两侧同步）。
+    """
+    RESULT.setdefault("not_tested", []).append(msg)
+    out(f"  [NOT-TESTED] {msg}")
 
 
 # ---------------- 形态识别与字段抽取 ----------------
@@ -848,9 +899,17 @@ def rule_unit_link(doc, where):
 
 
 def rule_unit_size(doc, where):
-    """R10：单元成员数必须为 2 或 3（1 镜单元结构性不合格，规范 §4.3）。"""
+    """R10：单元成员数必须为 2 或 3（1 镜单元结构性不合格，规范 §4.3）。
+
+    ⚠️ 三态化（PRO-013 §4.1；2026-11-05）：镜数低于分母基线 `N_MIN_DENOMINATOR` 时
+    判 **not_tested**（论域随产物缩小而缩小 ⇒ 空真风险；3 镜单单元此前可「全绿」）。
+    """
     units = _units(doc)
     if not units:
+        return
+    if len(_shots(doc)) < N_MIN_DENOMINATOR:
+        not_tested(f"{where} · R10 UNIT_SIZE：镜数 {len(_shots(doc))} < 分母基线 "
+                    f"{N_MIN_DENOMINATOR}（三态化）→ 未测")
         return
     bad = [f"{u.get('unit_id')} 成员 {len(u.get('shot_ids') or [])} 个（须为 2 或 3）"
            for u in units if len(u.get("shot_ids") or []) not in (2, 3)]
@@ -861,8 +920,17 @@ def rule_unit_size(doc, where):
 
 
 def rule_unit_move_unique(doc, where):
-    """R11：同一单元内 camera.move 取值不得重复。"""
+    """R11：同一单元内 camera.move 取值不得重复。
+
+    ⚠️ 三态化（PRO-013 §4.1；2026-11-05）：同 R10 的分母基线前置。
+    """
     units = _units(doc)
+    if not units:
+        return
+    if len(_shots(doc)) < N_MIN_DENOMINATOR:
+        not_tested(f"{where} · R11 UNIT_MOVE_UNIQUE：镜数 {len(_shots(doc))} < 分母基线 "
+                    f"{N_MIN_DENOMINATOR}（三态化）→ 未测")
+        return
     by_id = {r.get("shot_id"): r for r in _shots(doc)}
     bad = []
     for u in units:
@@ -1042,9 +1110,19 @@ def _gate_check(rows):
 
 
 def rule_gate(doc, where):
-    """R19：11 项镜头语言质量门（整片 + 逐生成单元），阈值引用 audit_shots.py 的 GATE。"""
+    """R19：11 项镜头语言质量门（整片 + 逐生成单元），阈值引用 audit_shots.py 的 GATE。
+
+    ⚠️ 三态化（PRO-013 §4.1；2026-11-05）：镜数低于分母基线 `N_MIN_DENOMINATOR` 时
+    判 **not_tested**——`R19` 的阈值随 `n` 自适应（`min(5, max(2, ⌈n/4⌉))`），
+    `n` 越小越容易满足且**单调** ⇒ 「缩小产物」是该判据的单调更优策略（空真，
+    PRO-013 §2.5 实测：13 份 n<6 样本中 12 份 R19 绿）。
+    """
     shots = _shots(doc)
     if not shots:
+        return
+    if len(shots) < N_MIN_DENOMINATOR:
+        not_tested(f"{where} · R19 GATE：镜数 {len(shots)} < 分母基线 "
+                    f"{N_MIN_DENOMINATOR}（三态化）→ 未测")
         return
     bad_all = _gate_check(shots)
     if bad_all:
@@ -1136,7 +1214,8 @@ def rule_rewrite_lock(doc, where):
     """
     upstream = UPSTREAM.get("doc")
     if not upstream:
-        warn(f"{where} · R23 REWRITE_LOCK：未提供上游剧本（--script），跳过外观锚重述检测")
+        not_tested(f"{where} · R23 REWRITE_LOCK：未提供上游剧本（--script）→ 外观锚重述检测**未测**"
+                    "（三态化：缺上游不得判通过）")
         return
     anchors = _anchors(upstream)
     if not anchors:
@@ -1188,7 +1267,8 @@ def rule_prop_coverage(doc, where):
     """
     upstream = UPSTREAM.get("doc")
     if not upstream:
-        warn(f"{where} · R24 PROP_COVERAGE：未提供上游剧本（--script），跳过道具覆盖检测")
+        not_tested(f"{where} · R24 PROP_COVERAGE：未提供上游剧本（--script）→ 道具覆盖检测**未测**"
+                    "（三态化：缺上游不得判通过）")
         return
     pres = _upstream_props_by_scene(upstream)
     pres = {k: v for k, v in pres.items() if v}
@@ -1208,6 +1288,148 @@ def rule_prop_coverage(doc, where):
         err(f"{where} · R24 PROP_COVERAGE：{len(bad)} 处漏拍 → " + "；".join(bad[:5]))
     else:
         ok(f"{where} · R24 PROP_COVERAGE：{len(pres)} 个有道具的场，均有镜头把道具标进 prop_refs")
+
+
+def _upstream_scene_nos(upstream):
+    """上游 script：全部场次号（兼容 script 与 synopsis 两种形态；与
+    `_upstream_props_by_scene` 的键口径逐字一致——R41/R24 同吃上游场号，两处必须同源）。"""
+    nos = []
+    for act in (upstream.get("acts") or []):
+        if not isinstance(act, dict):
+            continue
+        for sc in (act.get("scenes") or []):
+            if isinstance(sc, dict):
+                nos.append(sc.get("no"))
+    for sc in (upstream.get("scenes_outline") or []):
+        if isinstance(sc, dict):
+            no = sc.get("no")
+            if no not in nos:
+                nos.append(no)
+    return nos
+
+
+def rule_scene_coverage(doc, where):
+    """R41：场次覆盖（PRO-013 §4.2 `C1`；2026-11-05 落地；**需 --script**）。
+
+    判据：产物 `shots[].scene_no` 的集合 **⊇** 上游剧本场次号集合；
+    缺场逐条列出 `scenes_missing`。无上游时判 **not_tested**（不得判通过——
+    否则又是一处「无判据写成已覆盖」）。
+    ⚠️ 这是「分镜是否拍完了剧本的全部场次」的**第一条**判据——此前 `R` 族全部
+    只审「段内」（论域随产物缩小而缩小 ⇒ 空真），89% 的样本场覆盖不完整却全绿
+    （PRO-013 §2.1／§2.4）；`8b/run10` 的 8 镜只覆盖 1 场反例证明「镜数不是分母、
+    次数才是」，只加最小镜数救不了覆盖。
+    """
+    upstream = UPSTREAM.get("doc")
+    if not upstream:
+        not_tested(f"{where} · R41 SCENE_COVERAGE：未提供上游剧本（--script）→ 场次覆盖**未测**"
+                    "（三态化：缺上游不得判通过）")
+        return
+    need = [no for no in _upstream_scene_nos(upstream) if no is not None]
+    if not need:
+        not_tested(f"{where} · R41 SCENE_COVERAGE：上游剧本解析不出场次号 → 场次覆盖**未测**")
+        return
+    got = {r.get("scene_no") for r in _shots(doc)}
+    miss = [no for no in need if no not in got]
+    if miss:
+        err(f"{where} · R41 SCENE_COVERAGE：{len(miss)} 场漏拍 → scenes_missing={miss}"
+            f"（剧本 {len(need)} 场，分镜只覆盖 {len(got)} 场）")
+    else:
+        ok(f"{where} · R41 SCENE_COVERAGE：剧本 {len(need)} 场全部有镜头覆盖")
+
+
+def rule_scene_shot_floor(doc, where):
+    """R42：每场镜数下限（PRO-013 §4.2 `C2`；2026-11-05 落地；裁决＝每场下限取 2）。
+
+    判据：① 每场 ≥ 2 镜（＝最小合规单元，与 `R22`「场 ≥ 8s ＝ 4s × 2 镜」同源推导）；
+    ② 全片镜数 ≥ ⌈Σ场 est_seconds ÷ 单镜上限 15s⌉（仅上游可用时算）。
+    自足：无上游时只判 ①（按 `scene_no` 分组即可），不判 not_tested——
+    ①的论域是「产物自己的场分组」，与 `R10`/`R11`/`R19` 的「全称式空真」不同族。
+    """
+    shots = _shots(doc)
+    if not shots:
+        return
+    by_scene: dict[Any, list] = {}
+    for r in shots:
+        by_scene.setdefault(r.get("scene_no"), []).append(r)
+    bad = []
+    for s, rows in sorted(by_scene.items(), key=lambda kv: str(kv[0])):
+        if len(rows) < 2:
+            bad.append(f"场 {s} 仅 {len(rows)} 镜（须 ≥ 2，＝最小合规单元，与 R22 场时长下限同源）")
+    upstream = UPSTREAM.get("doc")
+    if upstream is not None:
+        total = upstream.get("total_est_seconds")
+        if isinstance(total, (int, float)) and not isinstance(total, bool) and total > 0:
+            floor = -(-int(total) // 15)
+            if len(shots) < floor:
+                bad.append(f"全片 {len(shots)} 镜 < ⌈Σ{int(total)}s ÷ 15s⌉={floor}（单镜上限口径）")
+    if bad:
+        err(f"{where} · R42 SCENE_SHOT_FLOOR：{len(bad)} 处不足 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R42 SCENE_SHOT_FLOOR：{len(by_scene)} 场每场 ≥ 2 镜"
+           + (f"；全片 {len(shots)} 镜 ≥ 下限" if upstream is not None else "（全片下限未算：无上游）"))
+
+
+def rule_scene_shot_cap(doc, where):
+    """R43：单场镜数上限（2026-11-05 立项；`TPL-010` 数量要求 7(a) 的判据化）。
+
+    判据：每场镜数 ≤ ⌊该场 est_seconds ÷ 4s⌋（4s ＝单镜时长下限，见 `SHOT_MIN_SECONDS`）。
+
+    ⚠️ 与 `R42` 是一对（下限 / 上限），但**论域不同**：
+    - `R42` 的下限论域是「产物自己的场分组」⇒ 无上游也能判（自足）；
+    - `R43` 的上限需要**该场时长**，只能从上游剧本取 ⇒ **上游不可用时判 `not_tested`**，
+      绝不按「产物自己的 duration_ms 求和」反推（那是拿产物自证产物：
+      把镜数写多了、单镜时长写短了，求和照样落在场秒数内——正是本判据要防的形态）。
+
+    为什么要立（实测依据）：`T-100` `b` 期 `off#01`/`#08` 场 1 分到 **9 镜**
+    （该场上限 4 ＝ 2.25 倍），而 `R42`（只管下限）仍判通过 ⇒ 「镜数失控」这一族
+    在判据侧**完全无覆盖**。整片模式下仍是默认路径，缺口不能靠逐场模式绕过。
+    """
+    shots = _shots(doc)
+    if not shots:
+        return
+    upstream = UPSTREAM.get("doc")
+    if upstream is None:
+        not_tested(f"{where} · R43 SCENE_SHOT_CAP：未提供上游剧本（--script）"
+                   f"→ 单场镜数上限**未测**（不拿产物自证）")
+        return
+    scene_secs = _upstream_scene_seconds(upstream)
+    if not scene_secs:
+        not_tested(f"{where} · R43 SCENE_SHOT_CAP：上游剧本取不到 `est_seconds` → **未测**")
+        return
+    by_scene: dict[Any, int] = {}
+    for r in shots:
+        by_scene[r.get("scene_no")] = by_scene.get(r.get("scene_no"), 0) + 1
+    bad, checked = [], 0
+    for s, rows in sorted(by_scene.items(), key=lambda kv: str(kv[0])):
+        need = scene_secs.get(s)
+        if need is None:
+            continue          # 场号在上游查无此场 ⇒ 交 `R41`/`R10` 管，本条不越界
+        cap = int(need) // SHOT_MIN_SECONDS
+        cap = max(cap, 1)     # est_seconds < 4s 的畸形场：至少允许 1 镜，不因除零判死
+        checked += 1
+        if rows > cap:
+            bad.append(f"场 {s} 分到 {rows} 镜 > ⌊{int(need)}s ÷ {SHOT_MIN_SECONDS}s⌋={cap}"
+                       f"（＝{rows / cap:.2f} 倍上限）")
+    if bad:
+        err(f"{where} · R43 SCENE_SHOT_CAP：{len(bad)} 场超限 → " + "；".join(bad[:6]))
+    else:
+        ok(f"{where} · R43 SCENE_SHOT_CAP：{checked} 场镜数均 ≤ ⌊场秒数 ÷ {SHOT_MIN_SECONDS}s⌋")
+
+
+def _upstream_scene_seconds(upstream) -> "dict":
+    """上游剧本 → `{场号: est_seconds}`（口径与 `_upstream_props_by_scene` 同源）。
+
+    ⚠️ `iter_scenes` 产出的是 `(sc, loc)` **二元组**（不是四元组，见其实现）。
+    """
+    out: dict = {}
+    for sc, _loc in iter_scenes(upstream, "script"):
+        if not isinstance(sc, dict):
+            continue
+        no, secs = sc.get("no"), sc.get("est_seconds")
+        if no is None or isinstance(secs, bool) or not isinstance(secs, (int, float)):
+            continue
+        out.setdefault(no, secs)
+    return out
 
 
 def rule_gate_self_check(doc, where):
@@ -2238,6 +2460,9 @@ def validate_doc(doc, where, fname=None):
         rule_gate_self_check(doc, where)
         rule_rewrite_lock(doc, where)
         rule_prop_coverage(doc, where)
+        rule_scene_coverage(doc, where)      # R41（PRO-013 C1：场次覆盖，需 --script）
+        rule_scene_shot_floor(doc, where)    # R42（PRO-013 C2：每场 ≥2 镜＋全片下限）
+        rule_scene_shot_cap(doc, where)      # R43（单场镜数上限 ⌊场秒数÷4s⌋，需 --script）
         rule_move_param_omission(doc, where)   # R26 同时作用于分镜脚本
         rule_unspecified_owner(doc, shape, where)
         return
@@ -2413,6 +2638,7 @@ def main():
             "checks": RESULT["checks"],
             "errors": RESULT["errors"],
             "warnings": RESULT["warnings"],
+            "not_tested": RESULT.get("not_tested", []),
             "purpose_enum": PURPOSE_ENUM,
             "fill_stage_enum": FILL_STAGE_ENUM,
             "dialogue_type_enum": DIALOGUE_TYPE_ENUM,
@@ -2435,8 +2661,11 @@ def main():
     else:
         print("\n" + "=" * 52)
         print(f"通过检查项：{RESULT['checks']}")
-        print(f"失败：{len(RESULT['errors'])} ｜ 警告：{len(RESULT['warnings'])}")
-        print("结论：" + ("✅ 全部通过" if passed else "❌ 存在失败项"))
+        print(f"失败：{len(RESULT['errors'])} ｜ 警告：{len(RESULT['warnings'])} ｜ "
+              f"未测：{len(RESULT.get('not_tested', []))}（三态化：未测 ≠ 通过）")
+        print("结论：" + ("✅ 全部通过" if passed else "❌ 存在失败项")
+              + (f"（另有 {len(RESULT.get('not_tested', []))} 项未测——PRO-013 §4.1 可见化）"
+                 if RESULT.get("not_tested") else ""))
     return 0 if passed else 1
 
 

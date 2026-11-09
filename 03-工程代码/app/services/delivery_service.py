@@ -356,7 +356,13 @@ _SELF_CHECK_SPEC: tuple[dict[str, Any], ...] = (
     {"no": 2, "item": "输出内容安全复检通过", "from": "pack", "match": "输出侧",
      "codes": ("compliance.safety", "compliance.safety_pending")},
     {"no": 3, "item": "版权/改编风险校验完成（有风险须提示并记录）", "from": "pack",
-     "codes": ("compliance.copyright", "compliance.copyright_risk")},
+     # ⚠️ **2026-11-05 裁决**：`compliance.copyright`（版权未校验）由 BLOCK 降级为 WARN，
+     #    码名改为 `compliance.copyright_pending`（见 `delivery/validate_pack.py` 同处注释）。
+     #    ⇒ 本项由「BLOCK ⇒ fail」变为「WARN ⇒ warn」：**如实呈现「未校验」**，
+     #      不再阻断交付（本工程无版权风险检测能力，占位是常态）。
+     #    三项码并列覆盖：`_pending`（未接入/占位）／`copyright`（旧码，保留兼容）／`_risk`（检出风险）。
+     "codes": ("compliance.copyright", "compliance.copyright_pending",
+               "compliance.copyright_risk")},
     {"no": 4, "item": "提示词包通过 JSON Schema 校验",
      "from": "pack",
      # ⚠️ 除 Schema 外的「取值合规」判据（词表／风格锚点／任务类型／时间格式／

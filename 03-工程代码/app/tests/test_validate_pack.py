@@ -131,17 +131,25 @@ def test_placeholder_form_also_yields_pending_warn(
     assert "检测**未通过**" not in out, f"措辞污染：\n{out}"
 
 
-def test_copyright_not_obtained_is_block_not_warn(base_pack: dict, tmp_path: Path) -> None:
-    """⚠️ **`copyright_check` 的「未取得」是 BLOCK**（规范原文「未校验 → 阻断」）。
+def test_copyright_not_obtained_is_warn_after_downgrade(base_pack: dict, tmp_path: Path) -> None:
+    """⚠️ **`copyright_check` 的「未取得」是 WARN**（2026-11-05 裁决降级；`ISSUE-047`）。
 
-    ⚠️ **与 `safety_check`／`marking_check` 的 WARN 不同** —— 这是 `SPEC-008` §8.3
-    第 3 项的原文差异（「版权/改编风险校验完成…未校验 → **阻断**」），
-    **不是笔误** ⇒ 实现须如实区分。
+    ⚠️ **本用例口径已随裁决翻转**（原断言 BLOCK）：`SPEC-008` §8.3 第 3 项原文确为
+    「未校验 → 阻断」，但本工程 `copyright_check` **恒为「未接入／占位」**（无版权风险源
+    检测能力）⇒ 该 BLOCK 表达的是**能力缺口**、不是「检出了问题」。用 BLOCK 表达能力缺口
+    会让**每个**交付包都被同一条阻断（`T-101` `shot_prompt` 段被结构性钉死在直出率 0、
+    重试无用，已实证）⇒ 项目方裁决**降级为 WARN**，与 `safety_check`／`marking_check`
+    的「未取得」同级。
+
+    ⚠️ **防静默放宽的另一道闸**：真正**检出风险**（`risk`）仍是 WARN 且须「提示＋记录」
+    （见 `test_copyright_risk_is_warn`）；只有当**能力真正上线**后判「未通过」才应升回
+    BLOCK。降级是**明示的、有留痕的**，不是把判据掏空。
     """
     p = base_pack
     p["meta"]["compliance"]["copyright_check"]["status"] = "not_available"
     code, out = _run_pack(p, tmp_path)
-    assert "BLOCK compliance.copyright" in out, f"未报 BLOCK compliance.copyright：\n{out}"
+    assert "WARN  compliance.copyright_pending" in out, f"未报 WARN copyright_pending：\n{out}"
+    assert "BLOCK compliance.copyright" not in out, f"★ 降级后不应仍阻断：\n{out}"
 
 
 def test_copyright_risk_is_warn(base_pack: dict, tmp_path: Path) -> None:
@@ -156,16 +164,18 @@ def test_copyright_risk_is_warn(base_pack: dict, tmp_path: Path) -> None:
 def test_missing_compliance_keys_are_warn(base_pack: dict, tmp_path: Path) -> None:
     """**键缺失**（整个 `compliance` 块被删）⇒ 未取得。
 
-    ⚠️ **分级不同**（依 `SPEC-008` §8.3 各项原文）：
-    · `safety_check`／`marking_check`／`statement_id` 缺失 ⇒ **WARN**（能力未接入）；
-    · `copyright_check` 缺失 ⇒ **BLOCK**（规范原文「未校验 → 阻断」）。
-    ⇒ 故本用例断言**两者同时出现**（WARN 与 BLOCK 各一条）。
+    ⚠️ **四项同为 WARN**（2026-11-05 起 `copyright_check` 亦降级为 WARN，见
+    `test_copyright_not_obtained_is_warn_after_downgrade`）：`safety_check`／
+    `marking_check`／`statement_id`／`copyright_check` 缺失 ⇒ 均判「能力未接入」。
+    ⚠️ 但 `compliance` 整块缺失仍由 **schema 层**报 `BLOCK schema.pack`
+    （`meta.compliance` 是 required）——那是**结构缺失**，与本条分级无关。
     """
     p = base_pack
     del p["meta"]["compliance"]
     code, out = _run_pack(p, tmp_path)
     assert "WARN  compliance." in out, f"未报 WARN：\n{out}"
-    assert "BLOCK compliance.copyright" in out, f"★ copyright 缺失未被阻断：\n{out}"
+    assert "WARN  compliance.copyright_pending" in out, f"★ copyright 缺失未报 WARN：\n{out}"
+    assert "BLOCK schema.pack" in out, f"★ compliance 整块缺失未由 schema 层阻断：\n{out}"
     assert "BLOCK compliance.safety" not in out, f"★ safety 缺失被误报为 BLOCK：\n{out}"
     assert "BLOCK compliance.marking" not in out, f"★ marking 缺失被误报为 BLOCK：\n{out}"
 
@@ -245,9 +255,9 @@ def test_schema_version_is_2_2_0() -> None:
         (ROOT / "delivery" / "schemas" / "CFG-006_shot_prompt_pack.v1.schema.json")
         .read_text(encoding="utf-8")
     )
-    assert schema["properties"]["schema_version"]["const"] == "2.2.0"
+    assert schema["properties"]["schema_version"]["const"] == "2.3.0"
     demo = json.loads(DEMO.read_text(encoding="utf-8"))
-    assert demo["schema_version"] == "2.2.0", "示例件 schema_version 未同步"
+    assert demo["schema_version"] == "2.3.0", "示例件 schema_version 未同步"
 
 
 def test_service_layer_writes_not_available_not_placeholder() -> None:
@@ -402,15 +412,48 @@ def test_service_truth_pack_gates_tri_state(tmp_path: Path) -> None:
     assert "WARN  compliance.statement_pending" in out, f"声明编号占位未报 WARN：\n{out}"
     assert "BLOCK compliance.safety" not in out and "BLOCK compliance.marking" not in out \
         and "BLOCK compliance.statement" not in out, f"未取得项被钉成 BLOCK：\n{out}"
-    # ② ⚠️ `copyright` 是**唯一的 BLOCK 档**（`PRO-007` 裁定＝SPEC-008 §8.3 第 3 项
-    #    「未校验 → 阻断交付」）：版权校验未接入 ⇒ 阻断是**合规本意**（不得静默放过）。
-    #    服务层交付由此**结构性**带此 BLOCK ⇒ 解除路径＝接入版权校验（`PRO-011` 三前置），
-    #    **不是**改判据放行。此断言把该档位**焊死**：若有人把 copyright 也改成 WARN，
-    #    必须先改规范并过评审，测试当场报警防止静默放宽。
-    assert "BLOCK compliance.copyright" in out, f"版权未校验未阻断（档位被静默放宽）：\n{out}"
-    # ③ 除上述设计档位外**不得有其他 BLOCK**（尤其不得有 meta.produce_id 形态类阻断）
-    other_blocks = [ln for ln in out.splitlines()
-                    if ln.strip().startswith("[X] BLOCK")
-                    and "compliance.copyright" not in ln]
+    # ② ⚠️ `copyright` **已于 2026-11-05 由 BLOCK 降级为 WARN**（`ISSUE-047` 裁决）：
+    #    理由＝该 check 恒为「未接入」，BLOCK 表达能力缺口会让每个包都被同一条阻断
+    #    ⇒ 与 `safety`／`marking` 同级按 WARN 处置，**留痕但不阻断**。
+    #    ⚠️ 此处断言**方向已翻转**：若有人把版权校验私自改回 BLOCK（未经裁决），
+    #    本断言当场报警 —— 降级是裁决结果，回滚也必须过裁决。
+    assert "WARN  compliance.copyright_pending" in out, f"版权未校验未报 WARN：\n{out}"
+    assert "BLOCK compliance.copyright" not in out, f"★ 版权威仍未降级：\n{out}"
+    # ③ 降级后服务层真装配包应**零 BLOCK**（无任何设计内阻断）
+    other_blocks = [ln for ln in out.splitlines() if ln.strip().startswith("[X] BLOCK")]
     assert not other_blocks, f"服务层真装配包出现非预期 BLOCK：\n{other_blocks}"
-    assert code != 0, "含设计内 BLOCK（copyright 未校验）⇒ 退出码应为非 0"
+    assert code == 0, "版权降级为 WARN 后，服务层真装配包应可交付（退出码 0）"
+
+
+# ---------------------------------------------------------------- `乙`（2026-11-07 裁决）
+
+
+def test_unit_camera_dup_is_warn_after_demotion(base_pack: dict, tmp_path: Path) -> None:
+    """承继层 `unit.camera_dup` 由 BLOCK 降级 **WARN**（裁决乙：camera 一字不得改，
+    该约束是分镜层生成期约束；承继层当 BLOCK 会制造不可满足约束对）。"""
+    pack = copy.deepcopy(base_pack)
+    shots = {s["shot_id"]: s for s in pack["shots"]}
+    unit = pack["units"][0]
+    sids = unit["shot_ids"][:2]
+    # 人为制造单元内运镜重复（模拟承继自分镜层的上游缺陷）
+    shots[sids[1]]["camera"]["move"] = shots[sids[0]]["camera"]["move"]
+    code, out = _run_pack(pack, tmp_path)
+    assert "unit.camera_dup" in out, f"应报 unit.camera_dup：\n{out}"
+    assert "BLOCK unit.camera_dup" not in out, f"降级后不得再是 BLOCK：\n{out}"
+
+
+# ---------------------------------------------------------------- `乙`（2026-11-07 裁决）
+
+
+def test_unit_camera_dup_is_warn_after_demotion(base_pack: dict, tmp_path: Path) -> None:
+    """承继层 `unit.camera_dup` 由 BLOCK 降级 **WARN**（裁决乙：camera 一字不得改，
+    该约束是分镜层生成期约束；承继层当 BLOCK 会制造不可满足约束对）。"""
+    pack = copy.deepcopy(base_pack)
+    shots = {s["shot_id"]: s for s in pack["shots"]}
+    unit = pack["units"][0]
+    sids = unit["shot_ids"][:2]
+    # 人为制造单元内运镜重复（模拟承继自分镜层的上游缺陷）
+    shots[sids[1]]["camera"]["move"] = shots[sids[0]]["camera"]["move"]
+    code, out = _run_pack(pack, tmp_path)
+    assert "unit.camera_dup" in out, f"应报 unit.camera_dup：\n{out}"
+    assert "BLOCK unit.camera_dup" not in out, f"降级后不得再是 BLOCK：\n{out}"

@@ -121,10 +121,13 @@ def test_duplicate_finding_does_not_enter_retryable() -> None:
 
 
 def test_scene_coverage_incomplete_enters_retryable() -> None:
-    """⭐ **无等效 `R` 判据**的 `scene_coverage_incomplete` **必须进 `retryable`**。
+    """⭐ `scene_coverage_incomplete` 的重试触发能力（`PRO-013` 后由 `R41` 承接）。
 
-    这是 `content_adequacy` 相对判据族的**唯一净增能力**
-    （`R10`／`R14`／`R19` 全只审段内，无判据审「分镜是否覆盖剧本全部场次」）。
+    `PRO-013`（2026-11-05）落地 `R41`（场次覆盖）前，`content_adequacy` 的场覆盖度是
+    相对判据族的**唯一净增能力**（`R10`／`R14`／`R19` 全只审段内）⇒ 必须亲自进
+    `retryable`。`R41` 落地后等效判据出现 ⇒ 走 `engine_dup` 去重（同一失败只计一次），
+    **重试触发不丢**——由 `R41` 的引擎失败驱动（`R41` 非 `_NON_RETRYABLE_*` 标记，
+    自身 retryable）。
     """
     script = _script(total=30, scene_seconds=30, acts=3, scenes=3)
     # 分镜只覆盖第 1 场（3 镜都在场 1）⇒ 场覆盖度不完整
@@ -139,11 +142,12 @@ def test_scene_coverage_incomplete_enters_retryable() -> None:
     assert "scene_coverage_incomplete" in codes, f"未探测到场覆盖度不足：{codes}"
 
     f = next(f for f in v.adequacy_findings if f.get("code") == "scene_coverage_incomplete")
-    # 无等效 `R` 判据 ⇒ 不得被去重
-    assert f.get("source") == "adequacy"
-    assert f.get("equiv_rule") == ""
-    # ⭐ **必须进** `retryable`
-    assert any("scene_coverage_incomplete" in r for r in v.retryable)
+    # ⭐ `R41` 已落地 ⇒ 等效判据在（engine 侧报出 R41）⇒ 去重只作佐证
+    assert f.get("source") == "engine_dup"
+    assert f.get("equiv_rule") == "R41"
+    assert not any("scene_coverage_incomplete" in r for r in v.retryable)
+    # ⭐ 重试触发**不丢**：由 `R41` 的引擎失败驱动（retryable、非 non_retryable 标记族）
+    assert any("R41" in r for r in v.retryable), f"R41 未驱动重试：{v.retryable}"
 
 
 def test_storyboard_duration_mismatch_is_deduped_against_r14() -> None:

@@ -224,6 +224,122 @@ class Settings(BaseSettings):
     #: 口径同 `service_truth`：**服务层只补自己算得出的量**，模型可影响字段一字不改。
     storyboard_derived_backfill: bool = True
 
+    #: **剧本／梗概派生总量回填**（`PRO-011` 线 3 ＋ Q2 裁决「派生量服务层复算」；2026-11-04 授权落地）。
+    #: `true` ＝ `script`／`synopsis` 段产物的 `total_est_seconds` 由服务层按
+    #: **Σ 各场 `est_seconds`** 复算覆写（判据 `R4`；`script` 真基线 3/3 轮失败）。
+    #: ⚠️ 口径与 `storyboard_derived_backfill`（`R14`）完全同构：**只改一个由各场时长
+    #: 唯一决定的量**，场数／场内容／各场秒数一字不动；模型原值**完整留痕**
+    #: （`artifact["derived_backfill"]`）；`R4` 判据一字未动（回填后判「守恒」）。
+    #: ⚠️ 下发路线（Q2 原始候选）对**本层不可行**——生成前总量尚不存在（它是模型
+    #: 各场决策的求和），只有「生成后复算」一种确定性实现；真值归属方案见 `PRO-011` 附 4。
+    script_derived_backfill: bool = True
+
+    #: **交付包派生总量回填**（`PRO-011` 线 3；2026-11-04 授权落地）。
+    #: `true` ＝ `shot_prompt` 段（形态 `pack`）产物的 `meta.total_duration_ms` 由服务层按
+    #: **Σ `shots[].duration_ms`** 复算覆写（判据 `R31` 双守恒之一 ＋ 交付侧
+    #: `consistency.duration`；真基线 2/2 轮失败且第 2 轮还**放大**了上游偏差）。
+    #: ⚠️ 逐镜与上游一致（`R31` 另一半）**不可回填**——镜时长是模型创作决策，
+    #: 属「模型可影响字段一字不改」；本开关只补**纯算术派生量**。
+    pack_derived_backfill: bool = True
+
+    #: **交付包镜集合守恒兜底**（`T-101` r3 收口呈报·**裁决甲**，2026-11-07 项目方裁决）。
+    #: `true` ＝ `shot_prompt` 段（形态 `pack`）产物在门禁判定**之前**，由服务层校验
+    #: 「`shots[]` ⊇ 上游分镜镜集合」：上游有而本层缺的镜，**按上游镜定义补占位条目**
+    #: （`camera`／`duration_ms`／`action`／`shot_language` 等机械承继字段照抄上游；
+    #: `prompt_zh` 由 `action` 派生；**`prompt_en` 留空**——不伪造创作内容，交 `R34` 等
+    #: 判据如实判）；`notes` 明写「服务层构造占位」。
+    #:
+    #: ⚠️ **为什么必须程序保证**（r2／r3 两批实证）：`uniqueItems` 不入引擎允许面 ⇒
+    #:    `minItems` 管个数管不住互异；事后闸（裁决丙的 dup 检出）只能拦「已生成的
+    #:    退化解」，拦不住「首轮无凑数、次轮才掉镜」（r3 on#01／on#08）——**集合守恒类
+    #:    硬约束只能由构造保证**（与 `T-100` 的场覆盖构造保证同源）。
+    #: ⚠️ **本开关与 `pack_derived_backfill` 的分工**：那个补「算术派生量」
+    #:    （`meta.total_duration_ms`＝Σ 镜时长），这个补「集合守恒」（缺镜本身）；
+    #:    本开关必须先于派生回填执行，否则补进来的镜不参与 Σ。
+    #: ⚠️ **只补「上游有、本层缺」的镜**；本层凭空多出的镜（幻觉镜号）不删——那是
+    #:    另一类错误，交 `R31` 逐镜比对如实判。
+    #: ⚠️ **留痕**：每次补镜产生 `merge.shot_conservation_fill｜…` 告警（进
+    #:    `merge_warnings`／run 记录），可离线统计模型真实漏镜率——兜底不洗白。
+    pack_conservation_fill: bool = True
+
+    #: **分镜段场内镜号序列回填**（`T-087` 余项；2026-11-05 落地，判据 `R8`）。
+    #: `true` ＝ storyboard 段产物生成后，`shots[].shot_no` 由服务层按**数组序的场内
+    #: 位置**重编（第 k 个 ⇒ `shot_no=k`；`TPL-010` 数量要求 1「shots 的顺序即
+    #: 全片镜序」⇒ `shot_no` 是位置投影、由结构唯一决定）。
+    #: `false` ＝ 不动产物（由 `R8` 如实判失败）。
+    #:
+    #: ⚠️ **为什么是派生量**：真基线实测（2026-11-04 冒烟 storyboard 第 2 轮）模型按
+    #: **单元内**编号产出 `[1,1,2,2]`，且 `shot_no` 是**排序键**（`segment.py` 镜序、
+    #: 导出 `E4`）——单元内编号会让场景级排序出现平键、兜底成**错序**。回填把排序键
+    #: 修回与镜序一致；`shots` 数组序（创作声明）一字不动，模型原值完整留痕
+    #: （`artifact["derived_backfill"]["shots[].shot_no"]["original"]`，按 `shot_id` 键控）。
+    #: ⚠️ 口径与 `storyboard_derived_backfill`（`R14`）同构；`R8` 判据一字未动。
+    #: ⚠️ **非整数 `scene_no` 不兜底**（场内分组语义已破坏 ⇒ 留痕 skip、交判据判）。
+    storyboard_shot_no_backfill: bool = True
+
+    #: **分镜段道具覆盖回填**（`T-087` 余项后续；2026-11-05 落地，判据 `R24`）。
+    #: `true` ＝ storyboard 段产物生成后，剧本某场 `props_present` 非空而该场
+    #: **无一镜**把它标进 `prop_refs` 时，由服务层把缺失的 `prop_id` 补进该场
+    #: **首镜**（数组序第一个）的 `prop_refs`。
+    #: `false` ＝ 不动产物（由 `R24` 如实判失败）。
+    #:
+    #: ⚠️ **为什么可以做**：道具「在场」由**上游剧本声明**（`props_present`），
+    #:   分镜层的义务只是把它落到镜（`BR-03`「有道具入画必标」）；整场漏标时
+    #:   「补进哪一镜」才是创作决策，**「该场至少一镜」本身是上游数据的逻辑
+    #:   后承**——与 `R8` 位置投影同类（结构＋上游唯一决定的量）。承载镜约定为
+    #:   **场首镜**（建立镜惯例：该场出场面的第一镜最可能拍到在场景物）。
+    #: ⚠️ **与 `R14`/`R8` 的差异（如实标注）**：`R14` 是纯算术、`R8` 是纯位置投影，
+    #:   本项是「**上游声明 × 场首镜约定**」的投影——**语义层**的派生，承载镜选择
+    #:   是约定而非唯一真值。原值完整留痕
+    #:   （`artifact["derived_backfill"]["shots[].prop_refs"]["original"]`，按 `shot_id` 键控）。
+    #: ⚠️ **场无镜头不兜底**（3 镜吸引子等 ⇒ 留痕 skip、交 `R24`/场覆盖判据判）。
+    #: ⚠️ 语义镜像 `validate_output.py` 的 `_upstream_props_by_scene`（剧本场键＝
+    #:   `acts[].scenes[].no`／`scenes_outline[].no`；分镜镜键＝`scene_no`）。
+    storyboard_prop_coverage_backfill: bool = True
+
+    #: **分镜段逐场编排**（`T-100`／`PRO-014`；2026-11-05 授权代决落地）。
+    #: `true` ＝ 分镜段按上游剧本的**场号清单**逐场调用（`scene:<no>`，每场一次），
+    #: 场覆盖由**构造**保证（模型看不到别的场，无从省略）；`false` ＝ 维持现状整片一次调用。
+    #:
+    #: ✅ **2026-11-09 裁决 4 执行：默认翻 `true`**（项目方「确认翻开关」，`DEV-20261109-002`）。
+    #: 依据＝回炉后 r4 复验批按 `PRO-015` §3.2 约定通过线判定通过
+    #: （`pack_shots_lt_upstream` off=0/on=0、守恒轴三批首次归零、成本轴三批方向一致）。
+    #: ⚠️ 历史口径留痕：本项属**生成行为改变**，曾与派生回填默认 `true` 刻意区分、按
+    #:    「先跑只判不拦、观测够再翻」长期保持 `false`；翻默认**不改变行为代码**，只把
+    #:    A/B on 臂的生效配置变成生产默认。回退＝`APP_STORYBOARD_SCENE_ORCHESTRATION=false`。
+    #: ⚠️ 与 `quality_gate_enforce` **是两套开关**：翻本项不触发 ENFORCE（准入见 `PRO-011` §5）。
+    storyboard_scene_orchestration: bool = True
+
+    #: **分镜标识归一化**（`R7`/`R9` 派生量；`T-100` 配套，2026-11-05 授权代决落地）。
+    #: `true` ＝ 合并后按「场号＋数组序」重编 `shot_id`（`S<场号两位>-SH<镜号三位>`）与
+    #: `unit_id`（`U01..Un`），并同步 `units[].shot_ids`／`shots[].unit_id`。
+    #:
+    #: ⚠️ **为什么是派生量**：`shot_id` 是 `scene_no` 与序位的**纯函数**（`R7` 格式即写明），
+    #: 与 `R8` 的 `shot_no` 同族；不归一化时，跨场重号的 `shot_id` 会被 `merge_segments` 的
+    #: `setdefault` **静默丢弃**（丢哪一场取决于遍历顺序）。
+    #: ⚠️ **`unit_id` 重编的前置**：本场 `units[].shot_ids` 与 `shots[].unit_id` 双向一致（`R9`）；
+    #: 不一致时**不重编**（否则会把 `R9` 的错误洗白），只留痕 `skipped_unit_renumber`。
+    storyboard_identity_normalize: bool = True
+
+    #: **`shot_prompt` 段级输入裁剪**（`T-101`／`PRO-015`，2026-11-05）。
+    #: `true` ＝ `package_head`／`unit:<id>` 段的 `storyboard_json` 注入**按段裁剪的副本**
+    #: （头部段去 `shots[]`；单元段只留本单元与本单元的镜），`script_json` 不裁。
+    #:
+    #: ✅ **2026-11-09 裁决 4 执行：默认翻 `true`**（`DEV-20261109-002`）。依据＝r4 复验批
+    #:    按 `PRO-015` §3.2 约定线通过（回退判据三项全 0）＋ 项目方明确「确认翻开关」。
+    #: ⚠️ 历史口径留痕：本项属**行为改变类**（模型输入变了 ⇒ 产出分布会变），曾按
+    #:    「须 A/B 验收后才翻默认」长期保持 `false`；回退＝`APP_SHOT_PROMPT_SEGMENT_SCOPE=false`。
+    #: ⚠️ A/B 器具 `_ab_t101.py` 的 off 臂**显式设本项为 false** ⇒ 翻默认不破坏后续 A/B
+    #:    可复现性（`run_arm` 每臂覆盖 env ＋ `get_settings.cache_clear()`）。
+    #: ⚠️ 与 `quality_gate_enforce` **是两套开关**：翻本项不触发 ENFORCE（准入见 `PRO-011` §5）。
+    #: ⚠️ 动机（实测，`PRO-015` §1）：885s 轮 completion 39,006 tokens 而合并产物仅
+    #:    ≈6K tokens——每段都把整份上游重写一遍（膨胀 ≈6×）；裁掉「看得见的别人家」
+    #:    ⇒ 越界重写失去素材。门禁跨层判据（`R23`/`R24`/`R31`）喂的是上游**原文**
+    #:    （`gate_upstream`，裁剪前已另行保存），不受影响。
+    #: ⚠️ 解析失败／uid 不中 ⇒ 原样整份注入＋留痕（不猜测、不静默）。
+    shot_prompt_segment_scope: bool = True
+
+
     #: **服务层元数据真值覆盖**（`T-086` 配套；2026-10-16 项目方裁决「服务层强制覆盖」）。
     #: `true` ＝ 交付包产物生成后，由服务层以**自己算出来的** `pack_meta` 覆盖模型自述的
     #: `meta`（`pack_id`／`created_at`／`task_type`／`unsupported_task_types`／`generator`／

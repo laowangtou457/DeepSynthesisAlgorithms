@@ -222,3 +222,59 @@ def stripped_paths(stage: str) -> tuple[str, ...]:
         return ()
     _, removed = _engine_cached(str(path))
     return removed
+
+
+def cap_pack_array_bounds(
+    schema: dict[str, Any] | None,
+    *,
+    units_cap: int,
+    shots_cap: int,
+    shots_floor: int | None = None,
+) -> dict[str, Any] | None:
+    """按段收窄 pack 引擎 schema 的 `units`/`shots` 数组上限（`T-101`／`PRO-015` §7）。
+
+    为什么需要它（实测）：`shot_prompt` 的引擎 schema 是**整包**口径
+    （`units` `minItems=1`、`shots` `minItems=2`、均无 `maxItems`），
+    受约束解码只锁**形态**不锁**量**——模型在每段里照样把整包写一遍
+    （`package_head` 段实测产出 8,433 completion tokens 而合并后头部仅 ≈1.2K tokens）。
+    输入侧裁剪（`scope_storyboard_for_segment`）**不能**压住产出侧——
+    产出体积由**提示语规则质量 × 引擎 schema 允许面**决定，由后者收窄
+    与「`R14`/`R8` 回填同族：把约束从模型移到程序」。
+
+    规则
+    ----
+    - 深拷贝后只改 `properties.units`／`properties.shots` 的 `maxItems`；
+      `cap < 现有 minItems` 时把 `minItems` 一并压到 0——否则 schema **不可满足**
+      （`maxItems=0 ∧ minItems=1`），引擎编译期即拒收（`OPS-002` §4.3.1 同类）；
+    - 不动 `required`：头部段产出 `"units": []`／`"shots": []` 仍满足必需键，
+      合并端（`merge_segments`）对空数组天然幂等；
+    - `shots_floor`（2026-11-05 新增，`ISSUE`「`R31` 镜数失守」裁决 2 修法 A）：
+      单元段的 `shots.minItems` 抬到**该单元在上游的镜数**——把「镜数下限」从
+      「事后判 `R31`」升级为「事中不可少写」。只作用于 `shots`（`units_floor` 不设）；
+      `floor > shots_cap` 时以 `shots_cap` 为准（`maxItems < minItems` 会不可满足）；
+      头部段（`shots_cap=0`）不得传 `shots_floor`；
+    - 其余键（`$defs`／嵌套 item 形态）**一字不改**；
+    - 引擎侧收窄**不碰交付契约**（`CFG-006` 原样），只作用于受约束解码的副本。
+
+    返回深拷贝后的副本；`schema` 为 `None` 时原样返回 `None`（该层无受约束解码）。
+    """
+    if not isinstance(schema, dict):
+        return schema
+    out = copy.deepcopy(schema)
+    props = out.get("properties")
+    if not isinstance(props, dict):
+        return out
+    for key, cap in (("units", units_cap), ("shots", shots_cap)):
+        node = props.get(key)
+        if not isinstance(node, dict) or node.get("type") != "array":
+            continue
+        node["maxItems"] = cap
+        floor = node.get("minItems")
+        if key == "shots" and isinstance(shots_floor, int) and shots_floor >= 0:
+            # 单元段：镜数下限抬到上游镜数（`R31` 的「事中不生成」版）；
+            # 仍受 `maxItems` 封顶——`maxItems < minItems` 不可满足，引擎编译期即拒收。
+            node["minItems"] = min(shots_floor, cap)
+            continue
+        if isinstance(floor, int) and floor > cap:
+            node["minItems"] = 0
+    return out
