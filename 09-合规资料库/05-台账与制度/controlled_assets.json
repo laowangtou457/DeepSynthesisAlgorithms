@@ -10,7 +10,7 @@
   "controlled_reason": "涉政、涉民族内容不在工程文档明文留痕，实体存于受控区，规模以本文件与《受控资产台账》为准。",
   "ledger_doc": "05-台账与制度/SEC-009_受控资产台账.md",
   "storage_policy_doc": "05-台账与制度/SEC-012_资产受控与保密说明.md",
-  "last_updated": "2026-10-16",
+  "last_updated": "2026-11-07",
   "status": "ok",
   "quota": {
     "lexicon_per_class": 200,
@@ -47,6 +47,16 @@
       "operator": "—",
       "reviewer": "—",
       "note": "机制就绪；受控内容须由安全负责人按受控流程在隔离环境编写后回填计数"
+    },
+    {
+      "date": "2026-11-07",
+      "action": "计数与实物一致性核验（离线抽检，不含受控内容阅读）",
+      "lexicon_added": 0,
+      "bank_added": 0,
+      "refuse_added": 0,
+      "operator": "—",
+      "reviewer": "—",
+      "note": "实测受控区：lexicon 四类各 200 条有效词条（原文件 228 行含注释/空行）；bank/refuse 四类 jsonl 各 200 条有效（202 行含 2 行格式示例注释，明确标注不计入条数）。三类均达 GB/T 45654—2025 配额（词表≥200／题库≥50／拒答≥20），与本文件 counts 一致；counts 系 2026-10-16 回填但漏记 history，本次补登留痕。实物 mtime 2026-10-15。"
     }
   ]
 }

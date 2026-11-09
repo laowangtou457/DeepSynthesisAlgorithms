@@ -1,0 +1,1 @@
+cd /mnt/e/深度合成算法工程材料/04-部署运维/scripts && PY_BIN=~/vllm-venv/bin/python bash provision-vllm.sh --serve-only 2>&1 | tee ~/vllm-serve.log

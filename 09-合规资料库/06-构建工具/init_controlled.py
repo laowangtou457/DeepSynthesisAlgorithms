@@ -9,7 +9,9 @@ init_controlled.py — 受控类资产的骨架生成与计数回填
       ① --init  在**受控区**（工程文档之外）生成这 4 类的词表 / 题库文件骨架，
                  骨架内只有表头、编写要求与格式示例，**不含任何受控内容**；
       ② --sync  统计受控区文件的实际条数，回填 `05-台账与制度/controlled_assets.json`，
-                 使 `check_quota.py` 能自动判定这 4 类是否达标。
+                 使 `check_quota.py` 能自动判定这 4 类是否达标；并在计数/状态发生
+                 实质变化时向 `history` **自动追加一条机读留痕**（`T-102`，
+                 2026-11-08）——只记条数增量，不含任何受控内容。
 
 受控区位置：
     默认 `<项目根>/../_受控区`（项目同级、不进工程文档、不纳入版本控制）。
@@ -50,7 +52,7 @@ LEX_TPL = """# =================================================================
 #      等级：block（阻断）/ review（复核）/ warn（提示）；`#` 开头为注释；
 #   3. 只写「违规行为的指称」，**不得写入任何可操作的方法、步骤、配方**；
 #   4. 编写人须经安全培训考核合格；**复核人不得与编写人为同一人**（§5.3(a)(3)）；
-#   5. 编写完成后运行 `python init_controlled.py --sync` 回填计数。
+#   5. 编写完成后运行 `python init_controlled.py --sync` 回填计数（并自动追加 history 留痕）。
 # 状态：{status}（本行不随内容自动更新）
 # =============================================================================
 
@@ -99,7 +101,7 @@ _受控区/
 | 2 | 只写「违规行为的指称」，**不得写入可操作的方法、步骤、配方** |
 | 3 | 编写人须经安全培训考核合格；**复核人不得与编写人为同一人** |
 | 4 | 每次读写留痕（时间/人员/用途）；导出须安全负责人审批 |
-| 5 | 完成后运行 `python 09-合规资料库/06-构建工具/init_controlled.py --sync` 回填计数 |
+| 5 | 完成后运行 `python 09-合规资料库/06-构建工具/init_controlled.py --sync` 回填计数（并自动追加 history 留痕） |
 | 6 | 本目录内容**不得**复制回工程文档目录 |
 
 ## 完成后
@@ -165,7 +167,58 @@ def count_jsonl(path):
     return n
 
 
-def sync(out):
+def _sum_counts(counts, kind):
+    """按四类求合计条数（只读数字，不触碰受控内容）。"""
+    bucket = counts.get(kind) or {}
+    return sum(int(bucket.get(cid, 0) or 0) for cid, _ in CLASSES)
+
+
+def append_sync_history(d, counts, today, status):
+    """`T-102`：向机读台账 `history` 追加一条 `--sync` 回填留痕（2026-11-08 落地）。
+
+    背景：`SEC-009` §2.1a 规定规模回填由脚本从受控区实测写入（**非人工填报**），
+    而本脚本的 `--sync` 此前只写 `counts` / `status` / `last_updated`、
+    **从不追加 `history`** ⇒ 下次回填将复发「文档已更新、机读无留痕」
+    （`ISSUE-052` 同族机理）。本函数即补上该义务。
+
+    口径：
+      · 仅当 `counts` 或 `status` 相对回填前发生**实质变化**才追加一条；
+        两者均未变时**不追加** —— 重复运行幂等，避免每日巡检产生噪音行；
+      · 追加行与既有 `history` 行**同构**（date/action/*_added/operator/reviewer/note），
+        不新增字段、不改写既有行；
+      · `*_added` 记四类合计**增量**（可为负）；**只记条数，不含任何受控内容**；
+      · `operator` / `reviewer` 脚本无从判定，沿用既有行的 `—`，由受控流程另行登记。
+
+    :return: 是否追加了新行（供调用方打印如实结论）
+    """
+    prev_counts = d.get("counts") or {}
+    prev_status = d.get("status")
+    if prev_counts == counts and prev_status == status:
+        return False
+    history = d.get("history")
+    if not isinstance(history, list):
+        history = []
+        d["history"] = history
+    history.append({
+        "date": today,
+        "action": "受控资产计数回填（`init_controlled.py --sync` 自动留痕）",
+        "lexicon_added": _sum_counts(counts, "lexicon") - _sum_counts(prev_counts, "lexicon"),
+        "bank_added": _sum_counts(counts, "bank") - _sum_counts(prev_counts, "bank"),
+        "refuse_added": _sum_counts(counts, "refuse") - _sum_counts(prev_counts, "refuse"),
+        "operator": "—",
+        "reviewer": "—",
+        "note": "由 --sync 从受控区实测条数回填（非人工填报）；只记条数增量，不含任何受控内容。"
+                "T-102：脚本补 history 追加义务，避免『文档有、机读无』复发。",
+    })
+    return True
+
+
+def sync(out, ctrl_json=None):
+    """统计受控区条数并回填机读台账（含 `T-102` 的 `history` 追加义务）。
+
+    `ctrl_json` 仅供测试注入临时台账路径；生产调用保持默认模块常量 `CTRL_JSON`。
+    """
+    ctrl_json = ctrl_json or CTRL_JSON
     counts = {"lexicon": {}, "bank": {}, "refuse": {}}
     for cid, _ in CLASSES:
         p = os.path.join(out, "lexicon_controlled", "%s.txt" % cid)
@@ -175,27 +228,35 @@ def sync(out):
         p = os.path.join(out, "refuse_controlled", "%s.jsonl" % cid)
         counts["refuse"][cid] = count_jsonl(p) if os.path.exists(p) else 0
 
-    if not os.path.exists(CTRL_JSON):
-        print("[init_controlled] 未找到 %s，无法回填" % CTRL_JSON)
+    if not os.path.exists(ctrl_json):
+        print("[init_controlled] 未找到 %s，无法回填" % ctrl_json)
         return 1
-    with open(CTRL_JSON, encoding="utf-8") as f:
+    with open(ctrl_json, encoding="utf-8") as f:
         d = json.load(f)
-    d["counts"] = counts
     ok = all(counts["lexicon"][c] >= 200 and counts["bank"][c] >= 50
              and counts["refuse"][c] >= 20 for c, _ in CLASSES)
-    d["status"] = "ok" if ok else "pending_controlled_authoring"
+    status = "ok" if ok else "pending_controlled_authoring"
     import datetime
-    d["last_updated"] = datetime.date.today().isoformat()
-    with open(CTRL_JSON, "w", encoding="utf-8", newline="\n") as f:
+    today = datetime.date.today().isoformat()
+    # `T-102`：必须在**覆盖** counts/status 之前取旧值做差异判定，否则增量恒为 0。
+    history_added = append_sync_history(d, counts, today, status)
+    d["counts"] = counts
+    d["status"] = status
+    d["last_updated"] = today
+    with open(ctrl_json, "w", encoding="utf-8", newline="\n") as f:
         json.dump(d, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
-    print("[init_controlled] 已回填 %s" % CTRL_JSON)
+    print("[init_controlled] 已回填 %s" % ctrl_json)
     print("%-8s %10s %8s %8s" % ("编号", "词表/200", "题/50", "拒答/20"))
     for cid, _ in CLASSES:
         print("%-8s %10d %8d %8d" % (cid, counts["lexicon"][cid],
                                      counts["bank"][cid], counts["refuse"][cid]))
     print("[init_controlled] 受控类整体：%s" % ("达标" if ok else "尚有缺口"))
+    if history_added:
+        print("[init_controlled] history 已追加 1 条（T-102：计数/状态实质变化；只记条数增量，不含受控内容）")
+    else:
+        print("[init_controlled] history 未追加：计数与状态均无变化（幂等，避免每日噪音行）")
     print("[init_controlled] 提醒：请同步更新 05-台账与制度/SEC-009_受控资产台账.md §二 的条数。")
     return 0
 

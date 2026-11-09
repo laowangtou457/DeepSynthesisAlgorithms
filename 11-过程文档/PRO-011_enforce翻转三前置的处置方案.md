@@ -398,4 +398,103 @@ A（`CFG-006` 加"未接入"档，`WARN`）／B（`quality_gate` 把 `compliance
 | Q3 | **允许**为中间三段建引擎侧 schema；**真值归属方案由我方提出后项目方拍板**（我方建议稿：`artifact_contract` 仍为真值、schema 为其 `required` 投影的超集，加一条一致性测试 `schema.required ⊇ REQUIRED_TOP_KEYS`） | 并入 `T-096`（线 3） |
 | Q4 | **同意** ≈50 min GPU ＋ 3 轮；**预授权**：若实测证实 `scene_coverage_incomplete` 重试改不动 ⇒ 改归 `non_retryable`（收窄 `PRO-010` 批次 1-B 口径） | `T-097`（线 4；观测脚本已就绪，2026-11-04 真基线被 vLLM 崩溃阻断，重启后重跑） |
 
-**执行令**：线 0＋线 1 直接执行 —— **已于 2026-11-04 落地**（留痕 `DEV-20261104-001`：`run_chain_t086.py` 去硬编码＋`stages_premise`＋三口径汇总；`stages_premise` 首跑即抓住器具自身解析 bug，未污染数字）。新任务号：`T-094`（线 0+1，✅ 本批）· `T-095`（线 2 余项核验）· `T-096`（线 3＋Q2＋Q3 方案）· `T-097`（线 4 实测）· `T-098`（线 5 收窄）。
+**执行令**：线 0＋线 1 直接执行 —— **已于 2026-11-04 落地**（留痕 `DEV-20261104-002`：`run_chain_t086.py` 去硬编码＋`stages_premise`＋三口径汇总；`stages_premise` 首跑即抓住器具自身解析 bug，未污染数字）。新任务号：`T-094`（线 0+1，✅ 本批）· `T-095`（线 2 余项核验）· `T-096`（线 3＋Q2＋Q3 方案）· `T-097`（线 4 实测）· `T-098`（线 5 收窄）。
+
+---
+
+## 附 3 · 线 0／1／4 实测结果（2026-11-04，留痕 `DEV-20261104-009`）
+
+### 真基线（`:8015` · 重试 OFF · 3 轮）
+
+- 口径① `script` 0/3 · `storyboard` 0/3 · `shot_prompt` 0/2（第 3 轮该段 http=502 生成截断）
+- 口径② `direct_model` **0/6** · 口径③ `direct_contract` **0/8**；最终通过 0/8
+- **缺陷 B 家族 3/3 轮复现**（`R4`＋`R14`）⇒ Q2 证据充分
+
+### 线 4 收敛性（`:8016` · 重试 ON · 3 轮）
+
+- 口径① `script` 直出 **1/3**／最终 **2/3** · `storyboard` 0/3 · `shot_prompt` 0/3
+- 口径② **1/6＝17%** · 口径③ 1/9＝11%；最终通过 **2/9＝22%**
+- **E3 ✅**（救回 1 段）· **E1 ❌**（shot_prompt 第 1 轮第 2 次**工程侧全清**，唯一剩余＝`compliance.copyright` BLOCK ⇒ 该段卡点 100% 归因 `ISSUE-047`，非模型质量）· **E2 部分**（script 1/3）
+- **收敛性分型**：可救回（`R4`/`R6`/storyboard 结构大簇 8~9→2）｜漂移不收敛（storyboard 0/3 清零，`R18` 反复"新增"）｜稳定复现（`R32` 5/6、`R34` 4/6、`R24` 2/2、`R4` 同值反例）⇒ 后者归 `T-087`／`T-096`，不靠重试
+
+### Q4 预授权执行结论
+
+`scene_coverage_incomplete` 6 个门禁轮次**零出现** ⇒ **预授权条件未触发，不改归 `non_retryable`**（无证据不动口径）。
+
+### 新发现
+
+真基线第 3 轮 shot_prompt **502 `segment_truncated`**（`package_head` 超长度上限，7 单元包）⇒ 候选 `ISSUE-058`（`PM-001` 热写中，待静止补登记）。器具修复与离线重建详见留痕 `DEV-20261104-009` §4。
+
+---
+
+## 附 4 · 线 3（`T-096`/`T-098`）真值归属方案 ＋ `ISSUE-058` 处置方案（2026-11-04，项目方全权授权后由会话拍板）
+
+> 项目方 2026-11-04 指令：「我授权你完全决策权，目标就是将算法项目推进到落地。非必要不用我决策。」
+> 本节两个方案**按此授权拍板并落地**；如项目方追认时有异议，按 §6 既有惯例回滚（改动均有开关或留痕）。
+
+### 一、真值归属方案（Q2/Q3 的落地形态）
+
+**裁决：方案 A——分层归属，单点投影，不建第二真值。**
+
+| 量类 | 真值归属 | 实现 | 留痕 |
+| --- | --- | --- | --- |
+| ① **纯派生总量**（`total` ＝ Σ 子项） | **服务层复算**（生成前该量尚不存在，「下发」路线对本类不成立——总量是模型各场/各镜决策的求和，无已知量可发） | `dialogue_service._apply_derived_backfill` 三段共用实现：`storyboard.total_duration_ms`（`R14`，已落地）· `script`/`synopsis` 的 `total_est_seconds`（`R4`，本批）· `pack.meta.total_duration_ms`（`R31` 算术侧，本批）；分段开关 `storyboard_derived_backfill`／`script_derived_backfill`／`pack_derived_backfill` 各自独立、默认 `true` | `artifact["derived_backfill"]` 记 `original`／`computed`／`changed`／`action`——审计可查「模型填了什么、服务层改成了什么」 |
+| ② **上游承继量**（pack 逐镜时长与上游一致） | 上游产物（分镜） | 不回填、不下发改写——逐镜时长是模型创作决策，属「模型可影响字段一字不改」；一致性由 `R31` 判据守 | 门禁留痕 |
+| ③ **受约束形态量**（幕数、枚举） | **判据常量的运行期投影**：`artifact_contract.FIELD_CONSTRAINTS`（`script.acts` 恰 3 幕＝`R6`／`TPL-008` v2.1.1；`storyboard.shots[].shot_size` 六值／`camera.move` 20 类＝`R16`），`derived_engine_schema()` 现算合并；pack 层光照词表直接落 `CFG-006` 的 `vocabRef`（`T-098`，15 值 enum） | 同源三互锁：`validate_output.py` 常量 ↔ `FIELD_CONSTRAINTS`/`CFG-006` ↔ `test_contract_engine_constraints.py`（任一侧单独改即红） | `engine_schema_source()` 留痕 |
+
+**否决案 B**（每段建独立引擎 schema 文件）：产生第二份会陈旧的真值——`ISSUE-042` 的成因形态，且需额外同步机制；`CFG-006` 之外再无「契约文件型」必要。
+**否决案 C**（运行期读 `CFG-002_shot_vocab.yaml` 现算枚举）：服务层引入 yaml 解析依赖与工程侧文件耦合，且 `validate_output.py` 判据本身也是「脚本内置常量」口径——投影＋互锁测试达成同等保证、依赖更少。
+
+**`schema_version` 升版裁决**：`vocabRef` pattern → enum 属**取值域变更**，按 `v2.2.0` 先例**升次版本至 `2.3.0`**（四处互锁同步：`CFG-006` const／`TPL-009` 正文＋资产版本 v2.3.0／`mock_backend`／`test_schema_version_consistency`；`CFG-008` manifest 条目同步；示例件 `CFG-004_demo_pack.json` 同步）。
+
+### 二、`ISSUE-058`（长包生成截断）处置方案与裁决
+
+**现象**：7 单元包 `package_head` 被长度上限切断 → http 502 `segment_truncated`（真基线 1/9 段次 ≈11%）。
+
+| 选项 | 内容 | 代价 | 评估 |
+| --- | --- | --- | --- |
+| ① 分段输出 | `shot_prompt` 拆「head ＋ 逐 unit」多次生成再装配 | 大（动 `segment` 计划、跨次上下文一致性、`style_bible` 重复下发） | 根治但工程量大，且 6 单元以下包从未截断 |
+| ② 扩容 | 提高 `max_tokens`／模型窗口 | 小 | 治标；10＋单元仍会撞；且 32k 窗口下再扩会挤占 KV |
+| ③ **先量发生率**（**裁决采纳**） | 观测器具已在（502 留痕）；`run_chain_t086.py` 汇总增「生成中断统计」（区分 `segment_truncated`／其他，给发生率分母） | ≈0 | n≥10 后若发生率 >30% 再升级到 ①；期间按「如实 502、可重试」运行，不阻塞主线 |
+
+**裁决：选项 ③**。器具已随本批落地；升级触发条件＝发生率 >30%（n≥10）或 M4 材料取证需要。
+
+### 三、本批落地清单（`T-096`＋`T-098` 同批）
+
+- `app/services/artifact_contract.py`：`FIELD_CONSTRAINTS`（`script.acts` 恰 3；`storyboard` 景别/运镜枚举）＋ `derived_engine_schema` 合并（**未知键仍空 schema、不加类型**——投影纪律不变）。
+- `app/services/dialogue_service.py`：`_apply_derived_backfill` 泛化（三段）＋ `_backfill_total_sum` 共用实现（`R14` 语义逐字保持，含 skipped/noop 形态）。
+- `app/core/config.py`：`script_derived_backfill`／`pack_derived_backfill`（默认 `true`）。
+- `delivery/schemas/CFG-006_*.json`：`vocabRef` → 15 值枚举；`schema_version` const **2.3.0**（＋TPL-009／mock／一致性测试／manifest／demo 五处同步）。
+- `.wb-e2e/run_chain_t086.py`：生成中断统计（`ISSUE-058` 器具）。
+- 测试：`test_contract_engine_constraints.py`（5 项互锁）＋ `test_derived_total_backfill.py`（8 项三段四态）；`test_artifact_gate` 按回填机制同步（`R14` 回填使 `storyboard_duration_sum_mismatch` 不再出现——留痕举证取代发现上报）。
+- 回归：`pytest` **320 passed / 0 失败** · `validate_output` 100/0/3 · `negtest` 95/95 · `validate_templates` 86/0/0。
+
+---
+
+## 附 5 · `ISSUE-047` 降级后 E1/E2/E3 新口径离线重判（2026-11-07，留痕 `DEV-20261107-003`）
+
+**背景**：2026-11-05 裁决 `ISSUE-047` 由 BLOCK 降级 WARN（码名 `compliance.copyright_pending`）。§5 三条准入判据的「当前实测」均为降级前口径，其中 E1 的「`shot_prompt` 被钉死在 0」已不成立。本附按新口径对既有归档**离线重判**（产物原文归档 ⇒ 零 GPU 重跑），方法＝将各 attempt 的 `pack_block_codes` 中 `compliance.copyright*` 码剥离后重新判定 `ok`。
+
+**数据源**：`artifacts_pro011_baseline`（真基线 `:8015` 重试 OFF，3 轮）＋ `artifacts_pro011_retryconv`（线 4 `:8016` 重试 ON，3 轮）＋ `artifacts_pro010_obs3`（E1 原始样本，1 轮）。
+
+### 重判结果
+
+| 判据 | 旧口径（降级前） | 新口径（copyright→WARN） | 结论 |
+| --- | --- | --- | --- |
+| **E1** `shot_prompt` `direct_contract` ≥1/1 | ❌ 0/1（唯一钉死因子＝copyright BLOCK） | **仍 ❌**：首轮直出口径 0/3——retryconv 三轮 attempt1 均含 `R31`/`R32`/`consistency.duration` 等非 copyright 码；但**钉死结构已解除**：try1 attempt2「工程侧全清、唯一剩余＝copyright」在新口径下**通过**，最终通过 0/3→**1/3** | 钉子拔了，直出率本身仍未达标 |
+| **E2** 三段 `direct_model` 每段 ≥2/3 | script 1/3 · storyboard 0/3 · shot_prompt 0/3 | **逐段无变化**（copyright 从未出现在任何段的**首轮**阻断码中——它只在 shot_prompt 重试末轮才成为唯一剩余） | 仍 ❌，门槛未变 |
+| **E3** 重试救回率 > 0 | ✅ 救回 1 段（script try1） | ✅ 救回 **2** 段（＋retryconv try1 `shot_prompt` attempt2 计入） | 维持 ✅，论据增强 |
+| 真基线（重试 OFF）对照 | 全 0 | **全 0 无变化**——copyright 非基线任何一轮的阻断因子 | 基线结论不受降级影响 |
+
+### 推论
+
+1. **降级解除的是「结构性钉死」，不是「直出率」**：E1 失败因子从「单一不可动因子（copyright BLOCK）」变为「普通质量因子（`R31`/`R32`/`duration` 守恒）」——后者归 `T-087`/`T-096`/`T-101` 系提质主线，不再构成「永久不可开」的结构性后果（§5 ⚠️ 条所述风险解除）。
+2. **E2 门槛维持 `每段 ≥2/3`**：本次重判证明 E2 的低直出与 `ISSUE-047` 无关，提质压力全部在模型质量与解码约束侧，与既有归因一致。
+3. **`enforce` 翻转判据口径不变**：E1 按新口径重新表述为「`shot_prompt` 首轮直出 ≥1/3（3 轮中至少 1 轮 attempt1 通过）」，待 T-101 系批次收口后按新批次实测评定，不再受 `ISSUE-047` 阻断。
+
+### 取证位置
+
+- 重判脚本逻辑：剥离 `pack_block_codes` 中 `compliance.copyright` 前缀码后重判 `ok`；首轮＝`history[0]`，末轮＝`history[-1]`。
+- 关键样本：`artifacts_pro011_retryconv/try1/step4.json` → `shot_prompt.quality_gate.history[1]`（`engine_errors=0`、`pack_blocks=1` 且唯一码＝`compliance.copyright｜…未校验…`）。
+- 反证样本：`artifacts_pro010_obs3/try1/step4.json` → attempt1 除 copyright 外仍有 `consistency.duration` ＋ 2 条 engine errors ⇒ obs3 轮即使新口径也不通过（E1 的「钉死」表述特指 retryconv try1 attempt2 形态，本附已澄清）。
+
