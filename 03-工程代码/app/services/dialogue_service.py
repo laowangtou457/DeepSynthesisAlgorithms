@@ -353,7 +353,10 @@ class DialogueService:
         if safety is None:
             return None
 
-        verdict = safety.inspect_output(text)
+        # `ISSUE-070` 生产侧修复：模型侧拒答话术走独立通道，不过输出词闸
+        # （拒答话术为说明理由会复述敏感词，被输出闸拦截 ⇒ 用户看到兜底话术而非拒答说明）。
+        # 语义闸（若注入）仍对该通道复检，仅 `Unsafe` 才拦——防「伪装拒答」绕过词闸。
+        verdict = safety.inspect_output(text, is_refusal=safety.looks_like_refusal(text))
         summary: dict[str, Any] = {
             "channel": "output",
             "passed": verdict.passed,

@@ -140,6 +140,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 受控词库**不入库**，运行时从受控区目录读取（项目方 2026-10-15 决策）；
     # 其路径**不外泄**，只以 `controlled_loaded` 布尔出现在策略视图与本条日志里。
     lexicon = load_lexicon(settings.lexicon_dir, settings.controlled_lexicon_dir)
+    # `T-108` ③ 语义闸（Qwen3Guard-Gen-4B）：可选装配，不可用 ⇒ fail-open 回落词闸
+    # （`DEV-20261110-012` 部署 GPU7:8001，本机经隧道 18002；失败语义见 `semantic_gate.py`）。
+    semantic = None
+    if settings.guard_semantic_enabled:
+        from app.services.semantic_gate import SemanticGate
+
+        semantic = SemanticGate(
+            settings.guard_semantic_base_url,
+            settings.guard_semantic_model,
+            timeout=settings.guard_semantic_timeout_seconds,
+        )
+        logger.info("semantic_gate_enabled extra=%s", settings.guard_semantic_base_url)
     app.state.safety_service = SafetyService(
         lexicon,
         output_action=settings.guard_output_action,
@@ -149,6 +161,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # `SW-017` 话术注入（方案 B）：留空 ⇒ 服务层回落内置默认，行为不变
         refusal_talk=settings.guard_refusal_talk or None,
         clarify_talk=settings.guard_clarify_talk or None,
+        semantic=semantic,
     )
     logger.info(
         "app_initialized",

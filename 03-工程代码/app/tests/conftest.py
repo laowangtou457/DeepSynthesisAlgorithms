@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -15,6 +16,17 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]  # 03-工程代码
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+# ---- 测试与生产 .env 解耦（`DEV-20261110-013`）----
+# 测试进程的 CWD 是 `03-工程代码`，`Settings()` 会读到开发者本机的 `.env`
+# （生产真值：vllm 后端指向 8 卡服务器 14B）。测试必须确定性：
+# ① 推理后端钉回 `mock`——任何夹具都不得依赖真模型或 SSH 隧道
+#   （2026-11-10 实测：无此钉子时全量测试挂起，夹具在打真隧道）；
+# ② 语义闸禁用——语义闸叠加行为由 `test_semantic_gate_wiring.py` 用替身覆盖，
+#   API 级测试不得依赖守卫服务在线。
+# 真实环境变量优先级高于 `.env` ⇒ 进程级钉死即对全部 `Settings()` 生效。
+os.environ["APP_INFERENCE_BACKEND"] = "mock"
+os.environ["APP_GUARD_SEMANTIC_ENABLED"] = "false"
 
 from app.core.config import Settings, get_settings  # noqa: E402
 from app.main import create_app  # noqa: E402

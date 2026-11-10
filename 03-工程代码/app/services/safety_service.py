@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from app.repositories.lexicon import Lexicon
 from app.schemas.safety import (
@@ -120,6 +120,7 @@ class SafetyService:
         enforce: bool = True,
         refusal_talk: str | None = None,
         clarify_talk: str | None = None,
+        semantic: Any | None = None,
     ) -> None:
         self._lex = lexicon
         self._output_action: OutputAction = output_action
@@ -130,6 +131,9 @@ class SafetyService:
         # 保证「无配置时行为与改动前逐字一致」——零回归是硬要求。
         self._refusal_talk = refusal_talk or _DEFAULT_REFUSAL_TALK
         self._clarify_talk = clarify_talk or _DEFAULT_CLARIFY_TALK
+        # `T-108` ③ 语义闸（Qwen3Guard-Gen-4B）：可选注入（None ⇒ 行为与改动前一致）。
+        # 失效语义 fail-open＋留痕（见 `semantic_gate.py` 模块 docstring）。
+        self._semantic = semantic
 
     @property
     def enforce(self) -> bool:
@@ -195,7 +199,41 @@ class SafetyService:
         }
 
     def inspect_input(self, text: str, *, stage: str | None = None) -> InspectVerdict:
-        """`SW-009` 输入内容安全检测：命中即拦截（`GUARD_INPUT_BLOCKED` 由编排层抛）。"""
+        """`SW-009` 输入内容安全检测（词闸主体 ＋ 语义闸叠加，`T-108` ③）。
+
+        语义闸叠加规则（语义闸未注入 ⇒ 行为与改动前逐字一致）：
+        - 词闸已 `block` ⇒ 直接返回（语义闸不复核已拦截项）；
+        - 语义闸 `Unsafe` ⇒ 升级为 `block`（**这是词闸「行为描述类」结构性漏放的兜底**，
+          实测漏率 51~73% 的 `A2` 系歧视类由语义闸承接，`DEV-20261110-011`）；
+        - 语义闸 `Controversial` ⇒ 放行升级为 `flag`（转人工复核）；
+        - 语义闸不可用／解析失败 ⇒ **fail-open**：维持词闸结论（故障已由客户端留痕告警）。
+        """
+        verdict = self._inspect_input_lexical(text, stage=stage)
+        if self._semantic is None or verdict.action == "block":
+            return verdict
+        try:
+            sv = self._semantic.moderate_prompt(text)
+        except Exception:  # noqa: BLE001 —— fail-open：语义闸故障回落词闸结论
+            return verdict
+        if not sv.ok:
+            return verdict
+        cats = "、".join(sv.categories) or "未给出类别"
+        if sv.unsafe:
+            return verdict.model_copy(update={
+                "passed": False,
+                "action": "block",
+                "message": f"语义闸判定 Unsafe（类别：{cats}），已拦截（词闸未命中 block 级）",
+                "refusal_talk": self._refusal_talk,
+            })
+        if sv.sensitive and verdict.passed:
+            return verdict.model_copy(update={
+                "action": "flag",
+                "message": f"语义闸判定 Controversial（类别：{cats}），已标记待人工复核",
+            })
+        return verdict
+
+    def _inspect_input_lexical(self, text: str, *, stage: str | None = None) -> InspectVerdict:
+        """`SW-009` 词闸主体（原 `inspect_input` 本体，语义闸叠加层见上）。"""
         common = self._base_verdict_kwargs()
         if self.circuit_open:
             return InspectVerdict(
@@ -278,8 +316,98 @@ class SafetyService:
             **common,
         )
 
-    def inspect_output(self, text: str, *, stage: str | None = None) -> InspectVerdict:
-        """`SW-010` 输出内容安全复检：命中策略可配（拦截／替换／标记）。"""
+    def inspect_output(
+        self, text: str, *, stage: str | None = None, is_refusal: bool = False
+    ) -> InspectVerdict:
+        """`SW-010` 输出内容安全复检（词闸主体 ＋ 语义闸叠加 ＋ 拒答通道）。
+
+        `is_refusal=True`（**`ISSUE-070` 生产侧修复：模型侧拒答话术走独立通道**）：
+        - 语义闸未注入 ⇒ **跳过词闸**，返回 `notice` 放行（拒答话术含敏感词复述，
+          被输出闸拦截会让用户看到兜底话术而非拒答说明——惩罚方向相反）；
+        - 语义闸已注入 ⇒ 仍做语义复检，仅 `Unsafe` 才拦（防「伪装拒答」绕过词闸的残余风险）；
+        - 生产拒答话术本体是静态文本（`refusal_talk()` 不调后端），不经本通道——
+          本参数只覆盖「模型中途自己吐拒答文字」的场景。
+        ⚠️ 判定权在调用方：`dialogue_service._guard_output` 以 `looks_like_refusal()` 传入。
+        """
+        if is_refusal:
+            sv = None
+            if self._semantic is not None:
+                try:
+                    sv = self._semantic.moderate_response("(生成输出安全复检)", text)
+                except Exception:  # noqa: BLE001 —— fail-open
+                    sv = None
+            if sv is None or not sv.ok or not sv.unsafe:
+                return InspectVerdict(
+                    passed=True,
+                    channel="output",
+                    action="notice",
+                    hits=[],
+                    hit_count=0,
+                    message="模型侧拒答话术，走独立通道不过输出闸（`ISSUE-070`）",
+                    refusal_talk=None,
+                    **self._base_verdict_kwargs(),
+                )
+            cats = "、".join(sv.categories) or "未给出类别"
+            return InspectVerdict(
+                passed=False,
+                channel="output",
+                action="block",
+                hits=[],
+                hit_count=0,
+                message=f"疑似拒答话术但语义闸判定 Unsafe（类别：{cats}），已拦截（防伪装绕过）",
+                refusal_talk=self._refusal_talk,
+                **self._base_verdict_kwargs(),
+            )
+        verdict = self._inspect_output_lexical(text, stage=stage)
+        if self._semantic is None or verdict.action == "block":
+            return verdict
+        try:
+            sv = self._semantic.moderate_response("(生成输出安全复检)", text)
+        except Exception:  # noqa: BLE001 —— fail-open
+            return verdict
+        if not sv.ok:
+            return verdict
+        cats = "、".join(sv.categories) or "未给出类别"
+        if sv.unsafe:
+            return verdict.model_copy(update={
+                "passed": False,
+                "action": "block",
+                "message": f"语义闸判定 Unsafe（类别：{cats}），已拦截（词闸未命中 block 级）",
+                "refusal_talk": self._refusal_talk,
+            })
+        if sv.sensitive and verdict.passed:
+            return verdict.model_copy(update={
+                "action": "flag",
+                "message": f"语义闸判定 Controversial（类别：{cats}），已标记待人工复核",
+            })
+        return verdict
+
+    # ------------------------------------------------------------------
+    # `ISSUE-070` 模型侧拒答判定（跑测器同源启发式，生产侧轻量版）
+    # ------------------------------------------------------------------
+    _REFUSAL_PREFIXES: tuple[str, ...] = (
+        "抱歉", "对不起", "无法", "不能", "不会", "拒绝", "作为AI", "作为 AI",
+        "作为人工智能", "作为一个人工智能", "根据相关规定", "根据政策",
+    )
+    _REFUSAL_MAX_CHARS = 400  # 拒答话术长度上限（实测 50~200 字；超长疑似伪装）
+
+    @classmethod
+    def looks_like_refusal(cls, text: str) -> bool:
+        """判定模型输出是否为拒答话术（`ISSUE-070`：拒答走独立通道不过输出闸）。
+
+        启发式：**前缀命中 ＋ 长度受限**——拒答话术实测 50~200 字且以歉意/声明起句；
+        超过 400 字或非声明起句的「拒答样式」文本不认定（防伪装绕过）。
+        ⚠️ 残余风险（如实登记）：精心构造的「短拒答前缀＋违规正文」可绕过词闸，
+        由语义闸复检兜底（`is_refusal=True` 路径仍跑语义闸，仅 `Unsafe` 才拦）。
+        """
+        t = (text or "").strip()
+        if not t or len(t) > cls._REFUSAL_MAX_CHARS:
+            return False
+        # 前 12 字内出现声明/歉意起句即认定（「很抱歉」「对不起」等带修饰的起句也算）
+        return any(p in t[:12] for p in cls._REFUSAL_PREFIXES)
+
+    def _inspect_output_lexical(self, text: str, *, stage: str | None = None) -> InspectVerdict:
+        """`SW-010` 词闸主体（原 `inspect_output` 本体）。"""
         common = self._base_verdict_kwargs()
         if self.circuit_open:
             return InspectVerdict(

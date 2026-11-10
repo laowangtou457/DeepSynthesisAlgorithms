@@ -73,6 +73,21 @@ class Settings(BaseSettings):
     #: 单卡并发上限（`SYS-015` 待实测校准，此处只登记目标值）。
     vllm_max_concurrency: int = 10
 
+    # ---- 安全边界系统提示词（`T-015` 冻结资产 `CFG-010` 运行时注入，`DEV-20261110-012`）----
+    #: 留空 ⇒ 按 `prompts_root` 相对定位默认资产
+    #: `safety/CFG-010_safety_boundary_system_prompt.txt`（`prompts_root` 也为空 ⇒ 不注入）。
+    #: 注入方式：`VllmBackend` 在 messages 层合并（边界提示词在前、模板 `<system>` 节在后）。
+    safety_system_prompt_file: str = ""
+
+    # ---- 语义闸（`T-108` ③：Qwen3Guard-Gen-4B，部署见 `DEV-20261110-012`）----
+    #: 服务器 GPU7 `safety-guard.service`（127.0.0.1:8001），本机经 SSH 隧道 18002 访问。
+    #: ⚠️ 失效语义 fail-open＋留痕：语义闸不可用 ⇒ 回落词闸判定（词闸＋输出复检＋人工抽检仍在线），
+    #: 不得因语义闸故障拒绝正常请求；故障经 `_base_verdict_kwargs` 留痕，不静默旁路。
+    guard_semantic_enabled: bool = True
+    guard_semantic_base_url: str = "http://127.0.0.1:18002/v1"
+    guard_semantic_model: str = "Qwen3Guard-Gen-4B"
+    guard_semantic_timeout_seconds: float = 15.0
+
     # ---- 提示词资产根目录（03-工程代码/prompts）----
     prompts_root: str = ""
 

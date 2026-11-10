@@ -105,6 +105,7 @@ class VllmBackend(TextGenerator):
         timeout: float = 180.0,
         guided_decoding_mode: str = "structured_outputs",
         transport: httpx.AsyncBaseTransport | None = None,
+        system_prompt: str = "",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -112,6 +113,9 @@ class VllmBackend(TextGenerator):
         self.timeout = timeout
         self.guided_decoding_mode = guided_decoding_mode
         self._transport = transport
+        #: 安全边界系统提示词（`CFG-010`，`T-015` 冻结资产）：非空时在 messages 层
+        #: 合并注入——边界在前、模板 `<system>` 节在后（`_payload`）。
+        self._system_prompt = system_prompt.strip()
         self._client: httpx.AsyncClient | None = None
         #: 实际服务端模型标识；首次成功响应后回填（`/v1/models` 亦可探测）。
         self._served_model: str | None = None
@@ -145,6 +149,22 @@ class VllmBackend(TextGenerator):
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
+    def _merge_system(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+        """合并安全边界系统提示词（`CFG-010`）。
+
+        - 模板自带 `<system>` 节 ⇒ 边界在前、模板系统节在后（同为 system 角色，合并一条）；
+        - 模板无 system 节 ⇒ 边界单插 messages[0]。
+        - 未配置（空串）⇒ 原样返回，行为与改动前逐字一致（零回归）。
+        """
+        if not self._system_prompt:
+            return messages
+        msgs = [dict(m) for m in messages]
+        if msgs and msgs[0].get("role") == "system":
+            msgs[0]["content"] = self._system_prompt + "\n\n" + msgs[0]["content"]
+        else:
+            msgs.insert(0, {"role": "system", "content": self._system_prompt})
+        return msgs
+
     def _payload(
         self,
         prompt: str,
@@ -155,7 +175,7 @@ class VllmBackend(TextGenerator):
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": to_messages(prompt),
+            "messages": self._merge_system(to_messages(prompt)),
             "temperature": params.temperature,
             "top_p": params.top_p,
             "max_tokens": params.max_tokens,
@@ -313,6 +333,35 @@ class VllmBackend(TextGenerator):
             self._raise_transport(exc, url=url)
 
 
+def _load_safety_system_prompt(settings: Any) -> str:
+    """按配置加载安全边界系统提示词（`CFG-010`；失败仅告警、不阻断启动）。"""
+    import logging
+    from pathlib import Path
+
+    prompts_dir = getattr(settings, "prompts_dir", None)  # 解析后的资产根（显式配置或上溯定位）
+    path_value = getattr(settings, "safety_system_prompt_file", "") or ""
+    if path_value:
+        p = Path(path_value)
+        if not p.is_absolute() and prompts_dir is not None:
+            p = prompts_dir / p
+    elif prompts_dir is not None:
+        # 留空 ⇒ 默认取冻结资产 `CFG-010`
+        p = prompts_dir / "safety" / "CFG-010_safety_boundary_system_prompt.txt"
+    else:
+        return ""
+    try:
+        text = p.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        logging.getLogger(__name__).warning(
+            "安全边界系统提示词加载失败（本次运行不注入，词闸/输出闸仍在）: %s (%s)", p, exc
+        )
+        return ""
+    if not text:
+        return ""
+    logging.getLogger(__name__).info("安全边界系统提示词已加载（CFG-010，%d 字）", len(text))
+    return text
+
+
 def build_from_settings(settings: Any) -> VllmBackend:
     """按配置装配后端（`registry` 的唯一入口；**配置只在此处读取一次**）。"""
     return VllmBackend(
@@ -321,4 +370,5 @@ def build_from_settings(settings: Any) -> VllmBackend:
         api_key=settings.vllm_api_key,
         timeout=settings.vllm_timeout_seconds,
         guided_decoding_mode=settings.vllm_guided_decoding_mode,
+        system_prompt=_load_safety_system_prompt(settings),
     )
