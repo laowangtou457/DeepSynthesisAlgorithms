@@ -1,10 +1,17 @@
 id: storyboard_v1
 name: 分镜脚本生成
-version: "2.3.0"
+version: "2.3.1"
 task_type: generate
 stage: storyboard
 language: zh-CN
 
+# 版本说明（v2.3.1，2026-11-10）：**注释滞后订正**（`T-107`；`DEV-20261109-002` 登记遗留）。
+#   v2.3.1 修订说明（**补丁版**——零内容改动，仅订正注释与版本号；`output` 字段集与引导文案零改动）：
+#     ⚠️ v2.3.0 注释写「逐场是否启用由服务层开关 `APP_STORYBOARD_SCENE_ORCHESTRATION` 决定（默认关）」，
+#        但 2026-11-09 项目方裁决 4（`DEV-20261109-002`）已将该开关默认 `false`→**`true`**
+#        （`app/core/config.py::storyboard_scene_orchestration = True`；r4 复验批按 `PRO-015` §3.2 约定线通过后翻默认，
+#        r5 默认配置确认跑 `DEV-20261109-006` 证「默认路径 ≙ r4 on 臂」零行为漂移）。
+#        回退方式＝环境变量 `APP_STORYBOARD_SCENE_ORCHESTRATION=false`。
 # 版本说明（v2.3.0，2026-11-05）：**`T-100` 逐场编排（`PRO-014`）的模板接口**（真机实测驱动）。
 #   v2.3.0 修订说明（**主版本**——新增 5 个变量＝模板**接口**变更；`output` 字段集未增删）：
 #     ⚠️ 背景（`PRO-013` 裁决后 n=12 实测，`DEV-20261105-003`）：去示例锚（v2.2.5）后
@@ -18,7 +25,8 @@ language: zh-CN
 #        · `prev_scene_tail`：上一场末镜摘要（跨场衔接的唯一信息来源）；
 #        · `scene_budget`：本场镜数上下限与时长预算（`R42` 下限＋单场上限的**当场可判**版本）。
 #     ⚠️ 判据零改动（仍 `R1`~`R42`）；本版**只**为逐场调用提供接口与语境，
-#        逐场是否启用由服务层开关 `APP_STORYBOARD_SCENE_ORCHESTRATION` 决定（默认关）。
+#        逐场是否启用由服务层开关 `APP_STORYBOARD_SCENE_ORCHESTRATION` 决定
+#        （2026-11-09 裁决 4 起默认 `true`——逐场编排；回退＝环境变量置 `false` 即整片模式；v2.3.0 首建时默认 `false`）。
 # 版本说明（v2.2.5，2026-11-05）：**`PRO-013` §4.3 去示例锚**（授权代决落地，与本批
 #   `R41`/`R42` 判据同批但**分开记账**——便于归因「模板引导 vs 判据发现」各自的效果）。
 #   v2.2.5 修订说明（**次版本**——`output` 字段集未增删）：
