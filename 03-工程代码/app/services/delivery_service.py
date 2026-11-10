@@ -52,6 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.errors import AppError, ErrorCode
+from app.services.export_service import build_exports
 from app.services.pack_meta import (
     PLACEHOLDER_PROVIDER_CODE,
     PLACEHOLDER_PROVIDER_NAME,
@@ -474,6 +475,7 @@ def build_self_check(
     has_shots: bool,
     has_units: bool,
     statement_file: str = "",
+    exports: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """按 §8.3 十八项**逐项实际判定**生成自检记录（`ISSUE-057` 候选①）。
 
@@ -489,7 +491,26 @@ def build_self_check(
         need = spec.get("requires")
         lacked = (need == "shots" and not has_shots) or (need == "units" and not has_units)
 
-        if src == "pack":
+        # ⚠️ **第 7 项（显式标识存在于所有导出文件）自 2026-11-10 起按「导出物实测」判定**
+        #    （`T-006` 接线）：`exports` 为 `None` ⇒ 沿用旧口径（只看
+        #    `meta.compliance.marking_check` 字段，属「字段填了什么」）；
+        #    给出 `exports`（含空列表）⇒ 只认**回读落盘文件取证**的结果，
+        #    「一份导出物都没有」＝**没检**，如实判 `fail`（`§8.3` 该行为「阻断交付」）。
+        if spec["no"] == 7 and exports is not None:
+            missed = [str(e.get("file")) for e in exports if not e.get("explicit_mark")]
+            one_section = [str(e.get("file")) for e in exports
+                           if str(e.get("format")) == "txt" and not e.get("two_section")]
+            if not exports:
+                result, detail = "fail", "未产出任何导出物 ⇒ 该项**无判定对象**（§8.3 第 7 项：阻断交付）"
+            elif missed:
+                result, detail = "fail", f"{len(missed)} 份导出物缺显式标识：{', '.join(missed[:3])}"
+            elif one_section:
+                result = "warn"
+                detail = f"{len(one_section)} 份适配 TXT 非两段式：{', '.join(one_section[:3])}"
+            else:
+                kinds = sorted({str(e.get("format")) for e in exports})
+                detail = f"{len(exports)} 份导出物均含显式标识（{'/'.join(kinds)}）"
+        elif src == "pack":
             blocks, problems = _spec_hits(judgements, spec, block_level)
             if lacked:
                 result = "warn"
@@ -620,6 +641,7 @@ def build_manifest(
     self_check: list[dict[str, Any]] | None = None,
     human_review: list[dict[str, Any]] | None = None,
     quality_gate: dict[str, Any] | None = None,
+    exports: list[dict[str, Any]] | None = None,
     retention_months: int = 6,
     spec_version: str = "",
 ) -> dict[str, Any]:
@@ -679,6 +701,10 @@ def build_manifest(
         },
         "adapters": [],
         "units": [],
+        # ⚠️ 导出物记录（`SW-022`／`SPEC-008 §9.2` 差异化标识注入的**机读证据**）：
+        #    由 `export_service.build_exports` **回读落盘文件**取证后给出，
+        #    非空才能让清单侧判据 `export.mark` 真正被执行（此前该判据恒空跑）。
+        "exports": list(exports or []),
         "human_review": list(human_review or []),
         "self_check": list(self_check or []),
         "retention": {
@@ -968,6 +994,20 @@ def pack_delivery(
     )
     files.append("aigc_meta.json")
 
+    # ③″ **导出物（含逐格式显式标识）** —— `SW-022` ＋ `SPEC-008 §9.2`
+    #    ⚠️ **本块是 `T-006` 的实质缺口**：此前交付包**从不产出 `exports/`** ⇒
+    #    清单的 `exports[]` 恒空 ⇒ 清单判据 `export.mark`／`export.meta`／
+    #    `export.section` **从未被执行**，自检第 7 项只反映「元数据字段填了什么」。
+    #    现按 JSON／MD／CSV／XLSX／TXT（适配两段式）逐格式注入，且**回读落盘文件取证**。
+    export_res = build_exports(pack, pack_path)
+    files.extend(export_res.files)
+    if export_res.failed:
+        # 失败不静默：写进包侧留痕（`gate_report.json` 里另有导出物判定）
+        (dst / "exports" / "EXPORT_NOTES.txt").write_text(
+            "\n".join(export_res.failed) + "\n", encoding="utf-8", newline="\n"
+        )
+        files.append("exports/EXPORT_NOTES.txt")
+
     # ⚠️ 预演态判定**必须在门禁之前**：它是「呈现 vs 拒付」的分档依据（`ISSUE-055` ①′）
     is_preview = bool(unfilled) or "{{" in pack_id
 
@@ -997,6 +1037,7 @@ def pack_delivery(
         human_review=human_review,
         has_shots=bool(pack.get("shots")),
         has_units=bool(pack.get("units")),
+        exports=export_res.records,
     )
     manifest = build_manifest(
         pack,
@@ -1005,6 +1046,7 @@ def pack_delivery(
         self_check=self_check,
         human_review=human_review,
         quality_gate=quality_gate_block(judgements, block_level),
+        exports=export_res.records,
         retention_months=max(1, int(getattr(settings, "log_retention_days", 180)) // 30),
         spec_version=SPEC_VERSION,
     )

@@ -145,6 +145,25 @@ def test_pack_preserves_placeholders_and_marks_preview(tmp_path: Path) -> None:
     assert PREVIEW_NOTE
 
 
+def test_pack_writes_exports_with_explicit_marks(tmp_path: Path) -> None:
+    """`SW-022` 接线（2026-11-10）：交付包里**必须有 `exports/`**，且清单 `exports[]` 非空。
+
+    ⚠️ 此前该列表**恒为空** ⇒ 清单判据 `export.mark` 从未执行、自检第 7 项退化成
+    「元数据字段填了什么」。本用例锁的是「导出物真的落盘且带标识」。
+    """
+    pack = _fake_pack()
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(tmp_path / "delivery"), settings=Settings())
+    d = Path(r.pack_dir)
+    assert (d / "exports").is_dir(), "未产出 exports/ 目录（SW-022 未接线）"
+    mf = json.loads((d / "manifest.json").read_text(encoding="utf-8"))
+    assert mf.get("exports"), "清单 exports[] 为空 ⇒ export.mark 判据空跑"
+    for e in mf["exports"]:
+        assert e["explicit_mark"] is True, e
+    row = next(c for c in mf["self_check"] if c["no"] == 7)
+    assert row["result"] == "pass" and "份导出物" in row["detail"], row
+
+
 def test_pack_rejects_missing_artifact(tmp_path: Path) -> None:
     """无 `shot_prompt` 产物 ⇒ 报 NOT_FOUND（**不得**静默产出空包）。"""
     try:

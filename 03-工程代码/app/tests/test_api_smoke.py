@@ -178,13 +178,30 @@ def test_unimplemented_endpoints_return_501_not_silent_pass(client) -> None:
     同样**移出本用例**；其「不静默放行」由 `tests/test_delivery.py` 保证——
     无产物时报 `NOT_FOUND`、缺顶层键时报 `VALIDATION_ERROR`，
     且**占位如实保留**（`is_preview=true`）。
+    ⚠️ `SW-I08`（`/export/*`）已于 **2026-11-10** 从占位改为实现（`SW-022` 标识注入），
+    也**移出本用例**；其「不静默放行」由 `tests/test_export_service.py` 与下方
+    `test_export_requires_delivered_pack` 保证——未配置交付目录报
+    `VALIDATION_ERROR`、无交付包报 `NOT_FOUND`，**绝不返回空导出物当成功**。
     """
     cases = [
         ("post", "/api/v1/auth/login"),
         ("post", "/api/v1/auth/verify-identity"),
-        ("post", "/api/v1/export/sess_x"),
     ]
     for method, path in cases:
         r = getattr(client, method)(path)
         assert r.status_code == 501, f"{path} 返回 {r.status_code}"
         assert r.json()["error"]["code"] == "NOT_IMPLEMENTED"
+
+
+def test_export_requires_delivered_pack(client) -> None:
+    """`SW-I08` 已实现，但**绝不无中生有**：没有交付包就不导出、不返回空成功。
+
+    ⚠️ 两种前置缺失各有明确错误码（不是 200、不是 501）：
+    未配置交付目录 ⇒ `VALIDATION_ERROR`；目录里没有该会话的包 ⇒ `NOT_FOUND`。
+    """
+    r = client.post("/api/v1/export/sess_x")
+    assert r.status_code in (400, 404), r.text
+    assert r.json()["error"]["code"] in ("VALIDATION_ERROR", "NOT_FOUND")
+
+    r = client.post("/api/v1/export/sess_x", json={"pack_dir": "Z:/no/such/pack"})
+    assert r.status_code == 404 and r.json()["error"]["code"] == "NOT_FOUND"
