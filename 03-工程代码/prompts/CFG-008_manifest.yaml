@@ -12,7 +12,7 @@ meta:
   project: 生成合成类（文本合成）算法
   asset_type: 提示词模板资产
   schema_version: "1.0.0"
-  updated_at: "2026-10-14"
+  updated_at: "2026-11-10"
 
 # 版本规范：主版本.次版本.修订号
 #   主版本：模板结构变更（变量增删、职责调整）
@@ -350,6 +350,28 @@ templates:
       - summary 三数互相推导（checked_count／drift_count／verdict），工程侧判据 R39 同口径复算
       - 归档落点与轮次命名（v1.2.0）：target_stage=pack 时报告落交付包 qa/<pack_id>.drift.r<N>.json（与 qa/audit_report.txt 同构、须在 manifest.json 登记；工程侧判据 R40）；其余四类落服务层留档（与 MR-13 合并挂起）。轮次号 N 为该 target_stage 上的第 N 轮修改（≥1 正整数、无前导零），**不同 target_stage 各自独立计数**
     notes: 业务链路**支撑模板**（SW-002 的校验侧），**刻意不填 stage**。与 validate_output.py 的 R23／R28／R31／R36 等**确定性判据互补而非替代**：脚本管枚举与结构（在线、逐条、可复现），本层管脚本难以穷举的**语义漂移**（换说法／同义改写／称谓不一致）；两者结论不一致时须如实并列、由人裁定，不得择一掩盖。用例见 examples/CASE-006_modify-case01.md（`target_stage=storyboard`）＋ **examples/CASE-007_modify-pack-case01.md**（`target_stage=pack`；漂移报告含 `focus` 缩范围声明与 `anchor` 汇总条目）。⚠️ **v1.2.0 归档落点**（依项目方对 PRO-004 §7 的裁决 ＝ A3-lite）：target_stage=pack 时报告落 **交付包 qa/<pack_id>.drift.r<N>.json**（与 qa/audit_report.txt 同构、须在 manifest.json 登记；工程侧判据 **R40**，**只判形态、不判存在性**）；其余四类落 **服务层留档**（与 MR-13 合并挂起）；冲突的**裁定伴随件** `<pack_id>.drift.r<N>.arbitration.md`（与归档件同址、同轮次号）。⚠️ 本次**不动包结构**（schema_version 仍 2.1.0、顶层仍 5 键），规范随升 **SPEC-008 V2.3**
+
+# ========== 系统提示词资产（非模板：无变量、无输出契约，整段注入 messages[0]）==========
+system_prompts:
+
+  - id: safety_boundary_v2
+    name: 安全边界系统提示词
+    asset_type: system_prompt
+    file: safety/CFG-010_safety_boundary_system_prompt.txt
+    version: "2.0.0"
+    status: active
+    updated_at: "2026-11-10"
+    provenance: T-015 迭代产物（v1→v2），正文冻结自 DEV-20261110-009 §3.1，字节级核对手工冻结件与跑测件一致（仅行尾 LF/CRLF 差异）
+    validated_on:
+      - "32B-AWQ 切片(204/156/372)+v2：正确拒答 98.04% / 误拒 0.00% / 违法输出(扣拒答) 0.27%（DEV-20261110-010）"
+      - "14B-AWQ 同题切片+v2：91.67% / 1.92% / 0.00%（DEV-20261110-011）"
+      - "14B-AWQ 全量 4714 题+v2：94.44% / 2.95% / 0.43%（DEV-20261110-011）"
+    scenes:
+      - 生产生成链路的 messages[0] 注入（与输入词库闸、输出内容安全复检构成双闸体系）
+    constraints:
+      - 正文不得改动；修订必须升版本并留存历史（与 templates 同规）
+      - 运行时须整段注入，禁止截断或拼接改写
+    notes: v2.0.0（2026-11-10）冻结转正：T-015 红线跑测证明其为三模型可比口径下唯一同时满足「误拒≤5%、违法→0」的版本；7B 承载否决（误拒 12.82%）、选型落定 14B-AWQ。⚠️ 运行时接线（服务层读取本文件注入 messages[0]）尚未落地，随 ISSUE-070 生产侧输出闸修复同批实施——在此之前本资产状态为「已冻结、待接线」，不得据本登记宣称线上已生效。
 
 # ========== 统计 ==========
 summary:
