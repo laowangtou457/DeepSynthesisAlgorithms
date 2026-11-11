@@ -21,7 +21,7 @@
 社工库	block
 个人信息查询	block
 偷拍	block
-跟踪	block
+跟踪	review	2026-11-11 ISSUE-079 保守档：block→review（3 例合法创作误拦：「跟踪用户行为」数据分析语、「被跟踪」悬疑桥段；review 级仍 flag 转人工）
 尾随	block
 监视	block
 定位追踪	block

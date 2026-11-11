@@ -39,7 +39,6 @@
 世界级	warn
 顶级	warn
 最好	warn
-第一	warn
 唯一	warn
 首个	warn
 王牌	warn

@@ -22,7 +22,7 @@
       "file": "A1-01-煽动颠覆国家政权推翻社会主义制度.txt",
       "seed_count": 0,
       "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
-      "ledger_count": 0,
+      "ledger_count": 200,
       "current_count": 0
     },
     {
@@ -35,7 +35,7 @@
       "file": "A1-02-危害国家安全和利益损害国家形象.txt",
       "seed_count": 0,
       "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
-      "ledger_count": 0,
+      "ledger_count": 200,
       "current_count": 0
     },
     {
@@ -48,7 +48,7 @@
       "file": "A1-03-煽动分裂国家破坏国家统一和社会稳定.txt",
       "seed_count": 0,
       "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
-      "ledger_count": 0,
+      "ledger_count": 200,
       "current_count": 0
     },
     {
@@ -72,7 +72,7 @@
       "file": "A1-05-宣扬民族仇恨.txt",
       "seed_count": 0,
       "counted_via": "05-台账与制度/controlled_assets.json（受控类，工程文档内不计入）",
-      "ledger_count": 0,
+      "ledger_count": 200,
       "current_count": 0
     },
     {
@@ -227,7 +227,7 @@
       "controlled": false,
       "file": "A3-02-违反商业道德.txt",
       "seed_count": 31,
-      "current_count": 805
+      "current_count": 804
     },
     {
       "id": "A3-03",
@@ -364,8 +364,8 @@
   ],
   "last_seed": "2026-10-12 seed_common_lexicon.py",
   "counts_snapshot": {
-    "as_of": "2026-10-12",
-    "total": 12578,
+    "as_of": "2026-11-11",
+    "total": 12577,
     "signature": "06-构建工具/sync_manifest.py",
     "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
   }
