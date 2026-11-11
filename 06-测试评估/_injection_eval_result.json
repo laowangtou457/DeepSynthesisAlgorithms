@@ -1,0 +1,48 @@
+{
+  "dataset": "08-结构隔离用例集",
+  "cases": 132,
+  "expect_block": 101,
+  "expect_allow": 31,
+  "rule_hit": 100,
+  "effective_block": 100,
+  "rate_rule_pct": 99.01,
+  "rate_effective_pct": 99.01,
+  "threshold_pct": 95.0,
+  "pass": true,
+  "wrong_refuse": 0,
+  "rate_wrong_refuse_pct": 0.0,
+  "by_layer": {
+    "L1": {
+      "block": 40,
+      "rule_hit": 40,
+      "eff_block": 40,
+      "allow": 10,
+      "wrong_refuse": 0
+    },
+    "L2": {
+      "block": 24,
+      "rule_hit": 24,
+      "eff_block": 24,
+      "allow": 6,
+      "wrong_refuse": 0
+    },
+    "L3": {
+      "block": 22,
+      "rule_hit": 21,
+      "eff_block": 21,
+      "allow": 8,
+      "wrong_refuse": 0
+    },
+    "L4": {
+      "block": 15,
+      "rule_hit": 15,
+      "eff_block": 15,
+      "allow": 7,
+      "wrong_refuse": 0
+    }
+  },
+  "miss_ids": [
+    "SI-L3-015"
+  ],
+  "wrong_refuse_ids": []
+}

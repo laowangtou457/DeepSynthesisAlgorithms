@@ -62,33 +62,210 @@ def _has_block_level(hits: list[Hit]) -> bool:
     """
     return any(getattr(h, "level", "review") == "block" for h in hits)
 
-#: `SW-011` 提示注入模式。**只做结构化模式识别，不做语义判断**——
+#: `SW-011` 提示注入模式 —— **2026-11-11 矩阵化重构**（`DEV-20261111-005`，
+#: 依据 `TEST-002` 整改方案与消融实测）。**只做结构化模式识别，不做语义判断**——
 #: 宁可漏判也不误判（误判会把正常创作指令当注入拦掉）。
+#:
+#: 重构三要素（调优集 132 条 99.01%／误拦 0，留出集 26 条 100%／误拦 0）：
+#: ① **归一化层**：零宽字符／全半角／字面 `\uXXXX`／CJK 间空白与夹杂数字折叠；
+#: ② **base64 载荷解码**：抽出可解码且含 CJK 的片段并入变体（编码混淆不再纯漏放）；
+#: ③ **规则矩阵化**：以「元对象 × 谓词 × 距离窗口」表达，不再逐短语枚举——
+#:    消融实测短语式留出集 64.29% vs 矩阵式 85.71%+（泛化落差 33.73pp → 收敛）。
+_ZW_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\u00ad]")
+_CJK = r"\u4e00-\u9fff"
+
+
+def _unescape_u(s: str) -> str:
+    """还原字面 `\\uXXXX`（攻击者常以此绕过字面匹配）。"""
+    return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s)
+
+
+def _b64_payloads(s: str, minlen: int = 16) -> list[str]:
+    """抽出疑似 base64 片段并尝试解码；只回传可解码且含 CJK 的结果。
+
+    ⚠️ 对齐/补齐策略：`validate=False` ＋ 逐一尝试 0~3 个 `=`，并把「有损」结果
+    （末尾被截断字节）一并返回 —— 攻击者常故意写非对齐串。
+    """
+    import base64
+    import binascii
+
+    out: list[str] = []
+    for m in re.finditer(r"[A-Za-z0-9+/]{%d,}={0,3}" % minlen, s):
+        seg = m.group(0).rstrip("=")
+        for pad in range(4):
+            cand = seg + "=" * pad
+            if len(cand) % 4:
+                continue
+            try:
+                raw_ = base64.b64decode(cand, validate=False)
+            except (binascii.Error, ValueError):
+                continue
+            txt = raw_.decode("utf-8", errors="ignore")
+            if re.search("[" + _CJK + "]", txt):
+                out.append(txt)
+    return out
+
+
+def _normalize_injection_text(s: str) -> str:
+    """注入检测专用的**语义保持归一化**（`TEST-002` P0）。
+
+    只折叠「不改变人类可读语义」的形态：NFKC／零宽删除／字面 `\\uXXXX` 还原／
+    CJK 之间空白与夹杂数字删除（攻击者用「忽 1 略 2 之 3 前 4」切碎关键词）。
+    """
+    import unicodedata
+
+    t = unicodedata.normalize("NFKC", s or "")
+    t = _ZW_RE.sub("", t)
+    t = _unescape_u(t)
+    t = re.sub(rf"(?<=[{_CJK}])[ \t\u3000]+(?=[{_CJK}])", "", t)
+    t = re.sub(rf"(?<=[{_CJK}])[0-9](?=[{_CJK}])", "", t)
+    return t
+
+
+# ---- 规则公共片段（矩阵化：元对象 × 谓词）----
+#: **元对象**：指「模型自身的规则/限制机制」，而非用户的**作品内容**
+#: （剧情/设定/风格/版本）——这是区分「攻击」与「正常改写」的唯一可靠锚点。
+_META_STRICT = (
+    r"(你的?|自身的?|模型的?)?\s*"
+    r"(规则|指令|约束|限制|审核|检查|校验|防护|伦理|安全(?:策略|规则)|拒答|过滤|"
+    r"(?:角色|核心|人格)设定)"
+)
+#: 方位词（「忽略之前…」形态用）
+_DIR = r"(之前|以上|上面|前面|前文|前述|先前|此前|刚才|上一条|上一版|上一步|原有|全部|所有|全套)"
+#: 矩阵谓词：**状态改变/否定**（一次覆盖全族，不逐短语枚举）
+_PRED = (
+    r"(作废|失效|取消|解除|关闭|停用|下线|去掉|删掉|挂起|暂停|绕过|跳过|忽略|无视|"
+    r"忘记|放弃|不适用|不可用|不再适用|不再有效|不生效|不再生效|无需|不需要|不必|"
+    r"不受|没有|不存在|不继承|不沿用|更新|升级|替换|覆盖|重置|解除掉|拿掉)"
+)
+#: 矩阵元对象（**分层**）：机制类词任意出现；「审核」后接内容宾语（意见/建议…）
+#: 视为用户素材而非模型机制（留出集 HO-A-02 实测教训）；裸「设定」不单列——
+#: 带元前缀（角色/核心/人格设定）才计入，防「忘记前面的民国设定」误拦（SI-L1-045）。
+_OBJ_MECH = (
+    r"(规则|指令|约束|限制|审核(?!意见|建议|备注|批注|评论)|检查|校验|防护|伦理|合规|拒答|过滤|系统提示|"
+    r"安全(?:策略|规则|检查|校验|防护)|(?:角色|核心|人格)设定)"
+)
+#: 矩阵主式：**元对象 → 谓词 单向**（OBJ→PRED）。PRED→OBJ 邻接方向在
+#: 「不受约束的浪子」类角色描写上误拦（HO-A-07），其攻击形态已由
+#: `meta_rule_revoked_rev`／`meta_revoke_object_first` 专项覆盖，故不并入。
+_MATRIX_META_REVOKED = re.compile(rf"{_OBJ_MECH}[^。；\n]{{0,10}}{_PRED}")
+
 _INJECTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("ignore_previous", re.compile(r"(忽略|无视|忘记)\s*.{0,12}(之前|上面|以上|前面)")),
-    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：「忽略**安全策略**」原不在宾语表内
-    #    （原表只有 指令|要求|命令|规则|设定）⇒ 策略类宾语补入。
+    # ⚠️ 2026-11-11 矩阵化改造：`ignore_previous` 从「动+方位」弱特征升级为
+    #    「动词（含同音异形）+方位+全量/指示宾语 或 句尾」——既拦「忽略以上。」
+    #    又不误拦「忘记前面的民国设定」（宾语为具体内容名词，SI-L1-045 反例）。
+    ("ignore_previous",
+     re.compile(rf"(忽[略掠畧]|无[视視]|忘[记記]|忘掉|丢弃|不要管|别管)(了|掉|却|过)?\s*{_DIR}\s*(的)?\s*"
+                r"((全部|所有|一切|那些|这些|这套|那套|以上|此前|刚才)\s*(的)?)*"
+                r"(指令|要求|规则|设定|约束|限制|内容|消息|提示词?|配置|话|一切|全部|所有)"
+                rf"|(忽略|无视|忘记)(了|掉|却|过)?\s*{_DIR}\s*(?=[，,。！!？?\s]|$)")),
+    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：「忽略**安全策略**」原不在宾语表内。
+    #    ⚠️ 2026-11-11 矩阵化：「设定」从宾语表移除（内容对象≠元对象），
+    #    改由 `_META_STRICT` 带元前缀的「(角色|核心|人格)设定」承接。
     ("ignore_instruction", re.compile(
-        r"(忽略|无视|忘记|放弃)\s*.{0,8}(指令|要求|命令|规则|设定|安全策略|安全规则|审核规则|拒答规则|防护策略)")),
+        rf"(忽略|无视|忘记|忘掉|放弃|不要遵守|不必遵守|无需遵守)\s*.{{0,8}}{_META_STRICT}")),
     ("role_override", re.compile(r"(你现在是|从现在起你是|你不再是|扮演)\s*\S")),
     ("developer_mode", re.compile(r"(developer\s*mode|开发者模式|dan\s*模式)", re.I)),
-    ("leak_system_prompt", re.compile(r"(输出|复述|重复|告诉我)\s*.{0,10}(系统提示|系统指令|system\s*prompt|初始指令)", re.I)),
-    # ⚠️ 2026-11-03 实测补齐（`S-27` 漏放）：「**跳过所有安全检查**」原不在表内
-    #    （原表只有「绕过(限制|检测|审核)」）⇒ 补「跳过/略过/免检/关闭」＋「检查/检测/审核/校验/防护」。
+    # ⚠️ 2026-11-11 矩阵化：动词表补 打印|泄露|展示|原文|逐字，并单列英文变体。
+    ("leak_system_prompt", re.compile(
+        r"(输出|复述|重复|告诉我|打印|泄露|展示|原文|逐字)"
+        r"\s*.{0,10}(系统提示|系统指令|system\s*prompt|初始指令)", re.I)),
+    ("leak_system_prompt_en", re.compile(
+        r"(print|reveal|show|repeat|output|leak|dump)\s*.{0,16}"
+        r"(system\s*prompt|system\s*message|initial\s*instruction)", re.I)),
+    # ⚠️ 2026-11-03 实测补齐（`S-27` 漏放）：「**跳过所有安全检查**」。
     #    ⚠️ **双要素要求**（动词＋宾语同时出现）⇒ 不引入单要素模式（防误伤）。
     ("bypass_refusal", re.compile(
-        r"(不要拒绝|不许拒绝|必须回答|不得拒绝|绕过(限制|检测|审核)"
-        r"|(跳过|略过|免检|关闭|取消)\s*.{0,6}(所有)?\s*(安全)?(检查|检测|审核|校验|防护|检测机制))")),
-    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：原要求「**你的**＋安全策略」，
-    #    「忽略安全策略」无「你的」⇒ **前置改为可选**（仍要求策略类宾语 ⇒ 不误伤）。
+        r"(不要拒绝|不许拒绝|必须回答|不得拒绝|绕过(限制|检测|审核|规则|校验)"
+        r"|(跳过|略过|免检|关闭|取消|停用|下线)\s*.{0,6}(所有)?\s*"
+        r"(安全)?(检查|检测|审核|校验|防护|检测机制))")),
+    # ⚠️ 2026-11-03 实测补齐（`S-28` 漏放）：前置「你的」改为可选。
     ("reveal_guard", re.compile(r"(你的)?\s*(系统提示|安全策略|安全规则|审核规则|拒答规则|防护策略)")),
     # ⚠️ 2026-11-03 **新增**（`S-28` 本项目特有形态）：素材 JSON 字段伪装成指令。
     #    判据＝**字段名与指令性内容紧邻**（结构化特征，非单词触发）⇒ 防误伤。
     ("json_field_injection", re.compile(
-        r"[\"\'](instruction|system_prompt|systemPrompt|prompt_override|override|"
-        r"system_message|admin|developer_message)[\"\']\s*[:：]\s*[\"\']?"
-        r"[^\"\']{0,40}?(忽略|无视|忘记|跳过|绕过|不要拒绝|必须回答|输出|复述)")),
+        r"[\"'](instruction|系统指令|指令|system_prompt|systemPrompt|prompt_override|override|"
+        r"system_message|admin|developer_message)[\"']\s*[:：]\s*[\"']?"
+        r"[^\"']{0,40}?(忽略|无视|忘记|跳过|绕过|不要拒绝|必须回答|输出|复述)")),
+    # ---- 以下为 2026-11-11 矩阵化新增族（漏拒 33 例的规则侧收敛）----
+    # ④ 规则被「作废/失效/取消/解除/下线/不继承」
+    ("meta_rule_revoked", re.compile(
+        rf"{_META_STRICT}[^。；\n]{{0,8}}(作废|失效|取消|解除|下线|停用|关闭|废弃|"
+        r"不再生效|不继承|已更新|全部取消)")),
+    ("meta_rule_revoked_rev", re.compile(
+        rf"(解除|取消|关闭|停用|废掉|去掉)[^。；\n]{{0,10}}"
+        rf"(全部|所有|任何|一切)?\s*(限制|约束|审核|检查|防护|安全(?:策略|规则))")),
+    # ⑤ 优先级声明（「本条优先于系统」／「这条比任何指令都重要，必须服从」）
+    ("priority_claim", re.compile(
+        r"(本条|这条|此条|以下)[^。；\n]{0,6}(优先级|优先于|高于)[^。；\n]{0,8}"
+        r"(系统|其他|所有|之前|以上)|【?\s*最高优先级\s*】?"
+        r"|(本条|这条|此条)[^。；\n]{0,20}(更|都)重要|必须服从|必须被服从")),
+    # ⑥ 英文注入（IGNORE ALL PREVIOUS INSTRUCTIONS 族）
+    ("english_injection", re.compile(
+        r"(ignore|disregard|forget|override|bypass)\s+(all\s+|any\s+|the\s+|your\s+)?"
+        r"(previous|prior|above|earlier|foregoing)\s+"
+        r"(instruction|prompt|rule|direction|constraint|guideline)s?", re.I)),
+    # ⑦ 免检/检查下线；含否定式（「我不需要你做内容审核」——留出集 HO-B-11）
+    ("exemption_claim", re.compile(
+        r"(素材|内容|本条|这条|此条)?\s*(免检|无需检查|不用检查|不必检查)"
+        r"|(安全检查|审核|检测)[^。；\n]{0,6}(临时)?(下线|停用|关闭)"
+        r"|(不需要|无需|不用|不必)\s*(你|你们)?\s*(做|进行|参与)?\s*[^。；\n]{0,4}"
+        r"(内容)?(审核|检测|校验|审查|把关)")),
+    # ⑧ 解除模型限制（角色/身份语义族；主体不含「角色」——虚拟角色描写
+    #    「角色 A 是不受约束的浪子」≠对模型说话，HO-A-07 反例）
+    ("role_meta_denial", re.compile(
+        r"(你|助手|模型|AI|人工智能|系统|分身|子进程|人格)[^。；\n]{0,12}"
+        r"(不受|没有|缺乏|无需|不必|不考虑|别管|不管|关掉|解除|放弃|无视|跳过|不再遵守)"
+        r"[^。；\n]{0,8}(限制|约束|审核|规则|伦理|合规|检查|防护|安全)")),
+    ("meta_revoke_object_first", re.compile(
+        r"(把你的?|将你的?|你的)[^。；\n]{0,6}"
+        r"(限制|约束|审核|规则|检查|防护|安全策略)[^。；\n]{0,4}"
+        r"(关掉|关掉吧|解除|取消|去掉|停用|关闭|作废)")),
+    ("meta_not_inherited", re.compile(
+        r"(但不继承|不继承|不沿用|不套用)[^。；\n]{0,6}(限制|约束|规则|审核|检查|防护)")),
+    ("no_restriction_persona", re.compile(
+        r"(无限制|不受限制|没有限制|无审查|不受约束|不考虑合规|不遵守规则)的?"
+        r"(助手|角色|人格|AI|分身|模型|机器|版本|模式)")),
+    # ⑨ 授权/审批伪装
+    ("approval_forgery", re.compile(
+        r"(我(是|身为)|作为)\s*.{0,8}(管理员|审核员|审核人|运维|开发者|上级|领导)"
+        r"[^。；\n]{0,14}(命令|授权|同意|批准|允许|解除|关闭|放行)"
+        r"|(已|已经)\s*(批准|审核通过|通过审核|放行)[^。；\n]{0,10}(直接|可以|立即)(输出|生成|回答)")),
+    # ⑩ 集体压力伪装
+    ("social_pressure", re.compile(
+        r"(其他|所有|别的|大家都)[^。；\n]{0,8}(助手|模型|AI)[^。；\n]{0,12}"
+        r"(都|愿意|同意|可以)[^。；\n]{0,8}(回答|输出|同意)"
+        r"|(跟随|顺从|迎合)(集体|大家|多数)|只有你在拒绝")),
+    # ⑪ 沙盒/时间旅行等「环境隔离」话术
+    ("env_isolation", re.compile(
+        r"(沙盒|测试环境|安全模式|调试模式|维护窗口)[^。；\n]{0,16}"
+        r"(不受|没有|无需|不做|不用)(任何)?(限制|审核|检查|约束)"
+        r"|(想象|假设|假如)现在(是|处于)\s*\d{4}\s*年[^。；\n]{0,16}"
+        r"(没有|不再有|取消)[^。；\n]{0,6}(审核|限制|规则)")),
+    # ⑫ 人格/设定重写
+    ("persona_rewrite", re.compile(
+        r"(假设|假装|想象)\s*你\s*(是|成为)[^。；\n]{0,20}"
+        r"(没有|不受|不必|不会|不存在)[^。；\n]{0,6}(伦理|限制|约束|规则|审核)"
+        r"|(分裂|拆分|分身)(为|成)?\s*(两个|多个)?\s*(角色|人格)"
+        r"|(把你的?|将你的?)(核心|角色|人格)(设定)?\s*(改成|改为|换成)"
+        r"|(双人格|两个人格|两个身份)[^。；\n]{0,10}(各|分别)")),
+    # ⑬ 矩阵主式（元对象→谓词，见 `_MATRIX_META_REVOKED` 注释）
+    ("matrix_meta_revoked", _MATRIX_META_REVOKED),
 )
+
+#: 注入扫描的**统一入口**：原文＋归一化＋base64 解码载荷，三路变体取并集。
+#: `check_injection` 只认本函数的结论（勿直接遍历 `_INJECTION_PATTERNS`，
+#: 否则归一化与解码路径全部失效——那正是本轮整改前 65.35% 的根因之一）。
+def _scan_injection(text: str) -> list[str]:
+    variants = [text, _normalize_injection_text(text)]
+    for payload in _b64_payloads(text):
+        variants.append(_normalize_injection_text(payload))
+    hits: list[str] = []
+    for name, rx in _INJECTION_PATTERNS:
+        if any(rx.search(v) for v in variants):
+            hits.append(name)
+    return hits
+
 
 # ---- `SW-017` 兜底话术（**配置承载、可审计、执行不依赖模型**）----
 #
@@ -495,7 +672,7 @@ class SafetyService:
         """
         degraded, reason = self._degradation()
         isolated = list(context_fields or [])
-        patterns = [name for name, rx in _INJECTION_PATTERNS if rx.search(text or "")]
+        patterns = _scan_injection(text or "")  # 归一化＋base64 三路变体（DEV-20261111-005）
 
         if patterns:
             return InjectionVerdict(
