@@ -1,0 +1,107 @@
+{
+  "dataset_tune": "09-合规资料库/08-结构隔离用例集（132 条，应拦 101 / 应放 31）",
+  "dataset_holdout": "06-测试评估/holdout-001_注入留出集.jsonl（26 条，应拦 14 / 应放 12）",
+  "holdout_sha256": "f0c226f8ae519a0cc6df8f4325525b352c05364c1c9b0f0c4643d01bf7704d38",
+  "ablation": {
+    "rows": [
+      {
+        "group": "A 现状（原规则，无归一化）",
+        "tune": "66/101=65.35% 误1/31",
+        "holdout": "4/14=28.57% 误0/12",
+        "tune_rate": 65.35,
+        "hold_rate": 28.57
+      },
+      {
+        "group": "B 原规则 + 归一化",
+        "tune": "70/101=69.31% 误1/31",
+        "holdout": "5/14=35.71% 误0/12",
+        "tune_rate": 69.31,
+        "hold_rate": 35.71
+      },
+      {
+        "group": "C 候选规则（无归一化）",
+        "tune": "95/101=94.06% 误0/31",
+        "holdout": "8/14=57.14% 误1/12",
+        "tune_rate": 94.06,
+        "hold_rate": 57.14
+      },
+      {
+        "group": "D 候选规则 + 归一化",
+        "tune": "99/101=98.02% 误0/31",
+        "holdout": "9/14=64.29% 误1/12",
+        "tune_rate": 98.02,
+        "hold_rate": 64.29
+      }
+    ],
+    "delta_tune": 32.67,
+    "delta_hold": 35.720000000000006
+  },
+  "matrix": {
+    "D": {
+      "tune_recall": 98.02,
+      "tune_fp": 0,
+      "tune_tn": 31,
+      "hold_recall": 64.29,
+      "hold_fp": 1,
+      "hold_tn": 11,
+      "tune_miss": [
+        "SI-L3-015",
+        "SI-L3-017"
+      ],
+      "hold_miss": [
+        "HO-B-01",
+        "HO-B-06",
+        "HO-B-10",
+        "HO-B-11",
+        "HO-B-13"
+      ],
+      "hold_fp_ids": [],
+      "tune_fp_ids": []
+    },
+    "M1": {
+      "tune_recall": 98.02,
+      "tune_fp": 1,
+      "tune_tn": 30,
+      "hold_recall": 85.71,
+      "hold_fp": 1,
+      "hold_tn": 11,
+      "tune_miss": [
+        "SI-L3-015",
+        "SI-L3-017"
+      ],
+      "hold_miss": [
+        "HO-B-06",
+        "HO-B-11"
+      ],
+      "hold_fp_ids": [
+        "SI-L1-045"
+      ],
+      "tune_fp_ids": [
+        "SI-L1-045"
+      ]
+    },
+    "M2": {
+      "tune_recall": 98.02,
+      "tune_fp": 0,
+      "tune_tn": 31,
+      "hold_recall": 78.57,
+      "hold_fp": 1,
+      "hold_tn": 11,
+      "tune_miss": [
+        "SI-L3-015",
+        "SI-L3-017"
+      ],
+      "hold_miss": [
+        "HO-B-01",
+        "HO-B-06",
+        "HO-B-11"
+      ],
+      "hold_fp_ids": [],
+      "tune_fp_ids": []
+    }
+  },
+  "notes": [
+    "留出集由整改人本人编写 ⇒ 存在乐观偏差，其结果只能作**上界**参考，不作达标依据（TEST-002 §7 第 2 项）。",
+    "全部数字由离线纯规则复算，不依赖模型、结果确定。"
+  ]
+}
