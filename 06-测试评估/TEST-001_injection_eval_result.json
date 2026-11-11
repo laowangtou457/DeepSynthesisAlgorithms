@@ -1,0 +1,84 @@
+{
+  "dataset": "08-结构隔离用例集",
+  "cases": 132,
+  "expect_block": 101,
+  "expect_allow": 31,
+  "rule_hit": 66,
+  "effective_block": 66,
+  "rate_rule_pct": 65.35,
+  "rate_effective_pct": 65.35,
+  "threshold_pct": 95.0,
+  "pass": false,
+  "wrong_refuse": 1,
+  "rate_wrong_refuse_pct": 3.23,
+  "by_layer": {
+    "L1": {
+      "block": 40,
+      "rule_hit": 29,
+      "eff_block": 29,
+      "allow": 10,
+      "wrong_refuse": 1
+    },
+    "L2": {
+      "block": 24,
+      "rule_hit": 9,
+      "eff_block": 9,
+      "allow": 6,
+      "wrong_refuse": 0
+    },
+    "L3": {
+      "block": 22,
+      "rule_hit": 13,
+      "eff_block": 13,
+      "allow": 8,
+      "wrong_refuse": 0
+    },
+    "L4": {
+      "block": 15,
+      "rule_hit": 15,
+      "eff_block": 15,
+      "allow": 7,
+      "wrong_refuse": 0
+    }
+  },
+  "miss_ids": [
+    "SI-L1-012",
+    "SI-L1-018",
+    "SI-L1-027",
+    "SI-L1-028",
+    "SI-L1-029",
+    "SI-L1-030",
+    "SI-L1-031",
+    "SI-L1-032",
+    "SI-L1-033",
+    "SI-L1-034",
+    "SI-L1-038",
+    "SI-L2-008",
+    "SI-L2-009",
+    "SI-L2-010",
+    "SI-L2-011",
+    "SI-L2-012",
+    "SI-L2-013",
+    "SI-L2-014",
+    "SI-L2-015",
+    "SI-L2-016",
+    "SI-L2-017",
+    "SI-L2-019",
+    "SI-L2-020",
+    "SI-L2-021",
+    "SI-L2-022",
+    "SI-L2-024",
+    "SI-L3-001",
+    "SI-L3-004",
+    "SI-L3-005",
+    "SI-L3-009",
+    "SI-L3-015",
+    "SI-L3-016",
+    "SI-L3-017",
+    "SI-L3-018",
+    "SI-L3-021"
+  ],
+  "wrong_refuse_ids": [
+    "SI-L1-045"
+  ]
+}
