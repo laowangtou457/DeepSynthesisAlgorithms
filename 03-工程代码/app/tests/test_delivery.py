@@ -378,6 +378,60 @@ def test_pack_id_is_identical_across_all_artifacts(tmp_path: Path) -> None:
     assert actual["目录名"] == "FR-PK-20261111-A1B2C3D4", "沿用既有编号失败"
 
 
+def test_pack_id_has_single_writer_and_guard_fires(tmp_path: Path, monkeypatch) -> None:
+    """★ **编号写入权单点**（`ISSUE-074` 结构性收敛的锁）。
+
+    ⚠️ 上一版修法是「`apply_service_truth` 覆盖之后再纠偏」——**能修结果、防不住复发**：
+    只要还有第二个写入者，它就能再赢一次。本版结构解是「编号在装配 `truth` 之前
+    一次性确定，`truth` 是唯一载体，之后只写一次」，并用**同源不变量校验**兜底。
+
+    本条即验证兜底**有牙齿**：人为在 `apply_service_truth` 之后再改一次 `meta.pack_id`
+    （模拟将来有人重新引入第二写入者）⇒ `pack_delivery` 必须 **fail-closed 抛错**，
+    而不是把矛盾编号写进交付包。
+    """
+    import pytest
+
+    import app.services.delivery_service as ds
+    from app.services.pack_meta import apply_service_truth as real_apply
+
+    def _second_writer(doc, truth, **kwargs):  # noqa: ANN001, ANN003
+        out = real_apply(doc, truth, **kwargs)
+        if isinstance(doc, dict) and isinstance(doc.get("meta"), dict):
+            doc["meta"]["pack_id"] = "FR-PK-20261111-BADBAD00"  # ← 第二个写入者
+        return out
+
+    monkeypatch.setattr(ds, "apply_service_truth", _second_writer)
+    with pytest.raises(AppError) as ei:
+        pack_delivery(
+            svc=_svc_with(_fake_pack(pack_id="FR-PK-20261111-A1B2C3D4")),
+            session_id="S",
+            out_dir=str(tmp_path / "delivery"),
+            settings=Settings(),
+        )
+    assert "SW-013" in str(ei.value) or "编号" in str(ei.value)
+
+
+def test_build_pack_meta_honours_explicit_pack_id() -> None:
+    """`build_pack_meta(pack_id=…)`：**显式编号即最终编号**（`truth` 是编号唯一载体）。
+
+    ⚠️ 这是单点写入的前提：沿用值必须先固化进 `truth`，下游才不需要第二个写入者。
+    """
+    from app.services.pack_meta import build_pack_meta
+
+    truth = build_pack_meta(
+        session_id="S", stage="shot_prompt", templates=[],
+        model={"name": "m", "backend": "vllm", "revision": "r"},
+        settings=Settings(), pack_id="FR-PK-20261111-A1B2C3D4",
+    )
+    assert truth["pack_id"] == "FR-PK-20261111-A1B2C3D4"
+    # 不传 ⇒ 服务层生成（形态仍须合规）
+    gen = build_pack_meta(
+        session_id="S", stage="shot_prompt", templates=[],
+        model={"name": "m", "backend": "vllm", "revision": "r"}, settings=Settings(),
+    )
+    assert "-PK-" in gen["pack_id"] and gen["pack_id"] != truth["pack_id"]
+
+
 # ================================================================ 清单契约对齐（ISSUE-057 候选①）
 
 

@@ -932,6 +932,26 @@ def pack_delivery(
         corpus_root=getattr(settings, "copyright_corpus_root", "") or "",
         threshold=float(getattr(settings, "copyright_similarity_threshold", 0.5) or 0.5),
     )
+    # ⚠️ **编号写入权单点化**（2026-11-11 结构性收敛，`ISSUE-074`）：
+    #    `ISSUE-074` 的缺陷形态是「**两处都想写、后写者赢**」——打包入口按「沿用既有编号」
+    #    写 A，随后 `apply_service_truth` 又把 `meta.pack_id` 覆盖回 `truth` 里的
+    #    当次随机新编号 B ⇒ 目录／清单是 A、`pack.json` 与 `ProduceID` 是 B。
+    #    此前的修法是「覆盖之后再纠偏」——**修补得了结果，防不住复发**（下一处覆盖者仍会赢）。
+    #    ⇒ 结构解：编号在**装配 truth 之前**一次性确定，并作为 `truth["pack_id"]`
+    #    的**唯一取值**；`build_pack_meta(pack_id=…)` 之后，`apply_service_truth`
+    #    只是把这个值写进 `meta`，**不存在第二个写入者**。
+    meta_in = pack.get("meta")
+    meta = dict(meta_in) if isinstance(meta_in, dict) else {}
+    # ⚠️ **已存在的 `pack_id` 沿用**（服务层 `build_pack_meta` 每次会生成新的随机短码
+    #    ⇒ 若无条件覆盖，同一产物重复打包会**散落成多个编号目录**）。
+    #    「补齐占位后重出同一编号的包」是交付侧的常规动作 ⇒ 编号必须可沿用。
+    existing_pack_id = str(meta_in.get("pack_id") or "").strip() if isinstance(meta_in, dict) else ""
+    # ⚠️ **沿用前须验形态**：模型自拟的 `pack_id` **不可信**（`SW-013` 要求
+    #    内容编号不可被删除篡改隐匿）⇒ 只接受**服务层形态**
+    #    `<企业码>-PK-<YYYYMMDD>-<8位短码>`（企业码可为占位）。
+    inherit_id = existing_pack_id if existing_pack_id and _PACK_ID_RE.match(existing_pack_id) else None
+    form_rejected = bool(existing_pack_id) and inherit_id is None
+
     truth = build_pack_meta(
         session_id=session_id,
         stage="shot_prompt",
@@ -940,33 +960,22 @@ def pack_delivery(
         settings=settings,
         artifacts={},
         title=None,
+        # ⚠️ 单点写入：沿用值在此固化进 truth（None ⇒ 由 `build_pack_meta` 生成新编号）
+        pack_id=inherit_id,
         safety=safety if isinstance(safety, dict) else None,
         copyright_verdict=copyright_verdict,
     )
-    meta_in = pack.get("meta")
-    meta = dict(meta_in) if isinstance(meta_in, dict) else {}
-    # ⚠️ **已存在的 `pack_id` 沿用**（服务层 `build_pack_meta` 每次会生成新的随机短码
-    #    ⇒ 若无条件覆盖，同一产物重复打包会**散落成多个编号目录**）。
-    #    「补齐占位后重出同一编号的包」是交付侧的常规动作 ⇒ 编号必须可沿用。
-    existing_pack_id = str(meta_in.get("pack_id") or "").strip() if isinstance(meta_in, dict) else ""
     # ⚠️ **模型可影响字段保留**（`title` 等）；服务层域用真值覆盖
     for key in ("pack_id", "created_at", "task_type", "generator", "generation_trace", "compliance"):
         if key in truth:
             meta[key] = truth[key]
-    if existing_pack_id:
-        # ⚠️ **沿用前须验形态**：模型自拟的 `pack_id` **不可信**（`SW-013` 要求
-        #    内容编号不可被删除篡改隐匿）⇒ 只接受**服务层形态**
-        #    `<企业码>-PK-<YYYYMMDD>-<8位短码>`（企业码可为占位）。
-        if _PACK_ID_RE.match(existing_pack_id):
-            meta["pack_id"] = existing_pack_id
-        else:
-            # 形态不合 ⇒ 用服务层生成的真值，并**如实留痕**（不静默）
-            meta["pack_id"] = truth["pack_id"]
-            meta.setdefault("notes", "")
-            meta["notes"] = (
-                f"{meta.get('notes', '')}｜原产物 `meta.pack_id` 形态不合服务层规范，"
-                "已改用服务层生成的编号。"
-            ).strip("｜")
+    if form_rejected:
+        # 形态不合 ⇒ 用服务层生成的真值，并**如实留痕**（不静默）
+        meta.setdefault("notes", "")
+        meta["notes"] = (
+            f"{meta.get('notes', '')}｜原产物 `meta.pack_id` 形态不合服务层规范，"
+            "已改用服务层生成的编号。"
+        ).strip("｜")
     # `unsupported_task_types`：服务层**有配置**才覆盖（无配置保留模型值 —— `pack_meta` 注记）
     if truth.get("unsupported_task_types"):
         meta["unsupported_task_types"] = truth["unsupported_task_types"]
@@ -1012,42 +1021,36 @@ def pack_delivery(
         provider_code=provider_code,
     )
 
-    # ---- ①‴ **编号一致性收口**（2026-11-11 实测缺陷修复，`SW-013`／`R30`）----
-    # ⚠️ **缺陷实录（合规级）**：`apply_service_truth` 的 `META_SERVICE_KEYS` **含 `pack_id`**
-    #    ⇒ 它把上文「沿用既有编号」的结果**覆盖回** `truth["pack_id"]`
-    #    （服务层当次新生成的随机短码）。而 `safe_id`／目录名／清单编号／
-    #    `DeliveryResult.pack_id` 用的都是**沿用值** ⇒ **同一份交付出现两个编号**：
-    #    目录与清单是 A，`pack.json` 里的 `meta.pack_id` 与隐式标识 `ProduceID` 变成 B。
-    #    `SW-013`（内容编号不可被删除篡改隐匿）＋ `R30`（`ProduceID` 与 `pack_id` 同源）
-    #    都要求一致；审核方只需比对交付目录名与 `ProduceID` 就能发现矛盾。
-    #    ⇒ 在真值覆盖**之后**以已确定的 `pack_id` 为准**重新钉一遍**，
-    #    并把纠偏**如实记进** `service_truth.overrides`（不静默改写）。
+    # ---- ①‴ **编号同源不变量校验**（2026-11-11 结构性收敛，`ISSUE-074`）----
+    # ⚠️ **缺陷沿革**：`apply_service_truth` 的 `META_SERVICE_KEYS` 含 `pack_id`，
+    #    它曾把上文「沿用既有编号」的结果**覆盖回** `truth["pack_id"]`
+    #    （服务层当次新生成的随机短码）⇒ 目录／清单是 A、`pack.json` 与
+    #    `aigc_meta.AIGC.ProduceID` 变成 B，违反 `SW-013`／`R30`。
+    #    上一版修法是「覆盖之后重新钉一遍」（能修结果、防不住复发）。
+    #    **本版改为结构性收敛**：编号在装配 `truth` 之前一次性确定并作为
+    #    `truth["pack_id"]`（见 ① 前的说明），`apply_service_truth` 只是执行者，
+    #    **不存在第二个写入者**。此处因此**只校验、不修补**——一旦将来有人引入
+    #    第二写入者，立即 fail-closed 出声，而不是把矛盾留在交付包里。
     _meta_now = pack.get("meta")
-    if isinstance(_meta_now, dict):
-        _was = str(_meta_now.get("pack_id") or "")
-        if _was != pack_id:
-            _meta_now["pack_id"] = pack_id
-            if truth_overrides is not None:
-                truth_overrides["meta.pack_id"] = {
-                    "from": _was,
-                    "to": pack_id,
-                    "changed": True,
-                    "note": "apply_service_truth 覆盖回当次随机新编号，已按交付包实际编号纠偏（SW-013/R30）",
-                }
+    _pid_now = str(_meta_now.get("pack_id") or "") if isinstance(_meta_now, dict) else ""
+    if _pid_now != pack_id:
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            "交付包编号在装配过程中被改写（违反 SW-013／R30 同源要求）",
+            details={"expected": pack_id, "actual": _pid_now, "where": "meta.pack_id"},
+        )
     _am_chk = pack.get("aigc_meta")
     _aigc_chk = _am_chk.get("AIGC") if isinstance(_am_chk, dict) else None
     if isinstance(_aigc_chk, dict):
         for _k in ("ProduceID", "PropagateID"):
-            _old = str(_aigc_chk.get(_k) or "")
-            if _old != pack_id:
-                _aigc_chk[_k] = pack_id
-                if truth_overrides is not None:
-                    truth_overrides[f"aigc_meta.AIGC.{_k}"] = {
-                        "from": _old,
-                        "to": pack_id,
-                        "changed": True,
-                        "note": "隐式标识编号须与 pack_id 同源（R30）",
-                    }
+            _now = str(_aigc_chk.get(_k) or "")
+            if _now != pack_id:
+                raise AppError(
+                    ErrorCode.VALIDATION_ERROR,
+                    "隐式标识编号与 pack_id 不同源（违反 R30）",
+                    details={"expected": pack_id, "actual": _now,
+                             "where": f"aigc_meta.AIGC.{_k}"},
+                )
 
     service_truth: dict[str, Any] = {}
     if truth_overrides:

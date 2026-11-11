@@ -53,6 +53,14 @@ META_SERVICE_KEYS: tuple[str, ...] = (
     "generator",
     "generation_trace",
 )
+#: ⚠️ **`pack_id` 的归属与写入权是两件事**（`ISSUE-074` 结构性收敛，2026-11-11）：
+#: 归属＝服务层域（模型自述值一律丢弃），故它**保留在**本表内；
+#: 但**「值从哪来」必须单点**——交付侧编号在 `pack_delivery` 装配 `truth` **之前**
+#: 就以 `build_pack_meta(pack_id=…)` 固化为 `truth["pack_id"]`，之后本模块只负责
+#: 把它写进 `meta`。此前的缺陷形态是「打包入口写 A、本模块覆盖成 B ⇒ 同一交付两个编号」，
+#: 修法曾是「覆盖后再纠偏」——**能修结果、防不住复发**；现由
+#: `delivery_service.pack_delivery` 的**同源不变量校验**（不一致即 fail-closed）兜底。
+#: ⇒ 新增服务层域键时请自问：**这个键的值有几个写入者？** 有第二个就必须先合并。
 
 
 def apply_service_truth(
