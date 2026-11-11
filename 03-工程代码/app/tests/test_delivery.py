@@ -662,6 +662,54 @@ def test_human_review_ledger_is_the_only_source(tmp_path: Path, monkeypatch) -> 
     assert {row["no"]: row for row in mf["self_check"]}[18]["result"] == "pass"
 
 
+def test_human_review_missing_blocks_and_fail_is_honest(tmp_path: Path) -> None:
+    """★ 人工核对台账**缺失即阻断**、**记 fail 即拦住**——两档都不许折算成通过。
+
+    ⚠️ 与 `test_human_review_ledger_is_the_only_source` 互补：那条锁「记录能进清单」，
+    本条锁「**没有**或**不合格**的记录时门禁真的拦住」——后者才是防「静默放行」的那一半。
+    """
+    pack = {"pack_id": "FR-PK-20261111-7C4E9A21", "statement_id": "ST-001", "provider_code": "FR"}
+
+    def _pack_run(tag: str, ledger_path: str):
+        r = pack_delivery(
+            svc=_svc_with(_fake_pack(**pack)),
+            session_id="SESS-TEST-0002",
+            out_dir=str(tmp_path / tag),
+            settings=Settings(_env_file=None, human_review_ledger=ledger_path),
+        )
+        mf = json.loads((Path(r.pack_dir) / "manifest.json").read_text(encoding="utf-8"))
+        codes = [b.get("code") for b in (r.gate.get("blocks") or [])]
+        return r, mf, codes, {row["no"]: row for row in mf["self_check"]}[18]["result"]
+
+    # ① 未配台账 ⇒ 视为「未做人工核对」
+    _r1, mf1, codes1, res1 = _pack_run("none", "")
+    assert mf1["human_review"] == [], "无台账时清单不得出现任何核对记录"
+    assert res1 == "fail", "无台账 ⇒ 第 18 项必须 fail（「没检」不等于「通过」）"
+    assert "human_review.missing" in codes1, "无台账 ⇒ 必须如实阻断，不得静默放行"
+
+    # ② 有台账但 result=fail ⇒ 仍 fail（不能因为「有记录」就算过）
+    bad = tmp_path / "ledger_fail.json"
+    bad.write_text(json.dumps({"records": [{
+        "pack_id": pack["pack_id"], "no": 18, "item": "角色一致性 / 跨镜连续性人工核对",
+        "result": "fail", "checked_at": "2026-11-11T09:25:00+08:00",
+        "operator": "核对人", "detail": "第 7 镜服装与第 3 镜不一致"}]},
+        ensure_ascii=False), encoding="utf-8")
+    _r2, mf2, _c2, res2 = _pack_run("fail", str(bad))
+    assert len(mf2["human_review"]) == 1, "台账记录须如实进清单（含 fail）"
+    assert res2 == "fail", "核对未通过 ⇒ 第 18 项必须 fail"
+
+    # ③ 有台账且 pass ⇒ 第 18 项转 pass，且该阻断码消失
+    good = tmp_path / "ledger_pass.json"
+    good.write_text(json.dumps({"records": [{
+        "pack_id": pack["pack_id"], "no": 18, "item": "角色一致性 / 跨镜连续性人工核对",
+        "result": "pass", "checked_at": "2026-11-11T09:20:00+08:00",
+        "operator": "核对人", "detail": "15 镜逐镜核对，未发现跨镜断裂"}]},
+        ensure_ascii=False), encoding="utf-8")
+    _r3, _mf3, codes3, res3 = _pack_run("pass", str(good))
+    assert res3 == "pass"
+    assert "human_review.missing" not in codes3, "台账齐备后该阻断码必须消失（否则填了也没用）"
+
+
 def test_audit_report_reflects_real_gate_not_boilerplate(tmp_path: Path) -> None:
     """★ 质量门报告 `qa/audit_report.txt` 必须是**真实判定**的投影，不能是模板套话。
 

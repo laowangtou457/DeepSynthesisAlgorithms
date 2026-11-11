@@ -1,0 +1,16 @@
+{
+  "_schema": "SEC-022 human_review ledger v1",
+  "_doc": "人工核对台账模板。复制到 _私密实值/human_review_ledger.json 后填写 records。字段规范见 SEC-022_人工核对台账-使用说明.md。",
+  "_notice": "records 必须由人工录入；本文件不得由任何模型产物生成。operator 真名只落私密区，入库文件写 {{核对人}}。",
+  "_warning": "下方 _example 仅为格式示例，程序不会读取；切勿把示例的 pack_id 抄进 records，否则造成假命中。",
+  "_example": {
+    "pack_id": "FR-PK-20261111-A1B2C3D4",
+    "no": 18,
+    "item": "角色一致性 / 跨镜连续性人工核对",
+    "result": "pass",
+    "checked_at": "2026-11-11T15:20:00+08:00",
+    "operator": "{{核对人}}",
+    "detail": "15 镜逐镜对比上游剧本；主角发型/服装/场景光位一致；未发现跨镜断裂"
+  },
+  "records": []
+}
