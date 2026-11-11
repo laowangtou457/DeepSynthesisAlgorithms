@@ -82,6 +82,46 @@ def test_all_formats_inject_marks(pack_dir: Path) -> None:
     assert mark in (pack_dir / res.records[0]["file"]).read_text(encoding="utf-8")
 
 
+def test_xlsx_custom_doc_props(pack_dir: Path) -> None:
+    """XLSX 隐式标识**规范载体**：`AIGC_*` 必须落 `docProps/custom.xml`（§9.2）。
+
+    `ISSUE-073` 回归锁——三重断言（zip 部件存在性 / 包注册 / openpyxl 读回），
+    任一退化（如回退到只写 keywords）即失败。核心属性 keywords 为冗余兼容载体，
+    同时断言存在（双载体内容同源）。
+    """
+    import zipfile
+
+    from openpyxl import load_workbook
+
+    res = build_exports(_demo_pack(), pack_dir / "pack.json", formats=("xlsx",))
+    xlsx_file = next(r["file"] for r in res.records if r["format"] == "xlsx")
+    path = pack_dir / xlsx_file
+
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+        assert "docProps/custom.xml" in names, "custom part 缺失"
+        assert "custom-properties" in z.read("[Content_Types].xml").decode("utf-8"), \
+            "[Content_Types].xml 未注册 custom part"
+        assert "custom-properties" in z.read("_rels/.rels").decode("utf-8"), \
+            "_rels/.rels 未挂 custom part 关系"
+        custom_xml = z.read("docProps/custom.xml").decode("utf-8")
+
+    wb = load_workbook(path)
+    props = {str(p.name): str(p.value) for p in wb.custom_doc_props.props}
+    # demo 包的 AIGC 块逐键落自定义属性，键名一律带 AIGC_ 前缀
+    assert props, "custom.xml 无任何属性"
+    assert all(k.startswith("AIGC_") for k in props), props
+    assert "AIGC_ProduceID" in props and props["AIGC_ProduceID"], props
+    assert 'name="AIGC_ProduceID"' in custom_xml
+    # 冗余兼容载体（keywords）仍在：内容同源
+    kw = str(wb.properties.keywords or "")
+    assert "ProduceID=" in kw
+    # 取证函数认得规范载体
+    explicit, implicit, _two, note = _evidence(path, "xlsx", explicit_mark_text())
+    assert explicit is True and implicit is True, note
+    assert "custom.xml" in note
+
+
 def test_md_and_csv_layout(pack_dir: Path) -> None:
     res = build_exports(_demo_pack(), pack_dir / "pack.json", formats=("md", "csv"))
     md = (pack_dir / "exports" / f"{_pid(res)}").parent

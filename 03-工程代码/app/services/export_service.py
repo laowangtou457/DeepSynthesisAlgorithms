@@ -22,10 +22,11 @@
 
 ### 已知偏差（如实登记，不静默）
 
-- **XLSX 隐式标识**：`openpyxl` 只支持**核心**文档属性（title／subject／keywords／
-  description），不支持 `docProps/custom.xml` 的**自定义**属性。故 `AIGC_*`
-  以 `keywords`／`description` 承载，与 §9.2「工作簿自定义属性」**不完全一致**
-  （已登记 `ISSUE-073`，补做方式＝写盘后按 zip 追加 custom part）。
+- ~~**XLSX 隐式标识**：`openpyxl` 只支持**核心**文档属性~~ → **已补齐**（2026-11-11，
+  `DEV-20261111-014`，`ISSUE-073` 闭环）：`openpyxl` ≥3.1 原生支持自定义文档属性
+  （`wb.custom_doc_props`），`AIGC_*` 逐键写入 `docProps/custom.xml`（规范 §9.2
+  要求的载体），`keywords`／`description` 承载**保留**为冗余兼容（旧客户端只认
+  核心属性；双载体内容同源，`_evidence` 双路取证）。
 - **TXT 隐式标识**：不写「文件末尾元数据块」，而写**标识区**（分隔行之前）。
   依据是 `SPEC-008 §6.8` 的 E6 判据——**提示词区不得出现 AIGC 元数据键**
   （否则客户全选复制会把元数据粘进模型）。两处规范冲突时取 §6.8（更具体的适配格式约束）。
@@ -205,10 +206,15 @@ def _render_md(pack: dict[str, Any], mark: str) -> str:
 def _render_xlsx(pack: dict[str, Any], mark: str, target: Path) -> None:
     """XLSX：首行合并单元格标识行（醒目填充）＋ 工作簿文档属性。
 
-    ⚠️ **已知偏差**：`openpyxl` 不支持 `docProps/custom.xml` 自定义属性 ⇒
-    `AIGC_*` 以 `keywords`／`description` 承载（登记 `ISSUE-073`）。
+    隐式标识**双载体**（`ISSUE-073` 闭环，2026-11-11）：
+    ① **规范载体** —— `docProps/custom.xml` 自定义属性（§9.2 要求），`AIGC_*`
+       逐键写入（`openpyxl` ≥3.1 `wb.custom_doc_props` 原生支持，写盘自动完成
+       `[Content_Types].xml` 与 `_rels/.rels` 注册）；
+    ② **冗余兼容** —— 核心属性 `keywords`／`description` 照旧承载（旧客户端只认
+       核心属性；内容与 ① 同源）。
     """
     from openpyxl import Workbook
+    from openpyxl.packaging.custom import StringProperty
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
@@ -243,6 +249,10 @@ def _render_xlsx(pack: dict[str, Any], mark: str, target: Path) -> None:
         f"【AI生成内容】{mark}｜标识方法：首行标识行 ＋ 工作簿文档属性（keywords 承载 AIGC_*）"
     )
     props.category = "AIGC"
+    # 规范载体：AIGC_* 逐键落 docProps/custom.xml（字符串型，键值均为审计面明文）
+    for k, v in sorted(aigc.items()):
+        if v != "":
+            wb.custom_doc_props.props.append(StringProperty(name=f"AIGC_{k}", value=str(v)))
     wb.save(target)
 
 
@@ -303,9 +313,23 @@ def _evidence(path: Path, fmt: str, mark: str) -> tuple[bool, bool, bool, str]:
             ws = wb.active
             first = str(ws["A1"].value or "")
             kw = str(wb.properties.keywords or "")
+            # 双载体取证（ISSUE-073）：规范载体 custom.xml ＋ 冗余载体 keywords
+            custom_names = {str(p.name) for p in wb.custom_doc_props.props}
             explicit = mark in first
-            implicit = "ProduceID=" in kw or "ContentProducer=" in kw
-            return explicit, implicit, False, f"首行标识行{'已注入' if explicit else '缺失'}；文档属性 keywords {len(kw)} 字符"
+            implicit = (
+                "ProduceID=" in kw
+                or "ContentProducer=" in kw
+                or "AIGC_ProduceID" in custom_names
+            )
+            n_custom = len(custom_names)
+            return (
+                explicit,
+                implicit,
+                False,
+                f"首行标识行{'已注入' if explicit else '缺失'}；"
+                f"自定义属性 docProps/custom.xml AIGC_* × {n_custom}；"
+                f"核心属性 keywords {len(kw)} 字符",
+            )
 
         raw = path.read_bytes()
         text = raw.decode("utf-8")
@@ -404,7 +428,8 @@ def build_exports(
                 _render_xlsx(pack, mark, target)
                 res.records.append(_record(
                     root, target, "xlsx", mark,
-                    "隐式标识落于工作簿核心属性 keywords（openpyxl 不支持自定义属性，见 ISSUE-073）",
+                    "隐式标识：自定义属性 docProps/custom.xml（AIGC_*，规范 §9.2 载体）"
+                    "＋ 核心属性 keywords（冗余兼容）",
                 ))
             elif fmt == "txt":
                 files, failed = _render_txt(Path(pack_path), out)
