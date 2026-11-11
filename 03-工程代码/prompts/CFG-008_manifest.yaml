@@ -27,7 +27,7 @@ templates:
     task_type: generate
     stage: synopsis
     file: templates/TPL-013_synopsis_v1.yaml
-    version: "2.0.0"
+    version: "2.0.1"
     status: active
     variables: [source_input, genre, target_duration, audience, must_include, must_avoid]
     scenes:
@@ -48,7 +48,7 @@ templates:
     task_type: generate
     stage: script
     file: templates/TPL-008_script_v1.yaml
-    version: "2.1.2"
+    version: "2.1.3"
     status: active
     variables: [synopsis_json, gap_answers, client_visual_input]
     scenes:
@@ -79,7 +79,7 @@ templates:
     task_type: generate
     stage: storyboard
     file: templates/TPL-010_storyboard_v1.yaml
-    version: "2.3.1"
+    version: "2.3.2"
     status: active
     variables: [script_json, duration_bounds, gap_answers, shot_density]
     scenes:
@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/TPL-009_shot_prompt_v1.yaml
-    version: "2.3.1"
+    version: "2.3.2"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:
@@ -143,7 +143,7 @@ templates:
     task_type: generate
     stage: revise
     file: templates/TPL-014_revise_v1.yaml
-    version: "1.2.0"
+    version: "1.2.1"
     status: active
     variables: [source_material, source_kind, pack_meta, client_visual_input, segment, gap_answers]
     scenes:
@@ -313,7 +313,7 @@ templates:
     name: 对话式修改与意图识别
     task_type: rewrite
     file: templates/TPL-015_modify_v1.yaml
-    version: "1.1.0"
+    version: "1.1.1"
     status: active
     variables: [target_stage, current_artifact, modification_request, change_context, upstream_artifact, locked_paths]
     scenes:
