@@ -88,6 +88,17 @@ class Settings(BaseSettings):
     guard_semantic_model: str = "Qwen3Guard-Gen-4B"
     guard_semantic_timeout_seconds: float = 15.0
 
+    # ---- 版权校验（`SW-015`）----
+    #: 可比对作品库根目录：目录下每个 `.txt`/`.md` 是一篇受保护作品（文件名即作品名）。
+    #: ⚠️ **当前为空＝库未建立**（属 `T-011` 数据来源任务范围，`REQ-005` `SW-015` 已登记该前置）。
+    #: 留空时版权校验的结论**恒为 `not_available`**（「没检」，不是「通过」）——
+    #: 这是**如实呈现**，不是缺陷；库投放到位后**无需改码**即可自动启用比对。
+    #: 库内容属外部数据，**不入版本控制**。
+    copyright_corpus_root: str = ""
+    #: 相似度风险阈值（`REQ-005` `SW-015`：默认 **0.5**，可配置）。
+    #: ≥ 该值即判 `risk`（**不阻断交付**，但须在版权声明中逐条列明，见 `SW-015` ③）。
+    copyright_similarity_threshold: float = 0.5
+
     # ---- 提示词资产根目录（03-工程代码/prompts）----
     prompts_root: str = ""
 

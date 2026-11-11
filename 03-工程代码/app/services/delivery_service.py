@@ -52,6 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.errors import AppError, ErrorCode
+from app.services import copyright_service
 from app.services.export_service import build_exports
 from app.services.pack_meta import (
     PLACEHOLDER_PROVIDER_CODE,
@@ -293,6 +294,18 @@ def _render_compliance_statement(pack: dict[str, Any]) -> str:
     }
     for k, v in mapping.items():
         text = text.replace(k, v)
+
+    # 附：**《版权与改编来源声明》指向**（`SW-015` ②「可导出」的可发现性）
+    #    ⚠️ 该声明件是独立落盘文件，但清单（`CFG-005`）的 `artifacts` 是
+    #    **固定五项**且 `additionalProperties: false` ⇒ **没有**它的登记位。
+    #    为此改契约成本高、收益低 ⇒ 改由本合规声明**显式引用文件名**，
+    #    确保下游拿到交付包时**能发现**它，而不是靠翻目录。
+    _pid = str(meta.get("pack_id", ""))
+    if _pid:
+        text = text.rstrip("\n") + (
+            f"\n\n> **附随文件**：本包另附 `{copyright_service.declaration_filename(_pid)}`"
+            "（《版权与改编来源声明》），载明改编来源声明与相似度比对结论。\n"
+        )
     return text
 
 
@@ -625,6 +638,37 @@ def render_audit_report(
     return "\n".join(head) + "\n"
 
 
+def _declaration_input(svc: Any, session_id: str, pack: dict[str, Any]) -> Any:
+    """取「改编来源声明」的原始输入（`SW-015` ②：必填）。
+
+    按优先级依次查三处，**任一路写入都能生效**（未来端点加入参时不必再改服务层）：
+
+    1. 会话记录属性 `adaptation_declaration`（客户端在会话上提交的声明）；
+    2. `shot_prompt` 产物里的 `adaptation_declaration`（编排层透传）；
+    3. 交付包 `meta.adaptation_declaration`。
+
+    ⚠️ 三处都没有 ⇒ 返回 `None` ⇒ 声明件里**明写「未提交」**。
+    **绝不代填「原创」**：权属陈述只能由提交方作出。
+    """
+    try:
+        rec = svc._require(session_id)  # noqa: SLF001
+    except Exception:  # pragma: no cover - 会话取不到时按缺失处理，不臆造
+        rec = None
+    if rec is not None:
+        raw = getattr(rec, "adaptation_declaration", None)
+        if raw:
+            return raw
+        art = getattr(rec, "artifacts", None)
+        if isinstance(art, dict):
+            sp = art.get("shot_prompt")
+            if isinstance(sp, dict) and sp.get("adaptation_declaration"):
+                return sp.get("adaptation_declaration")
+    meta = pack.get("meta")
+    if isinstance(meta, dict) and meta.get("adaptation_declaration"):
+        return meta.get("adaptation_declaration")
+    return None
+
+
 def _artifact_entry(hit: list[str], expect: list[str], note: str = "") -> dict[str, Any]:
     """装配 `CFG-005` 的 `artifact` 条目（`files` 须非空，故 present=False 时登记预期路径）。"""
     entry: dict[str, Any] = {"present": bool(hit), "files": hit or expect}
@@ -877,6 +921,17 @@ def pack_delivery(
     # ---- ① 服务层装配 `meta`（模型产物里没有就装配；有了就以服务层为准覆盖）----
     art = svc._require(session_id).artifacts.get("shot_prompt") or {}  # noqa: SLF001
     safety = art.get("safety") if isinstance(art, dict) else None
+    # ---- ①′ 版权校验（`SW-015`）----
+    #    ⚠️ **在装配 `meta` 之前跑**：`compliance.copyright_check` 是 `meta` 的一部分，
+    #    装配后再算就只能得到「没检」的结论 —— 那正是本字段此前长期硬编码
+    #    `not_available`（且归因错写成 `T-008`）的成因。
+    #    ⚠️ **作品库未建立时本步返回 `not_available`，不是异常**：`SW-015` 原文
+    #    已登记「库未建立前本条不得判达标」⇒ 如实标注、不阻断交付、不伪造 `passed`。
+    copyright_verdict = copyright_service.check(
+        pack,
+        corpus_root=getattr(settings, "copyright_corpus_root", "") or "",
+        threshold=float(getattr(settings, "copyright_similarity_threshold", 0.5) or 0.5),
+    )
     truth = build_pack_meta(
         session_id=session_id,
         stage="shot_prompt",
@@ -886,6 +941,7 @@ def pack_delivery(
         artifacts={},
         title=None,
         safety=safety if isinstance(safety, dict) else None,
+        copyright_verdict=copyright_verdict,
     )
     meta_in = pack.get("meta")
     meta = dict(meta_in) if isinstance(meta_in, dict) else {}
@@ -955,6 +1011,44 @@ def pack_delivery(
         provider_name=provider_name,
         provider_code=provider_code,
     )
+
+    # ---- ①‴ **编号一致性收口**（2026-11-11 实测缺陷修复，`SW-013`／`R30`）----
+    # ⚠️ **缺陷实录（合规级）**：`apply_service_truth` 的 `META_SERVICE_KEYS` **含 `pack_id`**
+    #    ⇒ 它把上文「沿用既有编号」的结果**覆盖回** `truth["pack_id"]`
+    #    （服务层当次新生成的随机短码）。而 `safe_id`／目录名／清单编号／
+    #    `DeliveryResult.pack_id` 用的都是**沿用值** ⇒ **同一份交付出现两个编号**：
+    #    目录与清单是 A，`pack.json` 里的 `meta.pack_id` 与隐式标识 `ProduceID` 变成 B。
+    #    `SW-013`（内容编号不可被删除篡改隐匿）＋ `R30`（`ProduceID` 与 `pack_id` 同源）
+    #    都要求一致；审核方只需比对交付目录名与 `ProduceID` 就能发现矛盾。
+    #    ⇒ 在真值覆盖**之后**以已确定的 `pack_id` 为准**重新钉一遍**，
+    #    并把纠偏**如实记进** `service_truth.overrides`（不静默改写）。
+    _meta_now = pack.get("meta")
+    if isinstance(_meta_now, dict):
+        _was = str(_meta_now.get("pack_id") or "")
+        if _was != pack_id:
+            _meta_now["pack_id"] = pack_id
+            if truth_overrides is not None:
+                truth_overrides["meta.pack_id"] = {
+                    "from": _was,
+                    "to": pack_id,
+                    "changed": True,
+                    "note": "apply_service_truth 覆盖回当次随机新编号，已按交付包实际编号纠偏（SW-013/R30）",
+                }
+    _am_chk = pack.get("aigc_meta")
+    _aigc_chk = _am_chk.get("AIGC") if isinstance(_am_chk, dict) else None
+    if isinstance(_aigc_chk, dict):
+        for _k in ("ProduceID", "PropagateID"):
+            _old = str(_aigc_chk.get(_k) or "")
+            if _old != pack_id:
+                _aigc_chk[_k] = pack_id
+                if truth_overrides is not None:
+                    truth_overrides[f"aigc_meta.AIGC.{_k}"] = {
+                        "from": _old,
+                        "to": pack_id,
+                        "changed": True,
+                        "note": "隐式标识编号须与 pack_id 同源（R30）",
+                    }
+
     service_truth: dict[str, Any] = {}
     if truth_overrides:
         service_truth = {
@@ -985,6 +1079,25 @@ def pack_delivery(
     stmt_path = dst / "AST-004_compliance_statement.md"
     stmt_path.write_text(stmt, encoding="utf-8")
     files.append("AST-004_compliance_statement.md")
+
+    # ③‴ **版权与改编来源声明**（`SW-015` ②③）—— 必填、可留存、可导出
+    #    ⚠️ 独立成件而非塞进 `compliance.note`：`CFG-006` 的 `copyright_check`
+    #       是 `additionalProperties: false`（只有 `status`/`note`），而声明需要
+    #       **逐条列明命中项 + 提交方声明 + 责任边界** ⇒ 结构化承载只能靠独立件。
+    #       本件随包交付、由清单 `files` 登记 ⇒ 满足「可留存、可导出」。
+    _decl = copyright_service.normalize_declaration(_declaration_input(svc, session_id, pack))
+    _decl_name = copyright_service.declaration_filename(pack_id)
+    (dst / _decl_name).write_text(
+        copyright_service.build_declaration(
+            pack_id=pack_id,
+            session_id=session_id,
+            verdict=copyright_verdict,
+            declaration=_decl,
+        ),
+        encoding="utf-8",
+        newline="\n",
+    )
+    files.append(_decl_name)
 
     # ③′ AIGC 元数据块**单独落盘**（§8.3 第 6 项「存在、字段齐全、仅一份、可解析」）
     #    ⚠️ 旧实现只在 `pack.json` 内嵌 ⇒ 四件套之②没有独立交付物，清单无法登记。

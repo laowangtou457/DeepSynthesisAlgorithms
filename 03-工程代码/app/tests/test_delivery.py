@@ -224,6 +224,160 @@ def test_pack_replaces_malformed_pack_id_from_model(tmp_path: Path) -> None:
     assert "pack_id" in (saved["meta"].get("notes") or "")
 
 
+# ================================================================ 版权校验接线（SW-015）
+
+
+#: 一段长度达标的示例创作内容（`copyright_service.MIN_TEXT_LEN` 为 20）
+_LONG_PROMPT = (
+    "雨夜的街道上，少年撑着黑伞独自行走，路灯把影子拉得很长，远处传来电车的声音，"
+    "潮湿的空气里混着梧桐叶与铁锈的气味，整座城市像一张被浸湿的旧照片。"
+)
+
+
+def _pack_with_long_prompt(**kw: object) -> dict:
+    """`_fake_pack` 的默认 `prompt_zh` 只有 5 字（`废弃采矿站`）⇒ 版权比对会跳过它。
+    本组测试需要**可比对的长文本**，故就地加长。"""
+    p = _fake_pack(**kw)  # type: ignore[arg-type]
+    p["shots"][0]["prompt_zh"] = _LONG_PROMPT
+    return p
+
+
+def _saved_pack(pack_dir: str) -> dict:
+    return json.loads((Path(pack_dir) / "pack.json").read_text(encoding="utf-8"))
+
+
+def test_copyright_check_corpus_missing_is_not_available(tmp_path: Path) -> None:
+    """★ 作品库未建立 ⇒ `copyright_check=not_available`，且**归因必须是真实原因**。
+
+    ⚠️ 本条是接线前的**实质缺陷**：该字段被硬编码为
+    `{"status":"not_available","note":"版权校验未接入（T-008）"}`，
+    而 `T-008` 是**二期人工审核台**、与本条无关；真实卡点是
+    「可比对作品库未建立」（`REQ-005` `SW-015` 原文已登记该前置）。
+    """
+    r = pack_delivery(
+        svc=_svc_with(_pack_with_long_prompt(pack_id="FR-PK-20261111-A1B2C3D4")),
+        session_id="S",
+        out_dir=str(tmp_path / "delivery"),
+        settings=Settings(),  # 默认 copyright_corpus_root="" ⇒ 库未建立
+    )
+    cp = _saved_pack(r.pack_dir)["meta"]["compliance"]["copyright_check"]
+    assert cp["status"] == "not_available", "库未建立不得折算为 passed（没检 ≠ 没风险）"
+    assert "T-008" not in cp["note"], f"旧归因 T-008 必须已订正：{cp['note']}"
+    assert "作品库" in cp["note"], f"须给出真实归因：{cp['note']}"
+
+
+def test_copyright_declaration_written_and_listed(tmp_path: Path) -> None:
+    """`SW-015` ②：改编来源声明须**可留存、可导出**。
+
+    ⚠️ **「可导出」靠两件事共同保证**，缺一不可：
+
+    1. 声明件**独立落盘**在交付包目录（物理可导出）；
+    2. 合规声明（`AST-004`）**显式引用**其文件名（可发现）。
+
+    第 2 条是必须的：清单（`CFG-005`）的 `artifacts` 是**固定五项**且
+    `additionalProperties: false` ⇒ 声明件**没有**清单登记位，若再不引用，
+    下游只能靠翻目录才能发现它。
+    """
+    r = pack_delivery(
+        svc=_svc_with(_pack_with_long_prompt(pack_id="FR-PK-20261111-A1B2C3D4")),
+        session_id="S",
+        out_dir=str(tmp_path / "delivery"),
+        settings=Settings(),
+    )
+    decls = sorted(Path(r.pack_dir).glob("copyright_declaration_*.md"))
+    assert len(decls) == 1, "声明件须恰好一份（同包重复打包不得散落多份）"
+    text = decls[0].read_text(encoding="utf-8")
+    assert "未校验" in text, "库未建立时声明件必须明写「未校验」"
+    assert "未提交改编来源声明" in text, "缺失声明须如实标注，绝不代填「原创」"
+    assert "风险由提交方自负" in text
+
+    stmt = (Path(r.pack_dir) / "AST-004_compliance_statement.md").read_text(encoding="utf-8")
+    assert decls[0].name in stmt, "合规声明须引用声明件文件名，否则下游不可发现"
+
+
+def test_copyright_risk_does_not_block_delivery(tmp_path: Path) -> None:
+    """`SW-015` ③：检出风险**不阻断交付**，但须在声明中逐条列明。
+
+    作品库投放到位后（配置 `copyright_corpus_root`）**无需改码**即自动启用比对 ——
+    本条同时验证该配置路径。
+    """
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "某受保护作品.txt").write_text(_LONG_PROMPT, encoding="utf-8")
+
+    r = pack_delivery(
+        svc=_svc_with(_pack_with_long_prompt(pack_id="FR-PK-20261111-A1B2C3D4")),
+        session_id="S",
+        out_dir=str(tmp_path / "delivery"),
+        settings=Settings(copyright_corpus_root=str(corpus)),
+    )
+    cp = _saved_pack(r.pack_dir)["meta"]["compliance"]["copyright_check"]
+    assert cp["status"] == "risk", f"与作品库正文雷同须判 risk：{cp}"
+
+    manifest = json.loads((Path(r.pack_dir) / "manifest.json").read_text(encoding="utf-8"))
+    item3 = next(i for i in manifest["self_check"] if i["no"] == 3)
+    assert item3["result"] != "fail", f"SW-015 ③ 明确不阻断交付，但自检判了 fail：{item3}"
+
+    decl = sorted(Path(r.pack_dir).glob("copyright_declaration_*.md"))[0].read_text(encoding="utf-8")
+    assert "检出项（逐条列明）" in decl
+    assert "某受保护作品" in decl, "命中项须逐条列明来源作品"
+    assert "核对改编授权" in decl
+
+
+def test_copyright_similarity_threshold_is_configurable(tmp_path: Path) -> None:
+    """阈值可配置（`REQ-005` `SW-015`：默认 0.5）——设 1.01 后同一雷同内容不再判 risk。"""
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "某受保护作品.txt").write_text(_LONG_PROMPT, encoding="utf-8")
+    r = pack_delivery(
+        svc=_svc_with(_pack_with_long_prompt(pack_id="FR-PK-20261111-A1B2C3D4")),
+        session_id="S",
+        out_dir=str(tmp_path / "delivery"),
+        settings=Settings(copyright_corpus_root=str(corpus), copyright_similarity_threshold=1.01),
+    )
+    cp = _saved_pack(r.pack_dir)["meta"]["compliance"]["copyright_check"]
+    assert cp["status"] == "passed", f"阈值调高后不应再判 risk：{cp}"
+
+
+def test_pack_id_is_identical_across_all_artifacts(tmp_path: Path) -> None:
+    """★ **同一次交付只能有一个编号**（`SW-013` ＋ `R30`，2026-11-11 实测缺陷的回归锁）。
+
+    ⚠️ **本条锁的是已发生的真实缺陷**：`apply_service_truth` 的 `META_SERVICE_KEYS`
+    含 `pack_id`，它把「沿用既有编号」的结果**覆盖回**服务层当次新生成的随机短码，
+    而目录名／清单编号用的是沿用值 ⇒ 同一交付里出现了**两个编号**：
+
+    | 位置 | 缺陷时的取值 |
+    | --- | --- |
+    | 交付目录名 ／ `DeliveryResult.pack_id` ／ 清单 `pack_id` | `FR-PK-20261111-A1B2C3D4`（沿用值） |
+    | `pack.json` 的 `meta.pack_id` ／ `aigc_meta.AIGC.ProduceID` | `{{PROVIDER_CODE}}-PK-20261111-<随机>`（新生成） |
+
+    `SW-013`（内容编号不可被删除篡改隐匿）与 `R30`（`ProduceID` 与 `pack_id` 同源）
+    都要求一致 —— 审核方只要比对目录名与 `ProduceID` 就能发现矛盾。
+    **本测试跨五处比对**，任何一处漂移都会失败。
+    """
+    r = pack_delivery(
+        svc=_svc_with(_pack_with_long_prompt(pack_id="FR-PK-20261111-A1B2C3D4")),
+        session_id="S",
+        out_dir=str(tmp_path / "delivery"),
+        settings=Settings(),
+    )
+    saved = _saved_pack(r.pack_dir)
+    manifest = json.loads((Path(r.pack_dir) / "manifest.json").read_text(encoding="utf-8"))
+    produce_id = (saved.get("aigc_meta") or {}).get("AIGC", {}).get("ProduceID")
+    prop_id = (saved.get("aigc_meta") or {}).get("AIGC", {}).get("PropagateID")
+
+    actual = {
+        "目录名": Path(r.pack_dir).name,
+        "DeliveryResult.pack_id": r.pack_id,
+        "清单 pack_id": manifest["pack_id"],
+        "pack.json meta.pack_id": saved["meta"]["pack_id"],
+        "隐式标识 ProduceID": produce_id,
+        "隐式标识 PropagateID": prop_id,
+    }
+    assert len(set(actual.values())) == 1, f"编号不同源：{actual}"
+    assert actual["目录名"] == "FR-PK-20261111-A1B2C3D4", "沿用既有编号失败"
+
+
 # ================================================================ 清单契约对齐（ISSUE-057 候选①）
 
 

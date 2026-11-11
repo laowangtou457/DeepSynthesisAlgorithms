@@ -187,6 +187,42 @@ def _safety_side(side: dict[str, Any] | None) -> str:
     return "passed"
 
 
+def _copyright_check(verdict: dict[str, Any] | None) -> dict[str, Any]:
+    """把 `SW-015` 版权校验结论折算为交付 schema 的 `copyright_check` 取值。
+
+    ⚠️ **三态语义必须分清**（这是本字段此前最大的隐患）：
+
+    - `passed`       ＝ **比对跑过了**，且全部低于阈值；
+    - `risk`         ＝ 比对跑过了，**检出**高于阈值的内容（`SW-015` ③：不阻断，须逐条列明）；
+    - `not_available`＝ **没比对**（作品库未建立）—— **不是**「无风险」。
+
+    未传 `verdict` 时返回 `not_available` ＋ **真实归因**。此前该字段被硬编码为
+    「版权校验未接入（`T-008`）」，而 `T-008` 是二期人工审核台，与本条无关 ⇒ 已订正。
+
+    `note` 会随交付包发给客户 ⇒ **不得出现内部任务号**（`T-0xx`）与受控分类码。
+    """
+    allowed = {"passed", "warning", "risk", "skipped", "not_available"}
+    if not isinstance(verdict, dict):
+        return {
+            "status": "not_available",
+            "note": "版权相似度比对未执行（未调用版权校验服务）；本算法尚未接入可比对的作品库",
+        }
+    status = str(verdict.get("status") or "").strip()
+    if status not in allowed:
+        # 非法取值 ⇒ 不猜：如实降为「未校验」，并保留原始取值便于排查
+        return {
+            "status": "not_available",
+            "note": f"版权校验返回非法状态 `{status or '空'}`，按「未校验」如实标注",
+        }
+    note = str(verdict.get("note") or "").strip()
+    if not note:
+        note = {
+            "passed": "版权相似度比对完成，未检出高于阈值的内容",
+            "risk": "检出疑似与受保护作品高度相似的内容（不阻断交付，见版权与改编来源声明）",
+        }.get(status, "版权相似度比对未执行；本算法尚未接入可比对的作品库")
+    return {"status": status, "note": note}
+
+
 def stage_chain_of(artifacts: dict[str, Any], *, including: str | None = None) -> list[str]:
     """按链路顺序推导已完成的阶段链；`including` 用于把「即将写入」的阶段计入。"""
     present = set(artifacts)
@@ -207,6 +243,7 @@ def build_pack_meta(
     title: str | None = None,
     pack_id: str | None = None,
     safety: dict[str, Any] | None = None,
+    copyright_verdict: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """装配 `pack_meta`。返回的结构与 `TPL-009` 描述逐字对齐。
 
@@ -214,6 +251,10 @@ def build_pack_meta(
     `artifact["safety"]`）。⚠️ 不传时 `compliance.safety_check` 写占位 —— 但**能传就必须传**：
     「内容安全检测过没过」是服务层**确知**的事实，写占位等于把已知事实丢弃，
     而交付门禁的判据是 `input/output != "passed" → BLOCK` ⇒ 占位会**恒 BLOCK**。
+
+    `copyright_verdict` 为**版权校验（`SW-015`）的实际结论**（调用方传入
+    `copyright_service.check()` 的返回值）。⚠️ 不传时写 `not_available` 并**如实说明原因**
+    —— 但**能传就必须传**：校验跑没跑过是服务层确知的事实。
     """
     artifacts = artifacts or {}
     provider_code = (getattr(settings, "provider_code", "") or "").strip()
@@ -279,7 +320,15 @@ def build_pack_meta(
             #    交付判据侧已配套改三态式（「未取得」⇒ WARN，不再误报「未通过」）。
             #    ⚠️ **不复用 `skipped`**：那是「检过了、主动决定不做」，
             #    与「能力尚未接入」语义不同，复用会让读者误解。
-            "copyright_check": {"status": "not_available", "note": "版权校验未接入（T-008）"},
+            # ⚠️ **2026-11-11 归因订正（`SW-015` 接入，`DEV-20261111-*`）**：
+            #    本字段此前**硬编码**为 `{"status":"not_available","note":"版权校验未接入（T-008）"}`
+            #    —— 该归因**是错的**：`T-008` 是**二期**任务（人工审核台），与本条无关；
+            #    真实卡点是「**可比对作品库未建立**」（属 `T-011` 数据来源范围，
+            #    `REQ-005` `SW-015` 原文已登记该前置）。
+            #    现改为**由服务计算**：`copyright_service.check()` 的结论经
+            #    `copyright_verdict` 传入；不传时仍写 `not_available`，
+            #    但 `note` 给出**真实原因**而非错归因。
+            "copyright_check": _copyright_check(copyright_verdict),
             "marking_check": {"explicit": "not_available", "implicit": "not_available"},
             "statement_id": statement_id,
         },
