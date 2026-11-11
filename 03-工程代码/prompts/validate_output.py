@@ -827,6 +827,29 @@ def _sl(r):
     return s if isinstance(s, dict) else {}
 
 
+def _shape_bad(container, label):
+    """容器字段**形态前检**（`ISSUE-080`，2026-11-11）：返回 `(合法项列表, 形态错误描述列表)`。
+
+    背景（`DEV-20261111-015` 实施时由测试夹具踩出）：`_shots`／`_units` 等帮助函数的
+    `isinstance` 过滤会把非 `dict` 项**静默丢掉** ⇒ 该镜／该角色对全部规则**隐身**
+    （fail-open）；而 `r.get("camera") or {}` 这类取值遇到非空字符串会**直通 `.get()`
+    抛 `AttributeError`** ⇒ 判据整体空转（`checks=0`），连 `R27` 必报的失败都报不出来。
+    纪律：**形态不符必须如实报 err（不得静默跳过、不得崩溃）**——判据能跑出失败是
+    `R27P` 等一切下游判定成立的前提。形态错在 `R27` 形态前检统一收口报出；
+    `R26`／`R33` 等字段级规则另做防御并以自身码如实报（带 `shot_id` 归因）。
+    """
+    if not isinstance(container, list):
+        return [], [f"{label} 形态错误（须 array，实得 {type(container).__name__}）"]
+    legit = []
+    bad = []
+    for i, item in enumerate(container):
+        if isinstance(item, dict):
+            legit.append(item)
+        else:
+            bad.append(f"{label}[{i}] 形态错误（须 object，实得 {type(item).__name__}）")
+    return legit, bad
+
+
 def rule_shot_id_format(doc, where):
     """R7：shot_id 唯一且形如 S<场号两位>-SH<镜号三位>。"""
     shots = _shots(doc)
@@ -1490,6 +1513,13 @@ def rule_move_param_omission(doc, where):
         return
     bad = []
     for r in shots:
+        # 形态防御（`ISSUE-080`）：`_cam` 对非 dict camera 静默回 `{}` ⇒ 形态错不报不罚
+        #   （fail-open）。此处如实报出并跳过字段级检查（R27 形态前检亦会收口）。
+        c_raw = r.get("camera")
+        if c_raw is not None and not isinstance(c_raw, dict):
+            bad.append(f"{r.get('shot_id')}.camera 形态错误"
+                       f"（须 object，实得 {type(c_raw).__name__}）")
+            continue
         c = _cam(r)
         a, s = c.get("amplitude", None), c.get("speed", None)
         if a is not None and a not in AMPLITUDE_ENUM:
@@ -1522,7 +1552,14 @@ def rule_pack_no_empty_string(doc, where):
     bad = []
     for r in shots:
         sid = r.get("shot_id")
-        cam = r.get("camera") or {}
+        # 形态防御（`ISSUE-080`）：原 `cam = r.get("camera") or {}` 遇非空字符串
+        #   **直通 `.get()` 抛 `AttributeError`** ⇒ 判据整体空转（fail-open）。
+        #   如实报出并跳过字段级检查。
+        cam = r.get("camera")
+        if cam is not None and not isinstance(cam, dict):
+            bad.append(f"{sid}.camera 形态错误（须 object，实得 {type(cam).__name__}）")
+            cam = None
+        cam = cam if isinstance(cam, dict) else {}
         for key, allowed in PACK_ENUM_OPTIONAL.items():
             if key.startswith("camera."):
                 v = cam.get(key.split(".", 1)[1], None)
@@ -1538,7 +1575,11 @@ def rule_pack_no_empty_string(doc, where):
                 bad.append(f"{sid}.{key}=空串（应省略该键）")
             elif v is not None and not re.fullmatch(r"[a-z][a-z_]*", str(v)):
                 bad.append(f"{sid}.{key}=『{v}』非纯词表 code")
-    for c in (doc.get("characters") or []):
+    # 形态防御（`ISSUE-080`）：原处对 characters **无过滤直接迭代**——字符串/键迭代
+    #   会让 `c.get` 抛 `AttributeError`。经 `_shape_bad` 取合法项，形态错如实报。
+    _chars_legit, _chars_shape = _shape_bad(doc.get("characters") or [], "characters")
+    bad.extend(_chars_shape)
+    for c in _chars_legit:
         if c.get("ref_image", "MISSING") is None:
             bad.append(f"characters[{c.get('character_id')}].ref_image=null"
                        f"（schema 此处为 type:string → 应省略该键）")
@@ -1674,6 +1715,16 @@ def rule_pack_required(doc, where):
     props = [p for p in (doc.get("props") or []) if isinstance(p, dict)]
     prop_ids = {p.get("prop_id") for p in props}
     shots = _shots(doc)
+    # 容器形态前检（`ISSUE-080`）：isinstance 过滤会把非 dict 项静默丢掉 ⇒ 如实报 err。
+    #   只对「存在且非 null」的容器报——characters／props 缺失本身是 warn 级，不在此升格。
+    shape_bad = []
+    for key in ("shots", "units", "characters", "props"):
+        raw = doc.get(key)
+        if raw is not None:
+            shape_bad.extend(_shape_bad(raw, key)[1])
+    if shape_bad:
+        err(f"{where} · R27 PACK_REQUIRED：{len(shape_bad)} 处容器元素形态错误 → "
+            + "；".join(shape_bad[:6]))
     if not shots:
         err(f"{where} · R27 PACK_REQUIRED：shots 缺失或为空")
         return

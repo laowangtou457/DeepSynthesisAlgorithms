@@ -311,6 +311,50 @@ def test_native_r27_stays_retryable() -> None:
     )
 
 
+def test_camera_shape_error_reported_and_gate_never_freezes() -> None:
+    """`camera` 形态错误必须**如实报 err**，不得崩溃空转（`ISSUE-080`，2026-11-11）。
+
+    实测踩出（`DEV-20261111-015` 探针）：`rule_pack_no_empty_string`（R33）取
+    `cam = r.get("camera") or {}` —— 非空字符串为真值直通 `.get()` ⇒
+    `AttributeError` ⇒ `checks=0`、判据全体空转，**连 R27 必报的失败都报不出来**
+    （fail-open）。修复后：R26／R33 如实报形态错、判据照常跑完、`ok=False`；
+    原生形态错保持 retryable（重采样可改变模型输出形态；占位镜场景由 R27P 兜底）。
+    """
+    doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
+    doc["shots"][0]["camera"] = "static"  # 原生形态错误（schema CFG-006: object, required: move）
+    verdict = asyncio.run(quality_gate.check(
+        "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
+    ))
+    assert verdict.checked is True
+    assert verdict.engine_checks > 0, "判据不得因形态错误崩溃空转（fail-open）"
+    assert verdict.ok is False
+    joined = " | ".join(verdict.engine_errors)
+    assert "形态错误" in joined and "camera" in joined, (
+        f"R26／R33 应如实报形态错，实得 {verdict.engine_errors}"
+    )
+    assert any("R27" in c for c in verdict.retryable), (
+        "原生形态错保持 retryable（R27 文本无占位标记，分拣不受 R27P marker 影响）"
+    )
+
+
+def test_container_shape_error_reported_by_r27() -> None:
+    """容器元素非 object 必须在 `R27` 形态前检**如实报出**（`ISSUE-080` 同构面收口）。
+
+    `_shots` 的 isinstance 过滤原本会把非 dict 镜**静默丢掉** ⇒ 该镜对全部规则
+    隐身（fail-open）。修复后 R27 形态前检如实报 err，不崩溃、不静默。
+    """
+    doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
+    doc["shots"].append("S01-SH002-as-raw-string")
+    verdict = asyncio.run(quality_gate.check(
+        "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
+    ))
+    assert verdict.checked is True
+    assert verdict.ok is False
+    assert any("shots[1] 形态错误" in c for c in verdict.engine_errors), (
+        f"R27 形态前检应报出非 dict 镜，实得 {verdict.engine_errors}"
+    )
+
+
 # ------------------------------------------------------------------ 真值覆盖
 def test_service_truth_overrides_forged_compliance_values() -> None:
     """模型自拟的「假合规」必须被服务层真值覆盖（**合规级**缺陷）。
