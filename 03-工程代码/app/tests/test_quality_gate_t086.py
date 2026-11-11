@@ -257,6 +257,60 @@ def test_compliance_failures_are_classified_as_non_retryable() -> None:
     assert not any("compliance" in c for c in verdict.retryable)
 
 
+def test_placeholder_r27p_is_non_retryable() -> None:
+    """占位镜失败必须进 `non_retryable`（`T-106` 裁决 A，2026-11-11）。
+
+    服务层 `_fill_missing_shots` 补的占位镜（`notes` 以「服务层构造占位」开头）
+    必然触发必备字段失败，且重采样后服务层会**重补同形占位** ⇒ 重试白烧
+    （`ab_t101_r4` 自愈率 0/11）。判据侧单列 `R27P PLACEHOLDER` 码，
+    `_NON_RETRYABLE_ENGINE_MARKERS` 分拣。**双向断言**：
+    `R27P` 只出现在 non_retryable；retryable 中不得出现。
+    """
+    doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
+    doc["shots"].append({
+        "shot_id": "S01-SH002", "unit_id": "U01", "scene_no": 1, "shot_no": 2,
+        "shot_size": "MS", "camera": {"move": "static", "amplitude": "", "speed": ""},
+        "duration_ms": 4000,
+        "prompt_zh": "占位承继", "prompt_en": "", "action": {},
+        "shot_language": {}, "style_ref": "ST-01",
+        "character_refs": [], "prop_refs": [],
+        "notes": "服务层构造占位（2026-11-07 裁决甲）：模型漏生成本镜；"
+                 "机械承继字段引用上游分镜镜定义，prompt_zh 由 action 派生，"
+                 "prompt_en 留空待补——占位本身不构成创作合格，交判据如实判。",
+    })
+    verdict = asyncio.run(quality_gate.check(
+        "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
+    ))
+    assert verdict.ok is False
+    assert any("R27P" in c for c in verdict.non_retryable), (
+        f"占位镜失败应进 non_retryable，实得 {verdict.non_retryable}"
+    )
+    assert not any("R27P" in c for c in verdict.retryable), (
+        f"占位镜失败不得进 retryable，实得 {verdict.retryable}"
+    )
+
+
+def test_native_r27_stays_retryable() -> None:
+    """模型原生缺字段（无占位 `notes` 标记）必须**保持 retryable**（`T-106` 双向锁另一面）。
+
+    重采样有机会改变原生缺失（实测原生 R27 可自愈，`ISSUE-069` ③）——
+    不得因新增 `R27P` marker 而「整码」误伤原生失败。
+    """
+    doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
+    doc["shots"][0]["prompt_en"] = ""  # 原生镜（无 notes）缺字段
+    verdict = asyncio.run(quality_gate.check(
+        "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
+    ))
+    assert verdict.ok is False
+    assert any("R27" in c for c in verdict.retryable), (
+        f"原生 R27 应保持 retryable，实得 retryable={verdict.retryable} / "
+        f"non_retryable={verdict.non_retryable}"
+    )
+    assert not any("R27P" in c for c in verdict.non_retryable), (
+        "原生失败不得被标成占位码"
+    )
+
+
 # ------------------------------------------------------------------ 真值覆盖
 def test_service_truth_overrides_forged_compliance_values() -> None:
     """模型自拟的「假合规」必须被服务层真值覆盖（**合规级**缺陷）。

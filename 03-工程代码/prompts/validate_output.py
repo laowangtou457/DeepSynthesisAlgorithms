@@ -100,6 +100,12 @@
                            `character_refs` 必须命中 `characters[].character_id`；
                            **`prop_refs` 必须命中 `props[].prop_id`**（v2.0 起）。
                            这是「分镜层产出是规范字段集真子集」的补全验收——SW-007 的存在理由。
+  R27P PLACEHOLDER         **占位镜必备结构**（T-106 裁决 A，2026-11-11）——`R27` 的**占位镜细分码**：
+                           `notes` 以「服务层构造占位」开头的镜（服务层 `_fill_missing_shots`
+                           确定性重补，重采样不改变结果）其不合规项单列本码报出，
+                           由 `quality_gate._NON_RETRYABLE_ENGINE_MARKERS` 分拣为**不可重试**
+                           （避免白烧一次重采样，ab_t101_r4 自愈率 0/11）；
+                           模型原生缺字段仍报 `R27`、保持可重试。
   R28 PACK_APPEARANCE_ECHO **外观复用检测**（规范 §3.4「外观只在此处定义一次」）——
                            把交付包自带的 `characters[].appearance_lock_zh`（及 `_en`）与
                            `prompt_zh`／`prompt_en` **正文**比对；命中即报错。
@@ -1672,24 +1678,42 @@ def rule_pack_required(doc, where):
         err(f"{where} · R27 PACK_REQUIRED：shots 缺失或为空")
         return
     bad = []
+    bad_ph = []  # 占位镜专桶（T-106 裁决 A，2026-11-11）：报 `R27P PLACEHOLDER`，与原生 R27 分码
     for r in shots:
         sid = r.get("shot_id")
+        # 占位镜识别锚：服务层 `_fill_missing_shots` 补镜时 `notes` 明写「服务层构造占位」
+        # （dialogue_service.py，`merge.shot_conservation_fill` 同批）。该形态由**服务层确定性重补**，
+        # 重采样不改变结果 ⇒ 单列 `R27P`，由 `app/services/quality_gate.py`
+        # `_NON_RETRYABLE_ENGINE_MARKERS` 分拣为不可重试（避免白烧一次重采样，ab_t101_r4 自愈率 0/11）。
+        # 模型原生缺字段（无该 notes 标记）仍走 `R27`，保持可重试（原生 R27 实测可自愈）。
+        is_placeholder = (
+            isinstance(r.get("notes"), str) and r.get("notes").startswith("服务层构造占位")
+        )
+        bucket = bad_ph if is_placeholder else bad
         for k in PACK_SHOT_REQUIRED:
             v = r.get(k)
             if v is None or (isinstance(v, str) and not v.strip()):
-                bad.append(f"{sid}.{k} 缺失／为空")
+                bucket.append(f"{sid}.{k} 缺失／为空")
         if r.get("style_ref") != style_id:
-            bad.append(f"{sid}.style_ref=『{r.get('style_ref')}』未命中 style_bible.style_id=『{style_id}』")
+            bucket.append(f"{sid}.style_ref=『{r.get('style_ref')}』未命中 style_bible.style_id=『{style_id}』")
         for ref in (r.get("character_refs") or []):
             if ref not in char_ids:
-                bad.append(f"{sid}.character_refs 引用未定义角色 『{ref}』")
+                bucket.append(f"{sid}.character_refs 引用未定义角色 『{ref}』")
         for ref in (r.get("prop_refs") or []):
             if ref not in prop_ids:
-                bad.append(f"{sid}.prop_refs 引用未定义道具 『{ref}』")
+                bucket.append(f"{sid}.prop_refs 引用未定义道具 『{ref}』")
+    n_ph = sum(
+        1 for r in shots
+        if isinstance(r.get("notes"), str) and r.get("notes").startswith("服务层构造占位")
+    )
+    if bad_ph:
+        err(f"{where} · R27P PLACEHOLDER：{len(bad_ph)} 处占位镜不合规（重试无用——服务层会重补同形占位）→ "
+            + "；".join(bad_ph[:6]))
     if bad:
         err(f"{where} · R27 PACK_REQUIRED：{len(bad)} 处不合规 → " + "；".join(bad[:6]))
-    else:
-        ok(f"{where} · R27 PACK_REQUIRED：顶层必备 6 段齐备；{len(shots)} 镜必备 14 字段齐备；"
+    if not bad and not bad_ph:
+        ok(f"{where} · R27 PACK_REQUIRED：顶层必备 6 段齐备；{len(shots)} 镜必备 14 字段齐备"
+           f"（其中占位镜 {n_ph} 个）；"
            f"style_ref 全部命中 『{style_id}』；character_refs／prop_refs 全部命中已定义锚"
            f"（角色 {len(char_ids)} 个／道具 {len(prop_ids)} 个）")
 
