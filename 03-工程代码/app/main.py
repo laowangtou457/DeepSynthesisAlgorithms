@@ -19,7 +19,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.v1 import router as v1_router
 from app.api.v1.endpoints import health
@@ -105,6 +105,69 @@ def register_exception_handlers(app: FastAPI) -> None:
         return _json(500, envelope)
 
 
+_INDEX_HTML = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 24px; background: #f5f6f8; color: #1f2329;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    line-height: 1.6; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 24px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  .sub { color: #8a9099; font-size: 13px; }
+  .card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+    padding: 8px 20px 16px; margin-bottom: 20px; }
+  h2 { font-size: 14px; font-weight: 600; color: #5b6270; margin: 18px 0 10px;
+    text-transform: uppercase; letter-spacing: .6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-weight: 500; color: #5b6270; width: 190px;
+    padding: 8px 0; vertical-align: top; }
+  td { padding: 8px 0; border-bottom: 1px solid #f0f2f4; }
+  tr:last-child th, tr:last-child td { border-bottom: 0; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0;
+    border-bottom: 1px solid #f0f2f4; font-size: 14px; }
+  li:last-child { border-bottom: 0; }
+  li a { color: #1664ff; text-decoration: none; font-family: ui-monospace,
+    SFMono-Regular, Consolas, monospace; font-size: 13px; min-width: 210px; }
+  li a:hover { text-decoration: underline; }
+  li span { color: #8a9099; }
+  .note { font-size: 13px; color: #8a9099; padding: 4px 20px 0; }
+  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>__TITLE__</h1>
+    <span class="sub">__SUBTITLE__</span>
+  </header>
+
+  <div class="card">
+    <h2>运行状态</h2>
+    <table>__ROWS__</table>
+  </div>
+
+  <div class="card">
+    <h2>可用入口</h2>
+    <ul>__LINKS__</ul>
+  </div>
+
+  <p class="note">业务接口全在 <code>/api/v1</code> 下，完整交互请打开 <a href="/docs">/docs</a>。
+  当前推理后端为 <code>__BACKEND__</code>。</p>
+</div>
+</body>
+</html>
+"""
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """应用工厂。测试可传入自定义 `Settings` 以隔离环境。"""
     settings = settings or get_settings()
@@ -187,6 +250,51 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
 
     # ---- 路由 ----
+    # ---- 根路径只读状态页 ----
+    # 本服务是纯 API（业务全在 `/api/v1`），根路径原为 404，人工查看时容易被误判为
+    # 「没起来」。此处只挂**只读**状态页：不写业务、不含受控内容（受控区仅以布尔
+    # `controlled_loaded` 呈现）、不参与 openapi（`include_in_schema=False`）。
+    @app.get("/", include_in_schema=False, response_class=HTMLResponse)
+    async def index() -> HTMLResponse:
+        guards = [
+            ("语义闸（Qwen3Guard）", "启用" if settings.guard_semantic_enabled else "未启用"),
+            ("词闸 enforce", "on" if settings.guard_enforce else "off（仅判定不阻断）"),
+            ("fail_closed", "是" if settings.guard_fail_closed else "否"),
+            ("输出侧动作", settings.guard_output_action),
+        ]
+        rows = [
+            ("服务状态", "运行中"),
+            ("提示词模板", f"{len(prompts.list())} 份"),
+            ("推理后端", settings.inference_backend),
+            ("词库规模", f"{lexicon.total_words} 条 / {lexicon.category_count} 类"
+                         + ("（检测不可用，fail-closed）" if not lexicon.usable else "")),
+            ("空类目录", f"{len(lexicon.empty_categories)} 个"),
+            ("受控区叠加", "已加载" if lexicon.controlled_loaded else "未加载"),
+        ]
+        rows += guards
+        tr = "".join(
+            "<tr><th>" + k + "</th><td>" + v + "</td></tr>" for k, v in rows
+        )
+        links = [
+            ("/docs", "接口文档（Swagger）"),
+            ("/health", "存活探针"),
+            ("/ready", "就绪探针（含模板校验）"),
+            ("/api/v1/templates", "模板清单"),
+            ("/api/v1/backends", "推理后端清单"),
+            ("/api/v1/safety/policy", "双闸策略视图"),
+        ]
+        li = "".join(
+            '<li><a href="' + h + '">' + h + "</a><span>" + n + "</span></li>"
+            for h, n in links
+        )
+        html = _INDEX_HTML
+        html = html.replace("__TITLE__", "AI 漫剧剧本与分镜提示词生成系统")
+        html = html.replace("__SUBTITLE__", f"v{app.version} · 旁路部署实例")
+        html = html.replace("__ROWS__", tr)
+        html = html.replace("__LINKS__", li)
+        html = html.replace("__BACKEND__", settings.inference_backend)
+        return HTMLResponse(html)
+
     app.include_router(health.router)
     app.include_router(v1_router.build_router(), prefix=settings.api_prefix)
     return app
