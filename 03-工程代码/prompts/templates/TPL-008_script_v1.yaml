@@ -1,9 +1,16 @@
 id: script_v1
 name: 剧本生成
-version: "2.1.3"
+version: "2.1.4"
 task_type: generate
 stage: script
 language: zh-CN
+
+# 版本说明（v2.1.4，2026-11-12）：**R29 收窄冲突解除注记**（`T-103` 快赢先行，项目方 2026-11-12 裁决；
+#   `DEV-20261109-005` §二把 `R29` 归因为「程序引导副作用——上下文收窄族」：模型自造锚／丢锚后，
+#   正文风格词落锚失败，冒烟实测『日式动画』『赛璐璐』6 处集中 S01 系三镜）。
+#   处置＝在 output 的 `style_anchors` 描述与「数量与口径要求 9」双处显式化
+#   「**上游素材／梗概已给出锚表时逐字承继——不改写、不缩略、不换词**」；
+#   纯提示词注记，`output` 字段集与判据水位（`R1`~`R43`）零改动 ⇒ 补丁版。
 
 # 版本说明（v2.1.2，2026-11-04）：**sampling.max_tokens 4096 → 8192**——`T-096` 线 3 受约束解码强制三幕（`R6` `minItems`）后，剧本产物实测 ≈4.7k tokens（`dialogue_service` L379 留痕）必撞 4096 上限 ⇒ `segment_truncated`（`ISSUE-058` 同族、script 层形态）。仅采样参数变更，`output` 字段与条款零改动。
 # 版本说明（v2.1.1，2026-11-03）：补**台词语速的可机械执行动作** —— 缺陷 C 的真根因在剧本层。
@@ -178,7 +185,7 @@ sections:
       "style_bible": {
         "style_id": "风格唯一标识（STYLE-01 起）",
         "style_prompt_zh": "全片风格串（30–80 字）：画风／质感／时代／色调；全片唯一，不得逐场改风格。不得写时相／天气依存元素（雨夜反光、雨丝质感、清晨漫射光等）——分时相光照归 lighting_default",
-        "style_anchors": ["固定 3–5 条风格锚点（如『日式动画电影质感』『冷灰蓝主色调』『赛璐璐上色』）；每条都须与场景、时相、天气无关——全片逐场逐字复用，任一条只在部分场次成立即为不合格"],
+        "style_anchors": ["固定 3–5 条风格锚点——**上游素材／梗概已给出 style_anchors 时逐字承继（不得改写、缩略或换词**：下游 R29 风格锚点封闭以锚原文为闭集，锚丢失或被改写后，正文里出现的风格词就会判『不在锚内』而返工）；素材未给出时才由本层拟定（如『日式动画电影质感』『冷灰蓝主色调』『赛璐璐上色』）；每条都须与场景、时相、天气无关——全片逐场逐字复用，任一条只在部分场次成立即为不合格"],
         "lighting_default": "默认光照；分时相的光照差异写在这里（如『夜景：低调光+湿地面反光；清晨：低饱和漫射光』），不写进风格串与风格锚",
         "negative_global": ["通用图像项（lowres／blurry／watermark／deformed 等）", "视频时域项（flicker／temporal jitter／frame inconsistency）", "形变延续项（clipping／morphing／limb popping）"],
         "design_source": "客户提供 | 系统提议待确认"
@@ -270,6 +277,8 @@ sections:
          （如『对白以身份代称、画面不出现姓名』）。**不得既标 false 又指望它被补上。**
     9. style_anchors 固定 3–5 条；style_prompt_zh 30–80 字；negative_global 须按通用图像项／视频时域项／
        形变延续项三类组织。**三者都要通过『跨场适用性』自检**：任一条只在部分场次成立，即为不合格。
+       ⚠️ **style_anchors 优先逐字承继**：上游素材／梗概已给出锚表时**照抄**（不改写、不缩略、不换词）——
+       自造锚会使下游正文风格词落锚失败（`R29` 收窄冲突族，`DEV-20261109-005` §二）。
     10. props **无道具时须为空数组**（字段在、值可为空）；有道具时每项须含 prop_id / name / role /
         appearance_lock_zh / design_source 五项。scenes[].props_present 只能引用已定义的 prop_id。
     11. source 与 design_source **都要写、且不得合并**：前者标承继类字段（name／role／identity）的来源，

@@ -149,7 +149,7 @@ def test_template_versions_bumped_with_manifest(repo: PromptRepository) -> None:
     """六模板版本已升位且 manifest↔正文一致（loader 一致性断言之外的显式锁）。"""
     expected = {
         "synopsis_v1": "2.0.1",
-        "script_v1": "2.1.3",
+        "script_v1": "2.1.4",
         "storyboard_v1": "2.3.2",
         "shot_prompt_v1": "2.3.2",
         "revise_v1": "1.2.1",
@@ -160,6 +160,21 @@ def test_template_versions_bumped_with_manifest(repo: PromptRepository) -> None:
     for tid, ver in expected.items():
         assert repo.get(tid).version == ver, f"{tid} 正文版本应为 {ver}"
         assert mv[tid] == ver, f"{tid} manifest 版本应为 {ver}"
+
+
+def test_tpl008_style_anchor_inheritance_note(repo: PromptRepository) -> None:
+    """T-103 快赢锁：TPL-008 v2.1.4 必须显式「style_anchors 逐字承继上游」注记（R29 收窄冲突解除）。
+
+    背景：`DEV-20261109-005` §二把 `R29` 归因为上下文收窄族——模型自造锚／丢锚后，
+    正文风格词落锚失败（冒烟『日式动画』『赛璐璐』6 处）。判据 `R29` 水位不动，
+    解除手段＝模板双处显式「逐字承继、不得改写缩略换词」。
+    """
+    text = (repo.manifest_path.parent / "templates" / "TPL-008_script_v1.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "逐字承继" in text, "TPL-008 必须含 style_anchors 逐字承继注记"
+    assert text.count("逐字承继（不得改写、缩略或换词") >= 1, "output 描述处须含承继约束"
+    assert "R29" in text, "注记须点名判据码 R29 以便追溯"
 
 
 def test_injection_channel_isolation_e2e(repo: PromptRepository) -> None:
