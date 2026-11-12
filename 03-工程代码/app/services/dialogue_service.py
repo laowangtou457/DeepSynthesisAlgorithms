@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+from functools import lru_cache
 from typing import Any
 
 from app.core.config import get_settings
@@ -105,6 +106,28 @@ def _client_texts(variables: dict[str, Any]) -> list[tuple[str, str]]:
             if joined:
                 out.append((name, joined))
     return out
+
+
+@lru_cache(maxsize=1)
+def _camera_no_amp_moves() -> frozenset[str]:
+    """`CFG-002` 中声明「不得携带幅度/速度」的运镜码集合（`T-103` 机械清洗的**唯一事实源**）。
+
+    ⚠️ 必须从词表现读、**不在本文件硬编码** `{static, pov}`：词表是契约，若未来新增
+    `no_amplitude_no_speed: true` 的运镜码，清洗侧与门禁侧要同时生效（否则出现
+    「门禁拦、清洗不修」的死循环）。
+    """
+    module = quality_gate.load_pack_validator()
+    if module is None:
+        return frozenset()
+    try:
+        vocab = module.load_yaml(module.CONFIG / "CFG-002_shot_vocab.yaml") or {}
+    except Exception:  # 词表不可读 ⇒ 不清洗（宁可不改，也不猜）
+        return frozenset()
+    return frozenset(
+        str(c.get("code"))
+        for c in (vocab.get("camera_move") or [])
+        if isinstance(c, dict) and c.get("no_amplitude_no_speed") and c.get("code")
+    )
 
 
 class DialogueService:
@@ -1450,6 +1473,85 @@ class DialogueService:
         }
 
 
+    def _normalize_camera_amp_speed(
+        self, tpl_stage: str, text: str
+    ) -> tuple[str, dict[str, Any] | None]:
+        """**`camera.amp_speed` 机械清洗**（`T-103` 结构性档；2026-11-12 项目方裁决允许）。
+
+        为什么改模型产物
+        ----------------
+        `delivery/validate_pack.py` ⑯：`camera.move ∈ {static, pov}` 时不得携带
+        `amplitude`／`speed`（静态机位无运镜幅度/速度，语义互斥）。实测 14/14 镜
+        模型**习惯性全填**档位、`xgrammar` 不支持 if-then 条件约束 ⇒ 生成期拦不住；
+        两次 attempt 均报、重试不可自愈（`DEV-20261109-005` §3）。
+
+        允许边界（裁决口径三件）
+        ----------------------
+        - **只删机械字段**：`amplitude`／`speed` 是枚举档位，不承载创作意图；`camera.move`／
+          `from`／`to`／`action.*` 一字不动，删后镜头语义不变；
+        - **不静默**：逐镜留痕（镜号／删的键／删前值）＋ 删前删后正文摘要，
+          并追加一条 `merge_warnings`，门禁报告可查「N 镜经机械清洗后通过」；
+        - **位置在引擎响应归一化层**（合并后、门禁前），与 `T-100` 标识归一化同层。
+        """
+        if not get_settings().camera_amp_speed_normalize:
+            return text, None
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) not in ("storyboard", "pack"):
+            return text, None
+        no_amp = _camera_no_amp_moves()
+        if not no_amp:
+            return text, None
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None  # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        shots = doc.get("shots")
+        if not isinstance(shots, list):
+            return text, None
+
+        before_digest = digest(text)
+        items: list[dict[str, Any]] = []
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            cam = shot.get("camera")
+            if not isinstance(cam, dict):
+                continue
+            move = cam.get("move")
+            if move not in no_amp:
+                continue
+            removed = {k: cam[k] for k in ("amplitude", "speed") if k in cam}
+            if not removed:
+                continue
+            for k in removed:
+                del cam[k]
+            items.append(
+                {
+                    "shot_id": shot.get("shot_id"),
+                    "move": move,
+                    "removed_keys": sorted(removed),
+                    "original": removed,
+                }
+            )
+        if not items:
+            return text, {
+                "cleaned": 0,
+                "action": "noop",
+                "source": "CFG-002.camera_move.no_amplitude_no_speed",
+            }
+        out = json.dumps(doc, ensure_ascii=False)
+        return out, {
+            "cleaned": len(items),
+            "items": items[:50],
+            "items_truncated": max(0, len(items) - 50),
+            "source": "CFG-002.camera_move.no_amplitude_no_speed",
+            "text_digest_before": before_digest,
+            "text_digest_after": digest(out),
+            "note": "机械字段清洗（非创作内容）；依据 T-103 裁决（2026-11-12）",
+        }
+
+
     async def _maybe_generate(
         self, rec: SessionRecord, target: Stage, variables: dict[str, Any]
     ) -> None:
@@ -1589,6 +1691,7 @@ class DialogueService:
         meta_overrides: dict[str, Any] | None = None
         derived_backfill: dict[str, Any] | None = None
         identity_norm: dict[str, Any] | None = None
+        amp_norm: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -1643,6 +1746,19 @@ class DialogueService:
                 final_text, identity_norm = self._normalize_storyboard_identity(
                     tpl_stage, final_text
                 )
+
+                # ---- `T-103` `camera.amp_speed` 机械清洗（引擎响应归一化层，门禁前）----
+                # ⚠️ 2026-11-12 项目方裁决：允许清洗、落本层。只删 `static`/`pov` 的
+                #    `amplitude`/`speed`（机械档位，非创作内容），逐镜留痕＋告警进
+                #    `merge_warnings`（不静默）。
+                final_text, amp_norm = self._normalize_camera_amp_speed(
+                    tpl_stage, final_text
+                )
+                if amp_norm and amp_norm.get("cleaned"):
+                    warnings.append(
+                        f"camera_amp_speed_normalize: {amp_norm['cleaned']} 镜经机械清洗后通过"
+                        "（static/pov 的 amplitude/speed 已删，明细见 artifact）"
+                    )
 
                 # ---- 安全双闸 · 输出侧（`T-005`：`SW-010` 输出复检）----
                 # ⚠️ 复检对象是**模型产出的那一份正文**（合并后的最终产物），
@@ -1706,6 +1822,10 @@ class DialogueService:
                     tpl_stage, text_penultimate, rec, backend, guard_input, guard_output
                 )
                 final_text, identity_norm = self._normalize_storyboard_identity(
+                    tpl_stage, final_text
+                )
+                # 回退路径同样须先清洗 amp_speed 再守恒兜底（幂等：已清洗过则为 noop）
+                final_text, amp_norm = self._normalize_camera_amp_speed(
                     tpl_stage, final_text
                 )
                 # 回退路径同样须先守恒兜底再派生回填（占位镜参与 `Σ`）；
@@ -1977,6 +2097,10 @@ class DialogueService:
             artifact["identity_normalize_changed"] = any(
                 bool(v.get("changed")) for v in identity_norm.values() if isinstance(v, dict)
             )
+        if amp_norm and amp_norm.get("cleaned"):
+            # `T-103` 机械清洗留痕：逐镜明细＋删前/删后正文摘要（不落原文）。
+            # ⚠️ 只在**确有清洗**时记：`cleaned=0` 的 noop 不写，避免污染每次生成。
+            artifact["camera_amp_speed_normalize"] = amp_norm
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:

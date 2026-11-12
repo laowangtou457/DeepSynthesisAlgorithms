@@ -347,6 +347,19 @@ class Settings(BaseSettings):
     #: 不一致时**不重编**（否则会把 `R9` 的错误洗白），只留痕 `skipped_unit_renumber`。
     storyboard_identity_normalize: bool = True
 
+    #: **`camera.amp_speed` 机械清洗**（`T-103` 结构性档；2026-11-12 项目方裁决允许）。
+    #: `true` ＝ 引擎响应归一化层对 `camera.move ∈ CFG-002.no_amplitude_no_speed`（`static`／`pov`）
+    #: 的镜头**删除** `camera.amplitude`／`camera.speed` 两个键。
+    #:
+    #: ⚠️ **为什么允许改模型产物**：这两字段是枚举档位（机械字段，非创作内容），`static`／`pov`
+    #: 语义上本无运镜幅度/速度；`xgrammar` 不支持 if-then 条件约束 ⇒ 生成期拦不住，
+    #: 两次 attempt 均报、重试不可自愈（`DEV-20261109-005` §3 六码分诊）。
+    #: ⚠️ **不静默**（裁决口径三件之二）：每个被清镜头都进 artifact
+    #: `camera_amp_speed_normalize.items`（镜号／删的键／删前值／前后正文摘要），
+    #: 并追加一条 `merge_warnings`，门禁报告可见「N 镜经机械清洗后通过」。
+    #: 回退＝`APP_CAMERA_AMP_SPEED_NORMALIZE=false`（回退后 `static` 带幅速仍按原样 BLOCK）。
+    camera_amp_speed_normalize: bool = True
+
     #: **`shot_prompt` 段级输入裁剪**（`T-101`／`PRO-015`，2026-11-05）。
     #: `true` ＝ `package_head`／`unit:<id>` 段的 `storyboard_json` 注入**按段裁剪的副本**
     #: （头部段去 `shots[]`；单元段只留本单元与本单元的镜），`script_json` 不裁。
