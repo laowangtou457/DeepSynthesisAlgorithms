@@ -94,7 +94,15 @@ class VllmBackend(TextGenerator):
 
     name = "vllm"
     context_window = 32768
-    max_output_tokens = 8192
+    # ⚠️ 本属性是**声明性元数据，无任何消费方**：请求实际携带的 `max_tokens`
+    #    由各阶段模板 `sampling.max_tokens` 决定（`_params_of` → `params.max_tokens`），
+    #    不经过这里。当前值对齐 TPL-009 v2.3.1+ 的 12288
+    #    （ISSUE-084 定界实测：14B / vLLM 0.10.2 在 response_format 约束解码下
+    #    `max_tokens=12288` 全额放行，`FULL_12288`，2026-11-13）。
+    #    ⚠️ 历史教训：旧值 8192 制造过「8192 上限」的词面假象，导致 r6 截断被
+    #    误归因到本行（「判据空跑/词面归因」家族）。勿据本属性推断截断行为，
+    #    判定截断上限须看模板 sampling 配置与服务端实测。
+    max_output_tokens = 12288
 
     def __init__(
         self,
