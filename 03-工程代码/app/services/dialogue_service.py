@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 from functools import lru_cache
 from typing import Any
 
@@ -778,9 +779,16 @@ class DialogueService:
                     )
                     schema_capped = True
             rendered = self.prompts.render(template, seg_vars)
+            # ---- 段级采样收紧（`ISSUE-084` 改判后 B3，DEV-20261113-006 续）----
+            # ⚠️ 只动 `package_head` 段：该段是 `meta`／`style_bible`／`characters`
+            # 等**元数据**，不是镜头创意正文，`SW-007` 的 0.7 只约束镜头正文。
+            # 不改分段编排、不改模板正文、不改判据——收紧只发生在这一次调用的入参上。
+            seg_params = _params_of(template.sampling)
+            if seg == "package_head":
+                seg_params = _package_head_sampling(seg_params)
             result = await backend.generate(
                 f"[stage:{tpl_stage}]\n{rendered.as_text()}",
-                _params_of(template.sampling),
+                seg_params,
                 seg_schema,
             )
             produced[seg] = result.text
@@ -2153,6 +2161,39 @@ def _params_of(sampling: dict[str, Any]) -> GenParams:
     if "stop" in sampling and isinstance(sampling["stop"], (list, tuple)):
         kwargs["stop"] = tuple(sampling["stop"])
     return GenParams(**kwargs)
+
+
+def _package_head_sampling(seg_params: GenParams) -> GenParams:
+    """`package_head` 段的采样参数收紧（`ISSUE-084` B3）。
+
+    只对**头部元数据段**生效，不影响 `unit:<id>`／`scene:<no>` 的镜头创意正文
+    （`SW-007` 给 `TPL-009` 定的 `temperature=0.7` 因而保持原样）。
+
+    ① 降温 0.7→0.4：`package_head` 产出的是 `meta`／`style_bible`／`characters`
+       等**元数据**而非镜头创意正文，需要的是稳定复述而非发散；降温抑制
+       自由文本 ramble。r6 run8 实测该段**真跑满 12288 tokens** 致整轮作废
+       （约 28 分钟/轮），而该段正常产出仅 ≈5.3K tokens——高温度下的
+       自由发挥是退化的可疑来源。
+    ② `max_tokens` 封顶 8192（快速失败）：正常产出 ≈5.3K 不受影响；真退化的
+       轮次从「12288 tokens／≈28 分钟」降到 8192 级，`T-086` 的按段重试代价
+       同步下降——把「整轮作废」压成「单段重试」。
+
+    两者均取 `min` 语义：模板本就比阈值更保守时（例如日后调低到
+    `temperature=0.3`）**不放大**，只收紧。
+
+    Args:
+        seg_params: 模板采样解析出的原始参数（`_params_of(template.sampling)`）。
+
+    Returns:
+        收紧后的**新** `GenParams`（`GenParams` 为 frozen dataclass，不改入参）。
+    """
+    # ⚠️ 常量内联而非新建设置项：这是一次针对观察轮的定向收口，
+    # 可调性由「删掉这几行」提供，不需要额外的配置面。
+    return replace(
+        seg_params,
+        temperature=min(seg_params.temperature, 0.4),
+        max_tokens=min(seg_params.max_tokens, 8192),
+    )
 
 
 def _as_text(artifact: Any) -> str:
