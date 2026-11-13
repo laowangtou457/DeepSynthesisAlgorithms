@@ -2482,7 +2482,14 @@ def validate_doc(doc, where, fname=None):
         #   · 顶层必备字段由 R27 统一核对（R5 的 need 表不列 pack，避免两处口径打架）；
         #   · 包内**无 unspecified 台账字段**（规范 §3.1 顶层**八段**无此段；v2.0 起为八段／9 键），故 R2 不适用——
         #     上游台账留在上游产物自身，本层不输出、不搬运、不重编号。
+        #   · ⚠️ 判定面补缺（`ISSUE-088`，2026-11-13）：`R10`／`R11` 此前只接线 `storyboard`
+        #     分支 ⇒ 交付包阶段运镜唯一性/单元成员数**从未被运行时判过**（「判据空跑」家族）。
+        #     负向样本现成：r6 `on/run7.product.json`（U04 push_in×2 漏检入库）＋
+        #     真模型 14B 包（U03 pan_left×2 同族复发）。规则实现与形态无关（`_units`/`_shots`），
+        #     pack 通用；三态化分母基线（N_MIN_DENOMINATOR=6）照常生效。
         rule_pack_required(doc, where)
+        rule_unit_size(doc, where)              # R10（ISSUE-088 补接线）
+        rule_unit_move_unique(doc, where)       # R11（ISSUE-088 补接线；负向样本 run7/real-14B）
         rule_pack_prop_anchor(doc, where)        # R35（v2.0 起为正向：道具锚一致性）
         rule_pack_no_extra_key(doc, where)       # R36
         rule_move_param_omission(doc, where)     # R26（分镜脚本与交付包共用）
