@@ -420,3 +420,48 @@ def test_acts_missing_key_is_still_caught_before_the_fourth_layer() -> None:
     assert verdict.ok is False
     assert verdict.reason == "artifact_shape_mismatch", verdict.reason
     assert verdict.detected != "script", verdict.detected
+
+
+# ============ ⑧ 长度截断也走同一条重试路（`ISSUE-090`；只重采坏段）
+def test_truncated_segment_is_retried_and_self_heals() -> None:
+    """`finish_reason=length` ⇒ **只重采被截断的段**，第二次正常 ⇒ 入库。
+
+    ⚠️ 为什么这条与 `ISSUE-094` 同批：实测 10 轮连跑里 **4 轮有 3 轮**死在截断
+    （`script` 整包／`storyboard` 的 `scene:3`／`shot_prompt` 的 `unit:U04`）——
+    「判出即抛」把一次可自愈的采样波动升级成整链 502，与 `acts[2]` 是同一类问题。
+    ⚠️ 只重跑坏段（`truncated_segments` 精确到段名）而不是整份计划：长产物整份重跑
+    要再花 15~20 分钟，坏段通常只占 1/4~1/3。
+    """
+    good = json.dumps(VALID_SCRIPT, ensure_ascii=False)
+    backend = ScriptedBackend([good, good], finish_reasons=["length", "stop"])
+    service, repo = _svc(backend)
+    rec = _record(repo)
+
+    _gen(service, rec)
+
+    assert len(backend.calls) == 2, "截断后必须重采一次（额度 2）"
+    art = rec.artifacts["script"]
+    hist = art["artifact_shape_retry"]["attempts_history"]
+    assert len(hist) == 1, hist
+    assert hist[0]["reason"] == "segment_truncated"
+    assert hist[0]["segments"] == ["all"], "重采范围必须精确到坏段"
+    # 产物仍是合法剧本（重采成功后照常入库）
+    assert art["artifact_shape"] == "script"
+
+
+def test_truncated_segment_exhausts_quota_then_raises() -> None:
+    """两次都截断 ⇒ **原样抛出**（原因码保留、尝试次数可查、非法产物不入库）。"""
+    good = json.dumps(VALID_SCRIPT, ensure_ascii=False)
+    backend = ScriptedBackend([good, good], finish_reasons=["length", "length"])
+    service, repo = _svc(backend)
+    rec = _record(repo)
+
+    with pytest.raises(AppError) as ei:
+        _gen(service, rec)
+
+    assert ei.value.code is ErrorCode.GENERATION_FAILED
+    assert ei.value.details["reason"] == "segment_truncated"
+    assert len(ei.value.details["shape_attempts"]) == 2
+    assert all(a["reason"] == "segment_truncated" for a in ei.value.details["shape_attempts"])
+    assert len(backend.calls) == 2, "额度用尽即停，不得无限重采"
+    assert "script" not in rec.artifacts, "被截断的产物不得入库"

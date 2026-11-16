@@ -2382,7 +2382,48 @@ class DialogueService:
                 # ⚠️ 实测：第 3 轮真跑分镜段 `finish_reason=stop` 却**远未触 `max_tokens`**，
                 #    产物在结构中间被截断 ⇒「撞长度上限」与「模型自终止在不完整结构上」
                 #    是**两种**失败，分开归因才能指对方向。
-                truncated_segments = self._guard_not_truncated(tpl_stage, seg_trace)
+                #
+                # ---- `ISSUE-090`：截断 ⇒ **只重采样被截断的段**（`ISSUE-094` 同批机制）----
+                # ⚠️ 为什么归到这一路：截断是**单次采样撞上 `max_tokens`** 的随机后果
+                #    （同一模板同一输入可产出合法产物），属形态闸家族；而「判出即抛」
+                #    会把一次可自愈的采样波动升级成整链 502（实测 10 轮连跑 4 轮里 3 轮死于此）。
+                # ⚠️ 只重跑**坏段**：`truncated_segments` 精确到 `scene:3`／`unit:U04`；
+                #    整份计划重跑在长产物上要再花 15~20 分钟，而坏段通常只占 1/4~1/3。
+                # ⚠️ 额度与形态闸共用（`max_attempts`），判停仍在下面按需 `continue`／`raise`。
+                try:
+                    truncated_segments = self._guard_not_truncated(tpl_stage, seg_trace)
+                except AppError as exc:
+                    bad_segs = [str(s) for s in ((exc.details or {}).get("truncated_segments") or [])]
+                    trunc_reason = str((exc.details or {}).get("reason") or "")
+                    shape_attempts.append(
+                        {
+                            "attempt": attempt,
+                            "reason": trunc_reason,
+                            "stage": tpl_stage,
+                            "shape": artifact_contract.STAGE_TO_SHAPE.get(tpl_stage),
+                            "path": None,
+                            "segments": bad_segs,
+                            "error": str(exc.message or "")[:200],
+                        }
+                    )
+                    if trunc_reason == "segment_truncated" and attempt < max_attempts and bad_segs:
+                        retry_segs = [s for s in plan if s in bad_segs] or list(plan)
+                        logger.info(
+                            "segment_truncated_retry",
+                            extra={
+                                "extra_fields": {
+                                    "session_id": rec.session_id,
+                                    "stage": tpl_stage,
+                                    "attempt": attempt,
+                                    "next_attempt": attempt + 1,
+                                    "truncated_segments": bad_segs,
+                                    "retry_segments": retry_segs,
+                                }
+                            },
+                        )
+                        continue
+                    exc.details["shape_attempts"] = list(shape_attempts)
+                    raise
 
                 ordered = [texts_by_seg[s] for s in plan if s in texts_by_seg]
                 if is_multi_part(plan):

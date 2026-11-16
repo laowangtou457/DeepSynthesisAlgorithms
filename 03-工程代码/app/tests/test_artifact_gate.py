@@ -218,8 +218,18 @@ def test_shape_gate_stops_state_machine_from_advancing() -> None:
 
 
 def test_length_finish_reason_is_attributed_as_truncation() -> None:
-    """「撞长度上限」与「结构中间自终止」**分开归因**——两者修法不同。"""
-    backend = ScriptedBackend(['{"title": "被切断"'], finish_reasons=["length"])
+    """「撞长度上限」与「结构中间自终止」**分开归因**——两者修法不同。
+
+    ⚠️ `ISSUE-090`／`ISSUE-094` 起：截断会先**重采一次**（额度 `shape_gate_max_attempts`，
+    默认 2）⇒ 本用例须让**两次都截断**，才验得到「用尽额度后的最终归因」；
+    同时也锁住「重采次数」＝2（不得无限重采）。
+    ⚠️ 若重采后失败形态变了（例如第二次返回空对象 ⇒ `artifact_shape_mismatch`），
+    最终 `details["reason"]` 记**最后一次**的形态码，而 `details["shape_attempts"]`
+    仍保留第 1 次的 `segment_truncated`——归因不丢，这也是下面同时断言 history 的原因。
+    """
+    backend = ScriptedBackend(
+        ['{"title": "被切断"', '{"title": "又被切断"'], finish_reasons=["length", "length"]
+    )
     service, repo = _svc(backend)
     rec = _record(repo)
 
@@ -228,6 +238,9 @@ def test_length_finish_reason_is_attributed_as_truncation() -> None:
 
     assert ei.value.details["reason"] == "segment_truncated"
     assert ei.value.details["truncated_segments"] == ["all"]
+    assert len(backend.calls) == 2, "截断重采额度为 2（含首次），用尽即停"
+    attempts = ei.value.details["shape_attempts"]
+    assert len(attempts) == 2 and all(a["reason"] == "segment_truncated" for a in attempts)
 
 
 def test_valid_artifact_is_stored_and_records_checked_true() -> None:
