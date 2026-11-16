@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/TPL-009_shot_prompt_v1.yaml
-    version: "2.3.3"
+    version: "2.3.4"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:

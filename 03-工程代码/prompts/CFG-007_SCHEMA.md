@@ -525,6 +525,27 @@
 #   R28 PACK_APPEARANCE_ECHO 正文（`prompt_zh`／`prompt_en`）不得复述 `characters[].appearance_lock_zh|_en`。
 #                           ⚠️ **两侧判据不同**：中文取**连续 3 字**、英文取**连续 3 个实词**（先剔停用词）——
 #                           英文 3 个字符只是词内片段（`the`／`old`），2026-10-13 首跑即误报 773 处。
+#                           ⚠️ **投影规则⑥（2026-11-16 项目方裁决批准；本层约定的第 6 条机械改写）**：
+#                              交付包层由**服务层**（`DialogueService._clean_pack_appearance_echo`）
+#                              逐镜比对正文与包内自带外观锚；命中即**删除命中所在的整条子句**，
+#                              删后**用本判据自己的函数复算**（`_anchor_ngrams`／`_en_content_ngrams`／
+#                              `CJK_RUN_RE`／`ANCHOR_NGRAM`，**服务层不抄第二份口径**），归零才提交。
+#                              边界六条：① **性质是投影不是改创作**（删的是规范已明令不得进正文的
+#                              冗余复述，不是创作内容）；② **删除粒度＝完整子句**（中文按
+#                              `。！？；，、`、英文按 `. ! ? ; ,` 切；不做逐词手术、不改写句子；
+#                              删后折叠相邻分隔符、缺终止符只补标点）；③ **删后必须复算、不动点
+#                              迭代 ≤5 轮**，仍命中 ⇒ **放弃并如实登记** `skipped_unresolvable`；
+#                              ④ **不删空保护**（中文去空白 <10 字／英文 <6 实词 ⇒ 整镜回滚
+#                              `skipped_would_empty`，原文一字不动）；⑤ **跳过 `The camera` 句与占位镜**
+#                              ⇒ 必须排在投影规则⑤ **之前**（先清洗、后合成）；⑥ **只改**
+#                              `prompt_zh`／`prompt_en`（`camera.*`／`duration_ms`／`shot_id` 一字不动）。
+#                              开关：`APP_PACK_APPEARANCE_ECHO_CLEAN`（默认 true）。
+#                              ⚠️ 判据 `R28` **一字未动**（3 字／3 实词阈值属判据口径，改它须另案裁决）；
+#                              本项是既有义务「正文不得复述外观」在服务层的**机械执行**，
+#                              模型义务未减（`TPL-009` 的 guards「外观词扫描」一字未动）。
+#                              为什么不靠改模板：真机 **6/6 挂 R28**，命中全是 3 字／3 实词**最小窗口**
+#                              （`潜水服`×25／`orange rescue suit`×7／`深蓝色`×3），而模板同时要求
+#                              正文密度下界 ⇒ 模型唯一逃逸口就是服装／体型词 ⇒ 措辞路线已到顶。
 #   R29 PACK_PROMPT_HYGIENE ① 无模型参数指令；② 无负向残留写法；③ 风格锚点封闭（见 style_anchors 条目）。
 #   R30 AIGC_META           见 AIGC.* 条目。
 #   R31 PACK_DURATION_LOCK  **需 `--storyboard`**：① `meta.total_duration_ms` = Σ各镜 `duration_ms` 自洽；

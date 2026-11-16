@@ -213,6 +213,184 @@ def _render_camera_sentence(base: str, cam: dict[str, Any]) -> str:
     return out.strip()
 
 
+#: **投影规则⑥**（外观复述机械清洗）的机械常量。
+#: ⚠️ 判据侧的**命中口径**（中文 3 字／英文 3 实词、`CJK_RUN_RE`、`ANCHOR_NGRAM`）**不在本文件**：
+#:    一律经 `quality_gate.load_engine_validator()` 从 `prompts/validate_output.py` 取，
+#:    本文件只持有「删多少算删空」「迭代几轮算不收敛」这两条**服务层策略**参数。
+#:
+#: - `_APPEARANCE_ECHO_MAX_ROUNDS`：子句删除的**不动点迭代**上限。命中可能**跨子句拼出伪 gram**
+#:   （删掉中间一句后，两侧汉字重新连成一段 ⇒ 新的 3 字窗口），故删一轮必须**整段复算**；
+#:   5 轮是「一轮至少删一个子句」的宽松上界（真实正文子句数远小于此，实测 1～2 轮收敛）。
+#: - `_APPEARANCE_ECHO_MIN_ZH_CHARS`／`_APPEARANCE_ECHO_MIN_EN_WORDS`：**不删空保护**阈值。
+#:   规范 §3.7.6 的正文下界（中文 90 字／英文 450 字符）是**建议值**且远高于「可读」底线，
+#:   直接拿它当回滚线会让绝大多数命中都回滚（等于机制失效）；这里取「**还读得懂**」的硬底：
+#:   中文去空白后 ≥10 字、英文 ≥6 实词。删到低于此值 ⇒ **整镜回滚**（不制造新的 `R27` 缺陷）。
+_APPEARANCE_ECHO_MAX_ROUNDS = 5
+_APPEARANCE_ECHO_MIN_ZH_CHARS = 10
+_APPEARANCE_ECHO_MIN_EN_WORDS = 6
+
+#: 子句分隔符族（删除粒度＝**完整子句**）：中文按 `。！？；，、`、英文按 `. ! ? ; ,`。
+#: ⚠️ 英文的 `.` 会把 `2.5`／`Mr.` 一并切断，但提示词正文里罕见，且判据本身也不区分
+#:    「句」与「分句」——宁可粗切（切细了最多多删一个片段，切粗了会整句消失）。
+_ZH_CLAUSE_SEPS = "。！？；，、"
+_EN_CLAUSE_SEPS = ".!?;,"
+#: 同类分隔符连排（删子句后的残留）：折叠为一个，**保留后一个**（见 `_join_clauses`）。
+_ZH_SEP_RUN_RE = re.compile(r"[。！？；，、]{2,}")
+_EN_SEP_RUN_RE = re.compile(r"[.!?;,]{2,}")
+_WS_RE = re.compile(r"\s")
+
+
+def _split_clauses(text: str, seps: str) -> list[tuple[str, str]]:
+    """把正文切成 `[(子句, 尾随分隔符), …]`（**保留分隔符**，删子句时不粘连相邻内容）。
+
+    ⚠️ 为什么按**子句**切而不按词切：投影规则⑥ 的口径是「删冗余」，**不是改写句子**——
+       逐词手术会把一句话抠成病句，且等于服务层改写模型语义（越界）。删**完整子句**
+       是唯一既能清掉命中锚、又不改变剩余句子语义的粒度（裁决口径，写进 §3.7.2）。
+    """
+    tokens: list[tuple[str, str]] = []
+    buf: list[str] = []
+    for ch in text:
+        if ch in seps:
+            tokens.append(("".join(buf), ch))
+            buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        tokens.append(("".join(buf), ""))
+    return tokens
+
+
+def _join_clauses(
+    tokens: list[tuple[str, str]],
+    *,
+    sep_run_re: Any,
+    lead_strip: str,
+    tail_strip: str,
+    terminators: str,
+    default_terminator: str,
+) -> str:
+    """把 `[(子句, 分隔符), …]` 重新拼回正文（**机械重组**，不改写任何词）。
+
+    三处机械动作（逐条可解释，均不承载创作意图）：
+    ① 子句被删后相邻两个分隔符会连排（`…滑落，；她占据…`）⇒ **折叠为一个、保留后一个**
+       （后一个正是原句该处的层级标点，折叠后与「直接删掉前半句」读起来一致）；
+    ② 首尾残留的分隔符／空白去掉（否则正文会以 `，`／`,` 起止，属脏化）；
+    ③ 收尾若已无终止符，补本语言的默认终止符（`。`／`.`）——**只补标点，不补内容**
+       （与投影规则⑤ 的 `terminator_added` 同性质）。
+    """
+    out = "".join(f"{clause}{sep}" for clause, sep in tokens)
+    out = sep_run_re.sub(lambda m: m.group(0)[-1], out)
+    out = out.strip()
+    out = out.lstrip(lead_strip)
+    out = out.rstrip(tail_strip)
+    out = out.strip()
+    if out and out[-1] not in terminators:
+        out = out + default_terminator
+    return out
+
+
+def _zh_appearance_hit(
+    cjk_run_re: Any, anchor_n: int, text: str, grams: frozenset[str] | set[str]
+) -> str | None:
+    """中文正文是否复述外观锚（**与 `R28` 第 1815-1818 行完全同一口径**）。
+
+    只在**汉字连续段**内滑 `ANCHOR_NGRAM` 窗口（避免中英混排的跨段伪命中），
+    窗口落在 `grams` 里即命中。返回首个命中的 gram（供留痕），无命中返回 `None`。
+    """
+    if not text:
+        return None
+    for run in cjk_run_re.findall(text):
+        for i in range(len(run) - anchor_n + 1):
+            gram = run[i:i + anchor_n]
+            if gram in grams:
+                return gram
+    return None
+
+
+def _en_appearance_hit(
+    en_content_ngrams: Any, text: str, grams: frozenset[str] | set[str]
+) -> str | None:
+    """英文正文是否复述外观锚（**与 `R28` 第 1828-1831 行完全同一口径**：实词 3-gram 求交）。"""
+    if not text:
+        return None
+    inter = en_content_ngrams(text) & grams
+    return sorted(inter)[0] if inter else None
+
+
+def _scrub_appearance_echo_field(
+    raw: str,
+    *,
+    lang: str,
+    hit: Any,
+    is_too_short: Any,
+) -> tuple[str, str | None, str, int]:
+    """对**一个字段**（某镜的 `prompt_zh` 或 `prompt_en`）做子句级清洗，迭代到不动点。
+
+    :param lang: `"zh"`／`"en"`（决定分隔符族与默认终止符）。
+    :param hit: `(text) -> 命中的 gram 或 None`，**判据口径由调用方从 engine 取**（不在此重写）。
+    :param is_too_short: `(text) -> bool`，**不删空保护**的度量。
+    :returns: `(新文本, 首个命中 gram, 状态, 迭代轮次)`；
+        状态 ∈ `scrubbed`（已删且复算归零）／`unresolvable`（删不动或 5 轮仍命中）／
+        `would_empty`（删到过短 ⇒ 已回滚）／`nothing`（本来就不命中）。
+
+    ⚠️ **不硬凑**：`unresolvable` 一律返回**当前文本**并如实登记，交判据 `R28` 判失败——
+       本机制的价值是把「可自动消解的命中」消解掉，不是把 `R28` 洗绿。
+    """
+    if lang == "zh":
+        seps, sep_run_re = _ZH_CLAUSE_SEPS, _ZH_SEP_RUN_RE
+        lead_strip, tail_strip = "，、；", "，、；"
+        terminators, default_terminator = "。！？", "。"
+    else:
+        seps, sep_run_re = _EN_CLAUSE_SEPS, _EN_SEP_RUN_RE
+        lead_strip, tail_strip = ",;", ",;"
+        terminators, default_terminator = ".!?", "."
+
+    first_gram = hit(raw)
+    if first_gram is None:
+        return raw, None, "nothing", 0
+
+    cur = raw
+    rounds = 0
+    while rounds < _APPEARANCE_ECHO_MAX_ROUNDS:
+        gram_now = hit(cur)
+        if gram_now is None:
+            break
+        rounds += 1
+        kept: list[tuple[str, str]] = []
+        dropped = False
+        for clause, sep in _split_clauses(cur, seps):
+            if clause and hit(clause) is not None:
+                if lang == "en" and clause.lstrip().startswith("The camera"):
+                    # **保护投影规则⑤ 补的句子**（同时也保护模型自己写对的句子）：
+                    # 运镜句是本层刚投影进来的合规内容，删它等于亲手打开 `R34` 的洞。
+                    kept.append((clause, sep))
+                    continue
+                kept.append(("", sep))
+                dropped = True
+            else:
+                kept.append((clause, sep))
+        if not dropped:
+            # 命中只落在受保护子句（`The camera …`）内 ⇒ 无可删子句，**如实登记**
+            return cur, gram_now, "unresolvable", rounds
+        cur = _join_clauses(
+            kept,
+            sep_run_re=sep_run_re,
+            lead_strip=lead_strip,
+            tail_strip=tail_strip,
+            terminators=terminators,
+            default_terminator=default_terminator,
+        )
+
+    leftover = hit(cur)
+    if leftover is not None:
+        # 5 轮仍命中（跨子句伪 gram 或只剩受保护子句）⇒ 放弃并如实登记
+        return cur, leftover, "unresolvable", rounds
+    if is_too_short(cur):
+        # **不删空保护**：删到过短 ⇒ 整镜回滚（原文一字不动），不制造新的正文缺失缺陷
+        return raw, first_gram, "would_empty", rounds
+    return cur, first_gram, "scrubbed", rounds
+
+
 class DialogueService:
     """会话编排服务。"""
 
@@ -1781,6 +1959,193 @@ class DialogueService:
         }
 
 
+    def _clean_pack_appearance_echo(
+        self, tpl_stage: str, text: str
+    ) -> tuple[str, dict[str, Any] | None]:
+        """**投影规则⑥：正文外观复述的机械清洗**（项目方 2026-11-16 裁决批准）。
+
+        为什么改模型产物
+        ----------------
+        `R28 PACK_APPEARANCE_ECHO`（`prompts/validate_output.py` 的
+        `rule_pack_appearance_echo`）要求交付包 `shots[].prompt_zh`／`prompt_en` 的**正文
+        不得复述** `characters[].appearance_lock_zh|_en`。真机 **6 轮跑测 6/6 挂 `R28`**，
+        命中片段集中在 `潜水服`×25／`orange rescue suit`×7／`深蓝色`×3——**全是 3 字／3 实词
+        的最小窗口**，靠模型改措辞无法稳定规避：模板 `TPL-009:641-643` 已明令「外观命中即删」，
+        同模板又要求「正文密度下界」（八维双落地）⇒ 模型唯一逃逸口就是服装/体型词。
+        **措辞路线已到顶**（与投影规则⑤ 同性质的结论），只能服务层机制化。
+
+        允许边界（裁决口径五件）
+        ----------------------
+        - **性质是投影规则⑥，不是「改创作」**：与 ⑤ 同族、方向相反——⑤ 是「补格式」、
+          ⑥ 是「删冗余」。删掉的**不是**创作内容，而是「规范已明令不得进正文的冗余复述」
+          （§3.4「外观只在此处定义一次」）；
+        - **删除粒度＝完整子句**：不做逐词手术、不改写句子——逐词抠会把句子抠成病句，
+          而服务层改写语义即越界；
+        - **删后必须复算**：一律用**判据自身**的 `_anchor_ngrams`／`_en_content_ngrams`／
+          `CJK_RUN_RE`／`ANCHOR_NGRAM`（经 `quality_gate.load_engine_validator()` 取，
+          **本文件不重写 3 字／3 实词规则**）判定归零；仍命中则**放弃并如实登记**
+          `skipped_unresolvable`（不许硬凑、不许掩盖，交 `R28` 判失败）；
+        - **不删空保护**：删到「中文去空白后 <10 字／英文 <6 实词」⇒ **整镜回滚**
+          （`skipped_would_empty`，原文不动）——否则会把 `R27`（正文非空/可读）的洞
+          洗成新缺陷；
+        - **只改** `prompt_zh`／`prompt_en`：`camera`／`duration_ms`／`shot_id` 等字段一字不动。
+
+        跳过与保护
+        ----------
+        - **占位镜**（`prompt_en` 为空／缺失）不参与：服务层占位镜无外观锚，
+          且 `_reconcile_pack_conservation` 明令其 `prompt_en` 留空「不伪造创作内容」；
+        - **英文 `The camera` 起句的子句一律不删**：那是投影规则⑤ 刚投影进来的合规内容
+          （删它等于打开 `R34` 的洞），同时也保护模型自己写对的那句；若命中只落在该句内
+          ⇒ 该镜英文侧记 `skipped_unresolvable`。
+
+        幂等性
+        ------
+        清洗过的正文再进来必然 `R28` 已归零 ⇒ noop；noop 时**返回原 text 不重序列化**
+        （字节级不变，与 `_ensure_en_camera_sentence` 同纪律）。
+
+        :returns: `(新文本, 留痕 dict 或 None)`；开关关闭／非 `pack` 形态／判据不可得／
+            不可解析／无外观锚 ⇒ `(text, None)`。
+        """
+        if not get_settings().pack_appearance_echo_clean:
+            return text, None
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) != "pack":
+            return text, None
+        # ---- 判据口径**单点**：一律从引擎判据模块取，本文件不持有 3 字／3 实词规则 ----
+        engine = quality_gate.load_engine_validator()
+        if engine is None:
+            return text, None  # 判据不可得 ⇒ 不猜口径，整体跳过（fail-open）
+        anchor_ngrams = getattr(engine, "_anchor_ngrams", None)
+        en_content_ngrams = getattr(engine, "_en_content_ngrams", None)
+        cjk_run_re = getattr(engine, "CJK_RUN_RE", None)
+        anchor_n = getattr(engine, "ANCHOR_NGRAM", None)
+        if (
+            not callable(anchor_ngrams)
+            or not callable(en_content_ngrams)
+            or cjk_run_re is None
+            or not isinstance(anchor_n, int)
+        ):
+            return text, None
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None  # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        shots = doc.get("shots")
+        if not isinstance(shots, list):
+            return text, None
+
+        # ---- 锚：只取 `characters[]`，与 `R28` 同源（`props[]` 不在 R28 的比对面内）----
+        zh_grams: set[str] = set()
+        en_grams: set[str] = set()
+        for character in (doc.get("characters") or []):
+            if not isinstance(character, dict):
+                continue
+            lock_zh = character.get("appearance_lock_zh")
+            if isinstance(lock_zh, str) and lock_zh.strip():
+                zh_grams |= anchor_ngrams(lock_zh)
+            lock_en = character.get("appearance_lock_en")
+            if isinstance(lock_en, str) and lock_en.strip():
+                en_grams |= en_content_ngrams(lock_en)
+        if not (zh_grams or en_grams):
+            return text, None
+
+        before_digest = digest(text)
+        items: list[dict[str, Any]] = []
+        scrubbed = 0
+        skipped_unresolvable = 0
+        skipped_would_empty = 0
+        unchanged = 0
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            shot_id = shot.get("shot_id")
+            for lang, key, grams in (
+                ("zh", "prompt_zh", zh_grams),
+                ("en", "prompt_en", en_grams),
+            ):
+                if not grams:
+                    continue
+                raw = shot.get(key)
+                if not isinstance(raw, str) or not raw.strip():
+                    # 占位镜／空字段：**不参与**（不是「查过没问题」，故不计入 `unchanged`）
+                    continue
+                if lang == "zh":
+                    def _hit_zh(candidate: str, _grams=grams) -> str | None:
+                        return _zh_appearance_hit(cjk_run_re, anchor_n, candidate, _grams)
+
+                    def _too_short_zh(candidate: str) -> bool:
+                        return len(_WS_RE.sub("", candidate)) < _APPEARANCE_ECHO_MIN_ZH_CHARS
+
+                    new_value, gram, status, rounds = _scrub_appearance_echo_field(
+                        raw, lang=lang, hit=_hit_zh, is_too_short=_too_short_zh
+                    )
+                else:
+                    def _hit_en(candidate: str, _grams=grams) -> str | None:
+                        return _en_appearance_hit(en_content_ngrams, candidate, _grams)
+
+                    def _too_short_en(candidate: str) -> bool:
+                        # 实词数用**判据自己的**切词与停用词口径（n=1 ⇒ 实词集合）
+                        return (
+                            len(en_content_ngrams(candidate, 1)) < _APPEARANCE_ECHO_MIN_EN_WORDS
+                        )
+
+                    new_value, gram, status, rounds = _scrub_appearance_echo_field(
+                        raw, lang=lang, hit=_hit_en, is_too_short=_too_short_en
+                    )
+                if status == "scrubbed":
+                    shot[key] = new_value
+                    scrubbed += 1
+                    items.append(
+                        {
+                            "shot_id": shot_id,
+                            "lang": lang,
+                            "hit_gram": gram,
+                            "removed_chars": len(raw) - len(new_value),
+                            # 轮次：多数命中 1 轮即归零；>1 说明存在跨子句伪 gram
+                            "rounds": rounds,
+                        }
+                    )
+                elif status == "unresolvable":
+                    skipped_unresolvable += 1
+                elif status == "would_empty":
+                    skipped_would_empty += 1
+                else:
+                    unchanged += 1
+        if not items:
+            # **字节级 noop**：不重序列化（`json.dumps` 会改缩进／转义，等于白改一遍产物）
+            return text, {
+                "field": "shots[].prompt_zh|prompt_en",
+                "rule": "R28",
+                "changed": False,
+                "action": "noop",
+                "scrubbed": 0,
+                "skipped_unresolvable": skipped_unresolvable,
+                "skipped_would_empty": skipped_would_empty,
+                "unchanged": unchanged,
+                "items": [],
+                "items_truncated": False,
+                "source": "R28.anchor_ngram.cjk3/en3content",
+            }
+        out = json.dumps(doc, ensure_ascii=False)
+        return out, {
+            "field": "shots[].prompt_zh|prompt_en",
+            "rule": "R28",
+            "changed": True,
+            "action": "scrubbed",
+            "scrubbed": scrubbed,
+            "skipped_unresolvable": skipped_unresolvable,
+            "skipped_would_empty": skipped_would_empty,
+            "unchanged": unchanged,
+            "items": items[:50],
+            "items_truncated": len(items) > 50,
+            "digest_before": before_digest,
+            "digest_after": digest(out),
+            "source": "R28.anchor_ngram.cjk3/en3content",
+            "note": "投影规则⑥：只删命中外观锚的完整子句，删后按判据复算归零才提交；"
+            "删到过短则整镜回滚；`The camera` 句与占位镜跳过；依据项目方 2026-11-16 裁决",
+        }
+
     async def _maybe_generate(
         self, rec: SessionRecord, target: Stage, variables: dict[str, Any]
     ) -> None:
@@ -1922,6 +2287,7 @@ class DialogueService:
         identity_norm: dict[str, Any] | None = None
         amp_norm: dict[str, Any] | None = None
         en_camera_fill: dict[str, Any] | None = None
+        appearance_echo_clean: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -1988,6 +2354,27 @@ class DialogueService:
                     warnings.append(
                         f"camera_amp_speed_normalize: {amp_norm['cleaned']} 镜经机械清洗后通过"
                         "（static/pov 的 amplitude/speed 已删，明细见 artifact）"
+                    )
+
+                # ---- **投影规则⑥**：R28 正文外观复述机械清洗（项目方 2026-11-16 裁决）----
+                # ⚠️ **位置四条硬约束**（改动前请逐条核对）：
+                #    ① 在 `_normalize_camera_amp_speed` **之后**——与既有投影链同层，
+                #       保持「字段归一 → 正文清理 → 正文补全」的次序；
+                #    ② 在 `_ensure_en_camera_sentence` **之前**——**先清洗、后合成**。
+                #       否则 ⑤ 补出的 `The camera` 句进入正文后再清洗，会多一次
+                #       「这句要不要删」的判断面（极易把刚补的合规句误伤）；
+                #    ③ 在 `text_penultimate = final_text`（下方真值覆盖前）与 `_guard_output`
+                #       **之前**——否则本步的正文改动会被 `artifact["service_truth_text_changed"]`
+                #       误记成「服务层真值覆盖改了正文」（⑤ 已踩过这个归因坑）；
+                #    ④ 在 `_reconcile_pack_conservation`（守恒兜底）**之前**——占位镜是
+                #       服务层构造、无外观锚，放前面天然免疫（且不替占位镜改正文）。
+                final_text, appearance_echo_clean = self._clean_pack_appearance_echo(
+                    tpl_stage, final_text
+                )
+                if appearance_echo_clean and appearance_echo_clean.get("scrubbed"):
+                    warnings.append(
+                        f"appearance_echo_clean: {appearance_echo_clean['scrubbed']} 处正文外观复述"
+                        "已按子句删除（投影规则⑥，明细见 artifact）"
                     )
 
                 # ---- **投影规则⑤**：R34 英文运镜句机械补全（项目方 2026-11-16 裁决）----
@@ -2079,6 +2466,19 @@ class DialogueService:
                 final_text, amp_norm = self._normalize_camera_amp_speed(
                     tpl_stage, final_text
                 )
+                # 回退路径同样须**先清外观复述、再补运镜句**（同主路径 ② 的理由；
+                # 幂等：`text_penultimate` 已清过 ⇒ 此处必为 noop，仍是同一口径的兜底）。
+                final_text, appearance_echo_now = self._clean_pack_appearance_echo(
+                    tpl_stage, final_text
+                )
+                if appearance_echo_now and appearance_echo_now.get("scrubbed"):
+                    appearance_echo_clean = appearance_echo_now
+                    _c = (
+                        f"appearance_echo_clean: {appearance_echo_now['scrubbed']} 处正文外观复述"
+                        "已按子句删除（投影规则⑥，明细见 artifact）"
+                    )
+                    if _c not in warnings:
+                        warnings.append(_c)
                 # 回退路径同样须补运镜句（同上：`text_penultimate` 已含补句 ⇒ 此处必为 noop；
                 # 若首轮补句发生在快照之后（不该发生），这里仍是同一口径的兜底）。
                 final_text, en_camera_fill_now = self._ensure_en_camera_sentence(
@@ -2371,6 +2771,13 @@ class DialogueService:
             #    但**一旦补过就必须留**：否则「产物里的运镜句是模型写的还是服务层补的」
             #    无从区分，那是本工程明令禁止的「静默修补」。
             artifact["en_camera_sentence"] = en_camera_fill
+        if appearance_echo_clean and appearance_echo_clean.get("scrubbed"):
+            # 投影规则⑥留痕（项目方 2026-11-16 裁决）：逐镜「镜号／语言／命中 gram／删除长度」
+            # ＋删前/删后正文摘要。⚠️ **不落原文**（与 `camera_amp_speed_normalize` 同纪律）：
+            # 只留 gram 与长度，正文本身在产物里；留痕再抄一份等于把外观描写**二次散布**。
+            # ⚠️ 同 `amp_norm` 纪律——`scrubbed=0` 的 noop 不写（不污染每次生成）；
+            #    一旦删过就必须留：否则「正文少了那句是模型没写还是服务层删的」无从区分。
+            artifact["appearance_echo_clean"] = appearance_echo_clean
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:

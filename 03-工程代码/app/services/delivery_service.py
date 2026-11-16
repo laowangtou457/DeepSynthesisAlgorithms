@@ -86,7 +86,7 @@ _PACK_ID_RE = re.compile(r"^(?:\{\{[A-Z_]+\}\}|[A-Z0-9]{2,8})-PK-\d{8}-[0-9A-F]{
 #: 清单 `spec_version` 的取值（依据的交付规范版本）。
 #: ⚠️ 该常量**必须**与 `01-架构设计/SPEC-008_*.md` 正文版本一致 ——
 #: 由 `tests/test_delivery.py::test_spec_version_matches_norm` **互锁对拍**（`PRO-012` 变更三件套）。
-SPEC_VERSION = "NORM-DELIVERY-001 v2.5"
+SPEC_VERSION = "NORM-DELIVERY-001 v2.6"
 
 
 def _load_human_review(settings: Any, pack_id: str) -> list[dict[str, Any]]:
