@@ -311,6 +311,66 @@ def test_native_r27_stays_retryable() -> None:
     )
 
 
+def test_r28_and_r34_are_non_retryable() -> None:
+    """`R28`／`R34` 必须进 `non_retryable`（项目方 2026-11-16 裁决；范式同 `R27P`／T-106 裁决 A）。
+
+    实测依据：`r6` 复验批 12 轮（`DEV-20261112-012`）`R28` 与 `R34` 均 **12/12 挂、
+    自愈 0/12**；`ab_t101_r6/on/run1` 更实证「**越试越差**」（`R34` attempt1 缺 1 镜 →
+    attempt2 缺 4 镜）。⇒ 把它们当可重试＝每轮白烧一次 `shot_prompt` 重采样（约 304 s）。
+
+    **双向断言**：两个码只出现在 `non_retryable`，`retryable` 中不得出现；
+    同时反向锁住「不可重试 ≠ 放行」——`ok` 仍必须是 `False`。
+    """
+    doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
+    doc["characters"] = [{
+        "character_id": "CHR-01", "name": "未指定",
+        "appearance_lock_zh": "短发，穿着深蓝色潜水服",
+        "appearance_lock_en": "short hair, wearing a dark blue diving suit",
+    }]
+    # `R28`：正文复述外观锚（「穿着深蓝色潜水服」的 3-gram 落在中文正文里）
+    # `R34`：`prompt_en` 非空但没有以 `The camera` 起句的独立句
+    doc["shots"][0].update({
+        "prompt_zh": "远景：他穿着深蓝色潜水服站在门口。",
+        "prompt_en": "A wide shot of him standing at the door.",
+    })
+    verdict = asyncio.run(quality_gate.check(
+        "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
+    ))
+    assert verdict.ok is False, "不可重试 ≠ 放行：产物仍须判失败"
+    for code in ("R28", "R34"):
+        assert any(code in c for c in verdict.non_retryable), (
+            f"{code} 应进 non_retryable，实得 non_retryable={verdict.non_retryable}"
+        )
+        assert not any(code in c for c in verdict.retryable), (
+            f"{code} 不得进 retryable，实得 retryable={verdict.retryable}"
+        )
+
+
+def test_classify_keeps_other_model_failures_retryable() -> None:
+    """分拣不许误伤：`R28`／`R34` 之外的模型侧失败**仍可重试**（如 `R11`／`R41`）。
+
+    ⚠️ 这是新增 marker 的**反向锁**：加两条 marker 若写成整码前缀（如 `"R3"`）会把
+    `R31`／`R35`／`R36` 一起卷进不可重试，那些失败重采样**是**有机会改变的。
+    """
+    markers = quality_gate._NON_RETRYABLE_ENGINE_MARKERS  # noqa: SLF001 - 分拣口径的唯一真值
+    retryable, non_retryable = quality_gate._classify(  # noqa: SLF001
+        [
+            "shot_prompt · R28 PACK_APPEARANCE_ECHO：1 处正文复述外观 → …",
+            "shot_prompt · R34 EN_CAMERA_SENTENCE：2 镜的 prompt_en 缺以 `The camera` 起句的独立句",
+            "shot_prompt · R11 UNIT_MOVE_UNIQUE：单元 U01 内运镜类型重复",
+            "shot_prompt · R31 PACK_DURATION_LOCK：Σ≠total",
+            "shot_prompt · R35 PROP_ANCH_CONSISTENCY：prop_refs 未命中",
+        ],
+        markers,
+    )
+    assert len(non_retryable) == 2 and all(
+        ("R28" in c or "R34" in c) for c in non_retryable
+    ), non_retryable
+    assert len(retryable) == 3 and all(
+        any(code in c for code in ("R11", "R31", "R35")) for c in retryable
+    ), retryable
+
+
 def test_camera_shape_error_reported_and_gate_never_freezes() -> None:
     """`camera` 形态错误必须**如实报 err**，不得崩溃空转（`ISSUE-080`，2026-11-11）。
 

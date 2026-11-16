@@ -268,6 +268,28 @@ class Settings(BaseSettings):
     #: 属「模型可影响字段一字不改」；本开关只补**纯算术派生量**。
     pack_derived_backfill: bool = True
 
+    #: **英文运镜句机械补全**（**投影规则⑤**；项目方 2026-11-16 裁决批准）。
+    #: `true` ＝ `shot_prompt` 段（形态 `pack`）产物在门禁判定**之前**，逐镜检查
+    #: `prompt_en` 是否含**以 `The camera` 起句的独立句**（判据 `R34`，复用
+    #: `prompts/validate_output.py` 的 `CAMERA_SENTENCE_RE`，不抄第二份）；缺失则由服务层
+    #: 按本镜 `camera.*` **追加**一句英文运镜句，句式取自
+    #: `delivery/config/CFG-002_shot_vocab.yaml` 的 `camera_move[].model_map.minimax_h3`
+    #: （词表是**唯一句式真值源**，不在代码里硬编码句子）。
+    #:
+    #: ① **实证依据**（`r6` 复验批 12 轮，`DEV-20261112-012`）：`R34` **12/12 挂**、
+    #:    重试自愈 **0/12**；`ab_t101_r6/on/run1` 更实证「越试越差」（attempt1 缺 1 镜 →
+    #:    attempt2 缺 4 镜）。模板措辞路线已到顶（`TPL-009` 的 guards 已写「运镜句完整性」
+    #:    逐镜自检、examples 已给正例，模型仍漏）⇒ 只能机制化处置。
+    #: ② **性质：投影规则⑤，不是「改创作」**——`camera.*` 是**上游已定的导演决策**
+    #:    （承继层「一字不得改」），本项只把该决策**投影为英文句子**（与投影规则①
+    #:    lighting 拆分同族）；**只追加、不改原句**，且**只追加一句**、不重排不改写正文。
+    #: ③ **回退**：`APP_PACK_EN_CAMERA_SENTENCE_FILL=false`（回退后 R34 恢复由模型自证）。
+    #: ④ **与 `pack_conservation_fill` 的分工**：后者补的占位镜 `prompt_en` **明令留空**
+    #:    「不伪造创作内容」（`_reconcile_pack_conservation`）⇒ 本项**跳过**
+    #:    `prompt_en` 为空／缺失的镜，绝不替占位镜补句（否则会把 `R27P` 的洞洗白）。
+    #:    ⇒ 本项必须在守恒兜底**之前**执行，占位镜那时尚不存在，天然免疫。
+    pack_en_camera_sentence_fill: bool = True
+
     #: **交付包镜集合守恒兜底**（`T-101` r3 收口呈报·**裁决甲**，2026-11-07 项目方裁决）。
     #: `true` ＝ `shot_prompt` 段（形态 `pack`）产物在门禁判定**之前**，由服务层校验
     #: 「`shots[]` ⊇ 上游分镜镜集合」：上游有而本层缺的镜，**按上游镜定义补占位条目**

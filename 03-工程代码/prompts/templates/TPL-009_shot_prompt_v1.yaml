@@ -1,10 +1,22 @@
 id: shot_prompt_v1
 name: 分镜提示词生成
-version: "2.3.2"
+version: "2.3.3"
 task_type: generate
 stage: shot_prompt
 language: zh-CN
 
+# 版本说明（v2.3.3，2026-11-16）：**投影规则⑤注记（项目方 2026-11-16 裁决）**——**只增注记**。
+#   v2.3.3 修订说明：本版**不改任何硬性约束、不改 `output` 字段集、不改采样参数、
+#   不改 `schema_version` 常量**，只补一处**注记**：在「改决策排查」白名单
+#   （guards 段「只允许三类必改 ＋ 一类条件改写」）中登记 **投影规则⑤**——
+#   交付包层由**服务层**按本镜 `camera.move`／`amplitude`／`speed` **追加**一句
+#   英文运镜句（句式取 `delivery/config/CFG-002_shot_vocab.yaml` 的
+#   `camera_move[].model_map.minimax_h3`），用于机械补全 `R34 EN_CAMERA_SENTENCE`。
+#   ⚠️ **为什么记在这里**：模板的「改决策排查」是「本层允许改哪些字段」的**唯一白名单**，
+#      服务层新增的机械动作不登记进来，就会与「四类之外即改了导演决策」的字面冲突。
+#   ⚠️ **它不改模型的负担**：`R34` 仍由模型自证（guards 的「运镜句完整性」一字未动）；
+#      服务层只是**兜底投影**（只追加、不改原句；占位镜跳过；`static`/`pov` 不带幅速）。
+#   回退：`APP_PACK_EN_CAMERA_SENTENCE_FILL=false`（回退后 `R34` 恢复纯靠模型自证）。
 # 版本说明（v2.3.1，2026-11-04）：**`ISSUE-058` 产能对齐**（授权落地；与 `TPL-008` v2.1.2 同族）。
 #   v2.3.1 修订说明：`sampling.max_tokens` 8192 → **12288**。实测依据（2026-11-04
 #   `artifacts_t086_units_smoke` 段级 token 留痕）：`package_head` 段**正常输出即 5,319
@@ -723,13 +735,20 @@ guards:
     shot_id／unit_id／scene_no／shot_no／units[].shot_ids／duration_ms／shot_size／camera.*／
     action.*／shot_language.*／dialogue／sfx／transition_in／transition_out／character_refs／
     **prop_refs**／soundscape／music／notes。
-    **只允许出现三类必改 + 一类条件改写**：① 投影规则①（lighting 拆分）、
+    **只允许出现三类必改 + 一类条件改写 + 一类服务层投影**：① 投影规则①（lighting 拆分）、
     ② 规则②（notes 清理）、③ 规则③（amplitude／speed 的 medium／normal → **省略该键**）；
     ④ 规则④（`shot_language.*` 等留空 → **仅从本镜已有字段派生**，且 meta.notes 有留痕）；
+    ⑤ **投影规则⑤（v2.3.3 登记；项目方 2026-11-16 裁决）**：服务层按本镜
+    `camera.move`／`amplitude`／`speed` 在 `prompt_en` 尾**追加一句**英文运镜句
+    （句式取自 `CFG-002` 的 `camera_move[].model_map.minimax_h3`；判据 `R34`）——
+    **只追加、不改原句**；`prompt_en` 为空／缺失的占位镜**一律跳过**（不伪造创作内容）；
+    `static`／`pov` 不带幅度速度；句末终止符若为中文标点则归一为 ASCII 并逐镜留痕。
+    ⚠️ ⑤ 是**服务层的机械投影**，不是本层的生成动作——本层仍须自行写好运镜句
+    （见 guards「运镜句完整性」），⑤ 只是模型漏写时的兜底。
     外加本层补出的字段（style_ref／prompt_zh／prompt_en／aspect_ratio／顶层 **props 与 forbidden_items**）。
     ⚠️ **上游 `prop_refs` 参与 diff**（v2.0.0 起）——它已在交付契约字段集内，
     逐镜必须与上游**完全一致**；不一致即属第四类差异（改决策）。
-    出现上述四类之外的差异，即说明本层改了导演决策。
+    出现上述五类之外的差异，即说明本层改了导演决策。
   - 硬约束复述：不改导演决策（尤其 duration_ms）；双上游都要读；
     外观只定义一次；八维双落地；运镜独立成句以 The camera 起句；要素顺序
     主体→动作→环境→光线→镜头语言→风格；长度中文 **90–280 字** / 英文 **450–1200 字符**

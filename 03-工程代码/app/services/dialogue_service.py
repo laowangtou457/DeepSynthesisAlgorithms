@@ -131,6 +131,88 @@ def _camera_no_amp_moves() -> frozenset[str]:
     )
 
 
+@lru_cache(maxsize=1)
+def _camera_move_en_sentences() -> dict[str, str]:
+    """`CFG-002` 的 `camera_move[].model_map.minimax_h3` —— **投影规则⑤的句式唯一真值源**。
+
+    为什么从这里取而不在代码里写句子
+    --------------------------------
+    `CFG-002` 第 18 行明写「**规则：新增取值必须在本文件登记，不得在代码或模板中硬编码**」；
+    而这 20 句英文恰好是 H3 侧**已核对过的措辞**（规范 §3.7.2 的映射表与之同源）。
+    硬编码一份 = 第二份口径，词表升版时两边必然分叉（本工程多次因「两处口径打架」返工）。
+
+    ⚠️ 词表不可读／无 `camera_move` 段 ⇒ 返回空字典，调用方**整体跳过**（fail-open，
+       宁可不补也不猜；缺口仍由 `R34` 如实判失败）。
+
+    返回 `{运镜 code: 英文句}`（如 `"static" → "The camera holds a static shot."`）。
+    """
+    module = quality_gate.load_pack_validator()
+    if module is None:
+        return {}
+    try:
+        vocab = module.load_yaml(module.CONFIG / "CFG-002_shot_vocab.yaml") or {}
+    except Exception:  # noqa: BLE001 - 词表不可读 ⇒ 不补（不猜）
+        return {}
+    out: dict[str, str] = {}
+    for entry in (vocab.get("camera_move") or []):
+        if not isinstance(entry, dict):
+            continue
+        code = entry.get("code")
+        model_map = entry.get("model_map") or {}
+        sentence = model_map.get("minimax_h3") if isinstance(model_map, dict) else None
+        if code and isinstance(sentence, str) and sentence.strip():
+            out[str(code)] = sentence.strip()
+    return out
+
+
+@lru_cache(maxsize=1)
+def _camera_sentence_re() -> Any | None:
+    """`R34` 的判定正则（`CAMERA_SENTENCE_RE`）—— **判据唯一真值源直接复用，不抄第二份**。
+
+    ⚠️ 抄一份正则的后果是「服务层补的句子按 A 版口径合规、门禁按 B 版口径判失败」，
+       这类分叉在本工程已发生过（`ISSUE-047` 一族）。判据模块不可加载时返回 `None`，
+       调用方**整体跳过**（不补，交 `R34` 如实判）。
+    """
+    module = quality_gate.load_engine_validator()
+    if module is None:
+        return None
+    return getattr(module, "CAMERA_SENTENCE_RE", None)
+
+
+#: 运镜句里「幅度／速度」短语的**规范形态**（`CFG-002` 的 base 句恒用这两个短语）——
+#: 键省略时删短语、键存在且非默认值时替换短语。⚠️ 只匹配 base 句自带的形态，
+#: 不试图改写模型已写好的句子（本机制**只追加**，不改原句）。
+_AMP_PHRASE_RE = re.compile(r"\s+with (?:small|large) amplitude")
+_SPEED_PHRASE_RE = re.compile(r"\s+at (?:slow|fast) speed")
+
+
+def _render_camera_sentence(base: str, cam: dict[str, Any]) -> str:
+    """把 `CFG-002` 的 base 句按本镜 `camera.amplitude`／`camera.speed` 调成实况句。
+
+    `static`／`pov` 的 base 句本就不带幅度速度（`"The camera holds a static shot."`），
+    且上游 `_normalize_camera_amp_speed` 已删掉它们的 `amplitude`／`speed`
+    ⇒ 两者天然自洽，本函数对它们是恒等变换。
+
+    ⚠️ **只读 `camera`，绝不写回**：`amplitude`／`speed` 的取值面由 `R26`／`R33` 判，
+       本函数改字段就会制造那两条判据的失败（§3.7.2 的互斥关系）。
+    """
+    amp = cam.get("amplitude")
+    speed = cam.get("speed")
+    out = base
+    if isinstance(amp, str) and amp in ("small", "large"):
+        if _AMP_PHRASE_RE.search(out):
+            out = _AMP_PHRASE_RE.sub(f" with {amp} amplitude", out)
+    else:
+        # 键省略／非强调值 ⇒ 句子里也不该出现幅度（§3.7.2「仅当需要强调时」）
+        out = _AMP_PHRASE_RE.sub("", out)
+    if isinstance(speed, str) and speed in ("slow", "fast"):
+        if _SPEED_PHRASE_RE.search(out):
+            out = _SPEED_PHRASE_RE.sub(f" at {speed} speed", out)
+    else:
+        out = _SPEED_PHRASE_RE.sub("", out)
+    return out.strip()
+
+
 class DialogueService:
     """会话编排服务。"""
 
@@ -1559,6 +1641,145 @@ class DialogueService:
             "note": "机械字段清洗（非创作内容）；依据 T-103 裁决（2026-11-12）",
         }
 
+    def _ensure_en_camera_sentence(
+        self, tpl_stage: str, text: str
+    ) -> tuple[str, dict[str, Any] | None]:
+        """**投影规则⑤：英文运镜句机械补全**（项目方 2026-11-16 裁决批准）。
+
+        为什么改模型产物
+        ----------------
+        `R34 EN_CAMERA_SENTENCE`（`prompts/validate_output.py`）要求每镜 `prompt_en` 含
+        **以 `The camera` 起句的独立句**。`r6` 复验批 **12/12 挂 R34、重试自愈 0/12**，
+        `ab_t101_r6/on/run1` 更实证「越试越差」（attempt1 缺 1 镜 → attempt2 缺 4 镜）。
+        模板侧已把该要求写进 `guards`（「运镜句完整性」）并在 examples 给正例，
+        仍然漏 ⇒ **模板措辞路线已到顶**，只能机制化处置。
+
+        允许边界（裁决口径四件）
+        ----------------------
+        - **性质是投影，不是创作**：`camera.*` 是上游已定的导演决策（承继层「一字不得改」），
+          本方法只把该决策**投影为英文句子**（与投影规则① lighting 拆分同族）；
+        - **只追加、不改原句**：原文字一字不动，仅在句尾加一句；唯一的正文改动是
+          **句末终止符的 ASCII 归一**（`。！？` → `.`/`!`/`?`）——不归一就拼不出独立句，
+          该动作逐镜记 `punct_normalized`／`punct_action`，**不静默**；
+        - **占位镜一律跳过**：`prompt_en` 为空／缺失的镜不补（`_reconcile_pack_conservation`
+          明令占位镜留空「不伪造创作内容」；替它补句会把 `R27P` 的洞洗白）；
+        - **不静默**：逐镜留痕（镜号／运镜／补的句子）＋ `merge_warnings` 汇总一条。
+
+        幂等性
+        ------
+        补过的镜第二次进来必然命中 `CAMERA_SENTENCE_RE` ⇒ noop；`added==0` 时**返回原 text
+        不重序列化**（字节级不变）。
+
+        :returns: `(新文本, 留痕 dict 或 None)`；不适用／不可解析／词表或判据不可得 ⇒ `(text, None)`。
+        """
+        if not get_settings().pack_en_camera_sentence_fill:
+            return text, None
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) != "pack":
+            return text, None
+        sentences = _camera_move_en_sentences()
+        camera_re = _camera_sentence_re()
+        if not sentences or camera_re is None:
+            # 词表／判据其一不可得 ⇒ **整体跳过**（宁可不补，也不猜一份口径出来）
+            return text, None
+        try:
+            doc = parse_json_object(text)
+        except AppError:
+            return text, None  # 解析不了由形态闸报出（不在此处抢先归因）
+        if not isinstance(doc, dict):
+            return text, None
+        shots = doc.get("shots")
+        if not isinstance(shots, list):
+            return text, None
+
+        before_digest = digest(text)
+        items: list[dict[str, Any]] = []
+        skipped_empty = 0
+        skipped_no_vocab = 0
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            raw = shot.get("prompt_en")
+            if not isinstance(raw, str) or not raw.strip():
+                # 占位镜（或模型漏写）——**不补**，交 R27／R27P 如实判
+                skipped_empty += 1
+                continue
+            if camera_re.search(raw):
+                continue  # 已有独立运镜句 ⇒ noop
+            stripped = raw.strip()
+            if stripped.startswith("The camera"):
+                # 唯一「看着合规却被判失败」的形态：句首有前导空白 ⇒ `^` 失配。
+                # 此时**去掉前导空白**即可（绝不追加第二句运镜句——那会让同一镜出现两次运镜）。
+                shot["prompt_en"] = stripped
+                items.append(
+                    {
+                        "shot_id": shot.get("shot_id"),
+                        "move": None,
+                        "sentence": None,
+                        "action": "leading_trimmed",
+                        "punct_normalized": False,
+                    }
+                )
+                continue
+            cam = shot.get("camera")
+            cam = cam if isinstance(cam, dict) else {}
+            move = cam.get("move")
+            base = sentences.get(str(move)) if move else None
+            if not base:
+                skipped_no_vocab += 1
+                continue
+            sentence = _render_camera_sentence(base, cam)
+            if not camera_re.search(sentence):
+                # 自检：词表句自身若不成「The camera 起句独立句」⇒ 不补（词表升版兜底）
+                skipped_no_vocab += 1
+                continue
+            body = stripped
+            punct_action = ""
+            if body[-1] in "。！？":
+                body = body[:-1] + {"。": ".", "！": "!", "？": "?"}[body[-1]]
+                punct_action = "cjk_to_ascii"
+            elif body[-1] not in ".!?":
+                # 末尾无终止符 ⇒ 先补句号，否则追加的句子无法成为「独立句」
+                body = body + "."
+                punct_action = "terminator_added"
+            new_text = f"{body} {sentence}"
+            if not camera_re.search(new_text):  # 双保险：拼完必须真的过判据
+                skipped_no_vocab += 1
+                continue
+            shot["prompt_en"] = new_text
+            items.append(
+                {
+                    "shot_id": shot.get("shot_id"),
+                    "move": move,
+                    "sentence": sentence,
+                    "action": "appended",
+                    "punct_normalized": bool(punct_action),
+                    "punct_action": punct_action,
+                }
+            )
+        if not items:
+            return text, {
+                "added": 0,
+                "skipped_empty": skipped_empty,
+                "skipped_no_vocab": skipped_no_vocab,
+                "items": [],
+                "items_truncated": False,
+                "action": "noop",
+                "source": "CFG-002.camera_move.model_map.minimax_h3",
+            }
+        out = json.dumps(doc, ensure_ascii=False, indent=2)
+        return out, {
+            "added": len(items),
+            "skipped_empty": skipped_empty,
+            "skipped_no_vocab": skipped_no_vocab,
+            "items": items[:50],
+            "items_truncated": max(0, len(items) - 50),
+            "source": "CFG-002.camera_move.model_map.minimax_h3",
+            "text_digest_before": before_digest,
+            "text_digest_after": digest(out),
+            "note": "投影规则⑤：按 camera.* 追加英文运镜句（只追加、不改原句）；"
+            "占位镜跳过；依据项目方 2026-11-16 裁决",
+        }
+
 
     async def _maybe_generate(
         self, rec: SessionRecord, target: Stage, variables: dict[str, Any]
@@ -1700,6 +1921,7 @@ class DialogueService:
         derived_backfill: dict[str, Any] | None = None
         identity_norm: dict[str, Any] | None = None
         amp_norm: dict[str, Any] | None = None
+        en_camera_fill: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -1766,6 +1988,27 @@ class DialogueService:
                     warnings.append(
                         f"camera_amp_speed_normalize: {amp_norm['cleaned']} 镜经机械清洗后通过"
                         "（static/pov 的 amplitude/speed 已删，明细见 artifact）"
+                    )
+
+                # ---- **投影规则⑤**：R34 英文运镜句机械补全（项目方 2026-11-16 裁决）----
+                # ⚠️ **位置三条硬约束**（改动前请逐条核对）：
+                #    ① 必须在 `_normalize_camera_amp_speed` **之后**——static/pov 的幅速已被删，
+                #       补出的句子才是「不带幅度速度」的自洽形态（§3.7.2）；
+                #    ② 必须在 `text_penultimate = final_text`（下方真值覆盖前）**之前**——
+                #       否则本步的正文改动会被 `artifact["service_truth_text_changed"]`
+                #       误记成「服务层真值覆盖改了正文」（留痕错因，极难查）；
+                #    ③ 必须在 `_reconcile_pack_conservation`（守恒兜底）**之前**——
+                #       兜底补的占位镜 `prompt_en` 留空（不伪造创作内容），本步**跳过空镜**
+                #       ⇒ 放在兜底之前，占位镜尚不存在，天然不会替它补句（不洗白 R27P）。
+                # ⚠️ 也顺带在 `_guard_output` **之前**：让输出安全闸复检到最终正文。
+                final_text, en_camera_fill_now = self._ensure_en_camera_sentence(
+                    tpl_stage, final_text
+                )
+                if en_camera_fill_now and en_camera_fill_now.get("added"):
+                    en_camera_fill = en_camera_fill_now
+                    warnings.append(
+                        f"en_camera_sentence_fill: {en_camera_fill_now['added']} 镜 prompt_en "
+                        "机械补英文运镜句（投影规则⑤，CFG-002 词表；只追加、不改原句，明细见 artifact）"
                     )
 
                 # ---- 安全双闸 · 输出侧（`T-005`：`SW-010` 输出复检）----
@@ -1836,6 +2079,19 @@ class DialogueService:
                 final_text, amp_norm = self._normalize_camera_amp_speed(
                     tpl_stage, final_text
                 )
+                # 回退路径同样须补运镜句（同上：`text_penultimate` 已含补句 ⇒ 此处必为 noop；
+                # 若首轮补句发生在快照之后（不该发生），这里仍是同一口径的兜底）。
+                final_text, en_camera_fill_now = self._ensure_en_camera_sentence(
+                    tpl_stage, final_text
+                )
+                if en_camera_fill_now and en_camera_fill_now.get("added"):
+                    en_camera_fill = en_camera_fill_now
+                    _c = (
+                        f"en_camera_sentence_fill: {en_camera_fill_now['added']} 镜 prompt_en "
+                        "机械补英文运镜句（投影规则⑤，CFG-002 词表；只追加、不改原句，明细见 artifact）"
+                    )
+                    if _c not in warnings:
+                        warnings.append(_c)
                 # 回退路径同样须先守恒兜底再派生回填（占位镜参与 `Σ`）；
                 # 快照 `warnings` 已含同码 ⇒ 去重追加（同一 `text_penultimate` 重放）。
                 final_text, conservation_fills = _reconcile_pack_conservation(
@@ -2109,6 +2365,12 @@ class DialogueService:
             # `T-103` 机械清洗留痕：逐镜明细＋删前/删后正文摘要（不落原文）。
             # ⚠️ 只在**确有清洗**时记：`cleaned=0` 的 noop 不写，避免污染每次生成。
             artifact["camera_amp_speed_normalize"] = amp_norm
+        if en_camera_fill and en_camera_fill.get("added"):
+            # 投影规则⑤留痕（项目方 2026-11-16 裁决）：逐镜「镜号／运镜／补的句子」＋摘要。
+            # ⚠️ 同 `amp_norm` 纪律——`added=0` 的 noop 不写（不污染每次生成）；
+            #    但**一旦补过就必须留**：否则「产物里的运镜句是模型写的还是服务层补的」
+            #    无从区分，那是本工程明令禁止的「静默修补」。
+            artifact["en_camera_sentence"] = en_camera_fill
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:

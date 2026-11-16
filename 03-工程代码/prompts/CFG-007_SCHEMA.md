@@ -545,6 +545,22 @@
 #   R34 EN_CAMERA_SENTENCE  英文正文须含以 `The camera` **起句的独立句**（依评审 PR-04 新增）。
 #                           判据 `(?:^|[.!?]\s+)The camera\b`——`static`／`pov` 也须有运镜句，只是不带幅度速度。
 #                           实测 `S01-SH002` 曾把小写 `as the camera …` 并入起句（**人眼看不出来**）。
+#                           ⚠️ **投影规则⑤（2026-11-16 项目方裁决批准；本层约定的第 5 条机械改写）**：
+#                              交付包层由**服务层**（`DialogueService._ensure_en_camera_sentence`）
+#                              按本镜 `camera.move`／`amplitude`／`speed` 在 `prompt_en` 尾**追加一句**
+#                              英文运镜句，句式取自 `delivery/config/CFG-002_shot_vocab.yaml` 的
+#                              `camera_move[].model_map.minimax_h3`（**词表是唯一句式真值源**，
+#                              不得在代码或模板中硬编码句子）。
+#                              边界四条：① **只追加、不改原句**（唯一例外：句末中文终止符
+#                              `。！？` 归一为 ASCII，逐镜记 `punct_normalized`）；
+#                              ② `prompt_en` 为空／缺失的占位镜**一律跳过**（`R27P` 的洞不得洗白）；
+#                              ③ `static`／`pov` 不带幅度速度（与 §3.7.2 互斥关系一致）；
+#                              ④ 词表或判据不可得 ⇒ **整体跳过**（fail-open，不猜）。
+#                              开关：`APP_PACK_EN_CAMERA_SENTENCE_FILL`（默认 true）。
+#                              ⚠️ 判据 `R34` **一字未动**；本项是「模型漏写时的兜底投影」，
+#                              模型仍须自行写好运镜句（`TPL-009` 的 guards 要求未减）。
+#                              为什么不靠改模板：`r6` 复验批 **12/12 挂 R34、自愈 0/12**，
+#                              且 attempt2 反而更差（缺 1 镜 → 缺 4 镜）⇒ 措辞路线已到顶。
 #   R35 PROP_ANCH_CONSISTENCY **道具锚一致性（v2.0 起，正向判据）**——**取代** v1.1~v1.3 的
 #                           `NO_PROP_REFS`（「交付包 `shots[]` 不得出现 `prop_refs`」）。
 #                           ⚠️ **为什么反转而不是删掉**：旧判据的**设立前提**是「交付规范 §3.6 与交付

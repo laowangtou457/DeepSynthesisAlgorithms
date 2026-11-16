@@ -335,14 +335,18 @@ def test_inject_merge_dup_verdict_preserves_existing_retryable() -> None:
     from app.services.dialogue_service import _inject_merge_dup_verdict
     from app.services.quality_gate import QualityVerdict
 
+    # ⚠️ 夹具标签用 `R11`（仍属可重试族）而非 `R34`：`R34` 自 2026-11-16 起已被
+    #    项目方裁决列入**不可重试**（`quality_gate._NON_RETRYABLE_ENGINE_MARKERS`）
+    #    ⇒ 真实结论里 `R34` 不会再出现在 `retryable`，用它当「已存在的可重试项」样本
+    #    已不符合实况。本用例测的是「注入时**保留**已存在的可重试项」，与码名无关。
     verdict = QualityVerdict(
         stage="shot_prompt", shape="pack", checked=True, ok=False,
-        engine_checks=10, engine_errors=["shot_prompt · R34 …"], engine_warnings=[],
-        pack_blocks=[], pack_warnings=[], retryable=["shot_prompt · R34 …"],
+        engine_checks=10, engine_errors=["shot_prompt · R11 …"], engine_warnings=[],
+        pack_blocks=[], pack_warnings=[], retryable=["shot_prompt · R11 …"],
         non_retryable=[], enforced=False,
     )
     out = _inject_merge_dup_verdict(verdict, ["merge.shot_dup_in_segment｜…"])
-    assert out.retryable[0] == "shot_prompt · R34 …"
+    assert out.retryable[0] == "shot_prompt · R11 …"
     assert out.retryable[1].startswith("merge.shot_dup_in_segment｜")
 
 
@@ -370,14 +374,18 @@ def test_inject_merge_dup_verdict_preserves_existing_retryable() -> None:
     from app.services.dialogue_service import _inject_merge_dup_verdict
     from app.services.quality_gate import QualityVerdict
 
+    # ⚠️ 夹具标签用 `R11`（仍属可重试族）而非 `R34`：`R34` 自 2026-11-16 起已被
+    #    项目方裁决列入**不可重试**（`quality_gate._NON_RETRYABLE_ENGINE_MARKERS`）
+    #    ⇒ 真实结论里 `R34` 不会再出现在 `retryable`，用它当「已存在的可重试项」样本
+    #    已不符合实况。本用例测的是「注入时**保留**已存在的可重试项」，与码名无关。
     verdict = QualityVerdict(
         stage="shot_prompt", shape="pack", checked=True, ok=False,
-        engine_checks=10, engine_errors=["shot_prompt · R34 …"], engine_warnings=[],
-        pack_blocks=[], pack_warnings=[], retryable=["shot_prompt · R34 …"],
+        engine_checks=10, engine_errors=["shot_prompt · R11 …"], engine_warnings=[],
+        pack_blocks=[], pack_warnings=[], retryable=["shot_prompt · R11 …"],
         non_retryable=[], enforced=False,
     )
     out = _inject_merge_dup_verdict(verdict, ["merge.shot_dup_in_segment｜…"])
-    assert out.retryable[0] == "shot_prompt · R34 …"
+    assert out.retryable[0] == "shot_prompt · R11 …"
     assert out.retryable[1].startswith("merge.shot_dup_in_segment｜")
 
 

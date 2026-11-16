@@ -151,7 +151,7 @@ def test_template_versions_bumped_with_manifest(repo: PromptRepository) -> None:
         "synopsis_v1": "2.0.1",
         "script_v1": "2.1.4",
         "storyboard_v1": "2.3.2",
-        "shot_prompt_v1": "2.3.2",
+        "shot_prompt_v1": "2.3.3",
         "revise_v1": "1.2.1",
         "modify_v1": "1.1.1",
     }

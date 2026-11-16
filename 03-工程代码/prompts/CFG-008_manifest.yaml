@@ -12,7 +12,7 @@ meta:
   project: 生成合成类（文本合成）算法
   asset_type: 提示词模板资产
   schema_version: "1.0.0"
-  updated_at: "2026-11-10"
+  updated_at: "2026-11-16"
 
 # 版本规范：主版本.次版本.修订号
 #   主版本：模板结构变更（变量增删、职责调整）
@@ -110,7 +110,7 @@ templates:
     task_type: generate
     stage: shot_prompt
     file: templates/TPL-009_shot_prompt_v1.yaml
-    version: "2.3.2"
+    version: "2.3.3"
     status: active
     variables: [storyboard_json, script_json, pack_meta, segment, gap_answers]
     scenes:
