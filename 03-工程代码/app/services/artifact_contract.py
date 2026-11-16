@@ -376,11 +376,103 @@ def derived_engine_schema(shape: str) -> dict[str, Any] | None:
     }
 
 
+# --------------------------------------------------- 元素级结构（`ISSUE-094`）
+#: 需要做**元素级结构**判定的形态（`ISSUE-094`）。
+#:
+#: 当前只有 `script`：它是链路上**唯一**带「幕 → 场」两层数组的产物，也是逐场编排
+#: （`segment.plan_scene_segments`）的输入 ⇒ 其元素级缺陷会**在很久之后**才炸
+#: （真机第 3 轮：`acts[2]` 是字符串，`draft_script` 之后才报
+#: `502 上游剧本 acts[2] 不是对象，无法推导逐场调用计划`）。
+#: 其它三形态（`synopsis`／`storyboard`／`pack`）**刻意不在表内**：本层零改动是硬要求。
+ELEMENT_LEVEL_SHAPES: frozenset[str] = frozenset({"script"})
+
+#: 「元素级」结构问题的**识别键**：`segment.script_structure_problems()` 的 details 里
+#: 出现这些键之一，就说明缺陷定位到 `acts[..]`／`scenes[..]` 上的**某个元素**。
+#:
+#: ⚠️ **空 `acts[]` 刻意不算元素级**（details 只有 `acts_type`、无定位键）：那是
+#: 「顶层取值」问题（`R6` 要求恰 3 幕属交付层判据），而 `acts` **键缺失**已被第三层
+#: `required` 拦住。把它并进本层，会把「以 `acts: []` 手工构造的上游夹具」一律判死
+#: （施工时实测：并入后 `test_artifact_gate`／`test_generation_segments`／
+#: `test_quality_gate_t086`／`test_package_head_sampling` **23 个既有用例当场变红**，
+#: 且失败原因是「夹具的上游被判非法」而非「本缺陷」，属越权扩大改动面）。
+_ELEMENT_LEVEL_DETAIL_KEYS: tuple[str, ...] = ("index", "act_index", "scene_nos")
+
+
+def _is_element_level_problem(details: dict[str, Any]) -> bool:
+    """该条结构问题是否落在**元素级**（闸门第四层要不要收）。
+
+    两类收：
+
+    1. **有定位键**（`index`／`act_index`／`scene_nos`）⇒ 缺陷落在具体元素或场号上；
+    2. **`acts` 存在但类型不是 `list`**（`str`／`dict`／`int`／`None`）⇒ details 只有
+       `acts_type`、没有定位键，但它**同样是容器类型错误**，且与 `ISSUE-094` 同族：
+       三层形态闸会放行（`detect_shape` 只看「`acts` 键在不在」），直到下游
+       `plan_scene_segments()` 才炸 —— 正是本层要前移的那一类。
+       ⚠️ 该分支由独立 QA 证伪发现（`acts: "..."` 能一路穿过第四层），补于本轮。
+
+    ⚠️ **空 `list`（`acts: []`）刻意仍不收**：它是**合法的空容器**而不是类型错误；
+    「恰 3 幕」是交付层判据（`R6`），且既有 23 个用例以 `acts: []` 构造上游夹具
+    （并入后当场变红、且失败原因与本案无关）。边界已由
+    `test_empty_acts_is_a_top_level_issue_not_element_level` 锁住。
+    """
+    if any(key in details for key in _ELEMENT_LEVEL_DETAIL_KEYS):
+        return True
+    acts_type = details.get("acts_type")
+    return isinstance(acts_type, str) and acts_type != "list"
+
+
+def element_structure_path(details: dict[str, Any]) -> str:
+    """把问题 details 还原成**人类可读的定位串**（`acts[2].scenes[1]` 之类）。
+
+    只用 details 里既有的字段（不猜、不补），供闸门留痕与报错定位：
+    日志里一眼就能看到「坏在哪个元素」，而不是一句「产物不合法」。
+    """
+    if not isinstance(details, dict):  # pragma: no cover - 调用方恒传 dict
+        return "script"
+    if "scene_nos" in details:
+        return "acts[].scenes[].no"
+    act_index = details.get("act_index")
+    scene_index = details.get("scene_index")
+    if isinstance(act_index, int) and isinstance(scene_index, int):
+        return f"acts[{act_index}].scenes[{scene_index}]"
+    if isinstance(act_index, int):
+        return f"acts[{act_index}]"
+    index = details.get("index")
+    if isinstance(index, int):
+        return f"acts[{index}]"
+    if "acts_type" in details:
+        # `acts` 类型错（非 list）或缺失：定位到容器本身，不假装知道是第几幕
+        return "acts"
+    return "script"
+
+
+def element_structure_problems(shape: str, doc: Any) -> list[tuple[str, dict[str, Any]]]:
+    """该形态下**元素级**结构缺陷（`ISSUE-094`；只描述事实、不抛错）。
+
+    ⚠️ **不另立口径**：实现**原样复用** `app/services/segment.py` 的
+    `` script_structure_problems() ``（延迟 import：`segment` 目前**不**导入本模块，
+    此处保持单向依赖，避免循环导入）。
+
+    ⚠️ 只做**一件事**的收窄：把「非元素级」的问题（空 `acts[]`／剧本非对象）滤掉——
+    判定依据是 details 的**定位键或 `acts_type`**（见 `_is_element_level_problem`），
+    不是另写一套判据。
+    """
+    if shape not in ELEMENT_LEVEL_SHAPES:
+        return []
+    from app.services.segment import script_structure_problems  # 延迟 import：防循环依赖
+
+    return [
+        (message, details)
+        for message, details in script_structure_problems(doc)
+        if _is_element_level_problem(details)
+    ]
+
+
 class ShapeVerdict(NamedTuple):
     """形态判定结果（**只描述事实，不抛错**；抛错由调用方裁决）。"""
 
     shape: str
-    #: 判定是否通过（可解析 ＋ 形态相符 ＋ 必需键齐备）
+    #: 判定是否通过（可解析 ＋ 形态相符 ＋ 必需键齐备 ＋ 元素级结构合法）
     ok: bool
     #: 实际识别出的形态（解析失败时为 `None`）
     detected: str | None
@@ -404,13 +496,21 @@ class ShapeVerdict(NamedTuple):
 def check_shape(shape: str, text: Any) -> ShapeVerdict:
     """校验一段产物文本是否满足该形态的**形态契约**。
 
-    三层判定，**全部只判形态**：
+    **四层**判定，**全部只判形态**（第四层为 `ISSUE-094` 新增，仅 `script`）：
 
     1. **可解析** —— 走 `parse_json_object`（围栏／前后缀容忍与工程既有口径**同一套**，
        不另立第二套解析规则），且顶层须为对象；
     2. **形态相符** —— `detect_shape()` 的结果须等于声明的形态
        （挡住「声明是交付包、实际产出分镜脚本」这类张冠李戴）；
-    3. **必需键齐备** —— R5 真值表的每一键都在。
+    3. **必需键齐备** —— R5 真值表的每一键都在；
+    4. **元素级结构** —— 仅 `script`：`acts[i]`／`acts[i].scenes[j]` 必须是对象、
+       `.no` 必须是整数、场号不得重复（判定来自 `segment.script_structure_problems`，
+       **不在本模块另立口径**）。
+
+    ⚠️ **第 4 层的设立理由**（`ISSUE-094`）：前三层只判**顶层**形态 ⇒ `acts[2]` 是字符串
+    时闸门放行，直到下游 `plan_scene_segments()` 才炸（真机第 3 轮 `draft_script` 之后
+    报 `502 上游剧本 acts[2] 不是对象，无法推导逐场调用计划`）。前移＝把下游那把尺子
+    原样搬到上游，**不是**新造一把。
 
     ⚠️ **本函数不抛错**：判定与裁决分开——「谁在什么位置阻断」是编排层的事
     （与 `SafetyService` 的「服务层只判定、编排层阻断」同一分层纪律）。
@@ -418,7 +518,8 @@ def check_shape(shape: str, text: Any) -> ShapeVerdict:
     ⚠️ **`error_details` 内**刻意不出现 `reason` 这个键名**：`parse_json_object` 的
     `details` 里**本来就有** `reason`（JSON 解析器的报错串），若原样摊平进闸门的
     `details`，会把闸门的**机器可判原因码**覆盖成一句解析器的英文报错
-    ——本批实现时已踩（测试当场暴露）。故解析细节一律**收进 `parse` 子对象命名空间**。
+    ——本批实现时已踩（测试当场暴露）。故解析细节一律**收进 `parse` 子对象命名空间**；
+    第 4 层同理只给 `structure_path`／`structure_problem_count` 两个键。
     """
     if not isinstance(text, str) or not text.strip():
         return ShapeVerdict(
@@ -472,6 +573,30 @@ def check_shape(shape: str, text: Any) -> ShapeVerdict:
                 "declared_shape": shape,
                 "missing_keys": list(missing),
                 "required_keys": list(REQUIRED_TOP_KEYS[shape]),
+            },
+        )
+
+    # ---- 第 4 层（`ISSUE-094`）：元素级结构，仅 `script` ----
+    # ⚠️ 位置硬约束：必须在前三层**全部通过之后**——否则「不可解析」「张冠李戴」
+    #    「缺必需键」会被更细的报错顶掉，闸门原因码的语义层次就乱了。
+    # ⚠️ 其它三形态 `element_structure_problems()` 恒返回 `[]` ⇒ 行为零改动。
+    structure_problems = element_structure_problems(shape, doc)
+    if structure_problems:
+        message, problem_details = structure_problems[0]
+        return ShapeVerdict(
+            shape=shape,
+            ok=False,
+            detected=detected,
+            missing=(),
+            reason="script_structure_invalid",
+            # 文案**原样取自单点判定**（与逐场编排阶段抛出的那句一字不差）：
+            # 「闸门为什么拦」与「下游为什么炸」说的是同一句话，可对照排查。
+            error=message,
+            # ⚠️ 键名刻意避开 `reason`（会覆盖闸门原因码，见 docstring）。
+            error_details={
+                "declared_shape": shape,
+                "structure_path": element_structure_path(problem_details),
+                "structure_problem_count": len(structure_problems),
             },
         )
 

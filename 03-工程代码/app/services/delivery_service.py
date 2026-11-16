@@ -443,6 +443,39 @@ _MANIFEST_SIDE_CODES = frozenset({
     "adapter.status", "gate.status", "schema.manifest",
 })
 
+#: **流程项**判据码（`ISSUE-092`，项目方 2026-11-16 裁决 A）。
+#:
+#: 为什么要分这一层：跑测验收要回答的问题是「**模型产出的东西合不合格**」，
+#: 而 `human_review.*` 只认**人工台账**（`_load_human_review` 明写「绝不从模型产物取」）、
+#: `selfcheck.*`／`manifest.*`／`export.*` 是**打包流程**的自洽性检查 ⇒ 只要判据里含它们，
+#: 「自动跑测全量 0 BLOCK」在结构上**不可达**（实测 3/3 轮恒有 `human_review.missing`）。
+#: 裁决 A：验收**只认模型侧的 0 BLOCK**，流程项移交 `PM-005` 真机留证。
+#:
+#: ⚠️ **本集合直接复用 `_MANIFEST_SIDE_CODES`，不另立第二份清单**——清单侧判据
+#:    恰恰就是流程项（产物齐不齐、导出记没记、人工核没核、清单自不自洽）。
+#:    将来若新增清单侧码，自动并入流程项，不会漏分类。
+#: ⚠️ **默认归模型侧**（不在本集合内即视为模型侧）：分类器宁可「多算模型侧」，
+#:    也不许把一条真实产物缺陷悄悄划进流程项 —— 方向性错误只准往严的一侧犯。
+#:
+#: ⚠️ **边界（刻意保守，改动须立裁决）**：`compliance.*`／`meta.*`／`task.*`／`provider.code`
+#:    等码虽然同样是「服务层真值／材料」性质，**本次仍留在模型侧**——它们要么由服务层
+#:    代码直接决定（改代码即修复，与重采样无关），要么属合规材料缺项；把它们划进流程项
+#:    等于替项目方预先认定「这些不算验收范围」。当前口径只把**清单侧**（`_MANIFEST_SIDE_CODES`）
+#:    认定的流程项排除在验收之外；其余一律 fail-closed，必要时另案裁决。
+_GATE_PROCESS_SCOPE_CODES = _MANIFEST_SIDE_CODES
+
+#: 门禁结论的**验收口径**说明（写进报告，供取证时核对「用哪一栏判过没过」）。
+GATE_SCOPE_POLICY = (
+    "blocked（全量）＝交付拒付依据，语义不变；"
+    "blocked_model（模型侧）＝跑测验收判据（裁决 A）；"
+    "blocked_process（流程项）＝移交 PM-005 真机留证"
+)
+
+
+def _gate_block_scope(code: str) -> str:
+    """BLOCK/WARN 条目的**归属侧**：`model`（模型产物）或 `process`（流程项）。"""
+    return "process" if code in _GATE_PROCESS_SCOPE_CODES else "model"
+
 
 def _not_obtained(value: Any) -> bool:
     """判断合规字段是否**未取得**（与 `validate_pack._is_not_obtained` **同口径**）。
@@ -849,15 +882,26 @@ def evaluate_gate(
     ⚠️ 只读产物、无副作用；判据**一字不改**（`ISSUE-055`：接线不改进判据）。
     ⚠️ `ISSUE-057` 候选① 起：传入 `manifest_path` 即**同时校验清单侧**
     （`validate_manifest`，与 CLI `main()` 同一函数）⇒ `manifest_checked=True`。
+    ⚠️ `ISSUE-092`（裁决 A）起：每条 block 带 `scope`（`model`／`process`），
+    并给出 `blocked_model`／`blocked_process` 两栏。**`blocked` 语义不变**（全量 ⇒ 交付拒付），
+    新增两栏只服务「跑测验收看哪一侧」，**不改变判据、不放宽交付**。
     """
     module = load_pack_validator()
     if module is None:
         return {
             "checked": False,
             "blocked": None,
+            # ⚠️ 未判 ≠ 通过：三栏一律 `None`（「没判」在留痕上必须可与「判过且干净」区分）
+            "blocked_model": None,
+            "blocked_process": None,
             "reason": "validator_unavailable",
             "blocks": [],
             "warns": [],
+            "block_count": 0,
+            "warn_count": 0,
+            "block_count_model": None,
+            "block_count_process": None,
+            "scope_policy": GATE_SCOPE_POLICY,
             "scope": "pack",
             "manifest_checked": False,
             "manifest_note": GATE_MANIFEST_NOTE,
@@ -877,17 +921,28 @@ def evaluate_gate(
         scope = "pack+manifest"
         manifest_checked = True
 
-    blocks = [{"code": code, "message": msg}
+    blocks = [{"code": code, "message": msg, "scope": _gate_block_scope(code)}
               for lv, code, msg in items if lv == module.BLOCK]
-    warns = [{"code": code, "message": msg}
+    warns = [{"code": code, "message": msg, "scope": _gate_block_scope(code)}
              for lv, code, msg in items if lv == module.WARN]
+    model_blocks = [b for b in blocks if b["scope"] == "model"]
+    process_blocks = [b for b in blocks if b["scope"] == "process"]
     return {
         "checked": True,
+        # 全量（交付拒付依据，**语义不变**）
         "blocked": bool(blocks),
         "blocks": blocks,
         "warns": warns,
         "block_count": len(blocks),
         "warn_count": len(warns),
+        # 分层（`ISSUE-092`／裁决 A）：跑测验收**只看** `blocked_model`
+        "blocked_model": bool(model_blocks),
+        "blocked_process": bool(process_blocks),
+        "block_count_model": len(model_blocks),
+        "block_count_process": len(process_blocks),
+        "model_block_codes": [b["code"] for b in model_blocks],
+        "process_block_codes": [b["code"] for b in process_blocks],
+        "scope_policy": GATE_SCOPE_POLICY,
         "scope": scope,
         "manifest_checked": manifest_checked,
         "manifest_note": GATE_MANIFEST_NOTE,

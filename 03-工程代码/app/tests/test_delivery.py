@@ -19,13 +19,16 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.services.delivery_service import (
     GATE_REPORT_NAME,
+    GATE_SCOPE_POLICY,
     PACK_TOP_KEYS,
     PREVIEW_NOTE,
     SPEC_VERSION,
     _MANIFEST_SIDE_CODES,
     _SELF_CHECK_SPEC,
+    _gate_block_scope,
     build_manifest,
     build_self_check,
+    evaluate_gate,
     pack_delivery,
 )
 
@@ -786,3 +789,99 @@ def test_audit_report_reflects_real_gate_not_boilerplate(tmp_path: Path) -> None
     gate_msgs += [b["message"] for b in r.gate["blocks"] if b["code"].startswith("gate.")]
     for msg in gate_msgs:
         assert msg in text, f"质量门报告缺真实条目：{msg}"
+
+
+# ============================================ ISSUE-092／裁决 A：BLOCK 按归属侧分层
+# 项目方 2026-11-16 裁决 A：「只认**模型侧**的 0 BLOCK」——流程项（human_review.* /
+# selfcheck.* / manifest.* / export.* …）移交 `PM-005` 真机留证。
+#
+# ⚠️ 本节的价值全在**负向样本**上：若只断言「模型侧 0 BLOCK 能通过」，而没有任何
+#    「流程项不拦验收」「模型侧缺陷必须拦验收」「新码默认归模型侧」的反向用例，
+#    这条判据就会退化成空跑（本工程已登记的「判据空跑」家族，见 MEMORY 第 9 节）。
+
+
+def test_gate_process_only_blocks_do_not_fail_model_scope() -> None:
+    """**流程项单独 BLOCK ⇒ 验收侧（模型侧）必须为 0**（裁决 A 的核心断言）。"""
+    gate = evaluate_gate(
+        Path("unused.json"),
+        pack_items=[
+            ("BLOCK", "human_review.missing", "无人工核对记录"),
+            ("BLOCK", "selfcheck.fail", "自检第 18 项 fail"),
+            ("BLOCK", "export.meta", "导出元数据缺失"),
+        ],
+    )
+    assert gate["checked"] is True
+    # 全量栏：语义不变，仍然 blocked（交付端点的拒付依据不许被本次改动放宽）
+    assert gate["blocked"] is True and gate["block_count"] == 3
+    # 分层栏：验收侧为 0
+    assert gate["blocked_model"] is False, f"流程项不得拦住验收：{gate['model_block_codes']}"
+    assert gate["block_count_model"] == 0
+    assert gate["blocked_process"] is True and gate["block_count_process"] == 3
+    assert set(gate["process_block_codes"]) == {
+        "human_review.missing", "selfcheck.fail", "export.meta",
+    }
+    assert all(b["scope"] == "process" for b in gate["blocks"])
+
+
+def test_gate_model_side_block_still_fails_acceptance() -> None:
+    """**模型侧产物缺陷 ⇒ 验收必须判失败**（分层不是放行，别把 A 读成「放宽」）。"""
+    gate = evaluate_gate(
+        Path("unused.json"),
+        pack_items=[
+            ("BLOCK", "human_review.missing", "无人工核对记录"),
+            ("BLOCK", "unit.duplicate_id", "U01 出现 3 次"),
+            ("BLOCK", "R27", "S01-SH003 正文为空"),
+        ],
+    )
+    assert gate["blocked"] is True
+    assert gate["blocked_model"] is True
+    assert gate["block_count_model"] == 2 and gate["block_count_process"] == 1
+    assert gate["model_block_codes"] == ["unit.duplicate_id", "R27"]
+    # 恒等式：分层不得丢条目（丢一条就等于把缺陷藏进缝隙）
+    assert gate["block_count"] == gate["block_count_model"] + gate["block_count_process"] == 3
+
+
+def test_gate_unknown_code_defaults_to_model_scope() -> None:
+    """**方向性锁**：未登记的新判据码默认归**模型侧**，不得默默划进流程项。
+
+    否则将来新增一条产物判据时，只要忘了登记就会被「流程项不影响验收」这条规则吃掉
+    ——那正是把真实缺陷洗成绿的最短路径。
+    """
+    assert _gate_block_scope("some.brand.new.code") == "model"
+    assert _gate_block_scope("human_review.missing") == "process"
+    # 流程项集合必须**直接复用**清单侧集合（单点，不另立第二份清单）
+    assert _MANIFEST_SIDE_CODES == {
+        "artifact.missing", "artifact.overlay", "artifact.quality_gate",
+        "export.mark", "export.meta", "export.section",
+        "manifest.pack_id", "manifest.statement_pending",
+        "selfcheck.missing", "selfcheck.fail",
+        "human_review.missing", "human_review.field",
+        "adapter.status", "gate.status", "schema.manifest",
+    }, "流程项集合被改动时须同步复核 ISSUE-092 的分类口径"
+
+
+def test_gate_empty_items_is_clean_in_both_scopes() -> None:
+    """零条目 ⇒ 两栏都干净，且不出现 `None`（`None` 只属于「没判」）。"""
+    gate = evaluate_gate(Path("unused.json"), pack_items=[])
+    assert gate["blocked"] is False and gate["blocked_model"] is False
+    assert gate["blocked_process"] is False
+    assert gate["block_count"] == gate["block_count_model"] == gate["block_count_process"] == 0
+
+
+def test_gate_report_on_disk_carries_scope_split(tmp_path: Path) -> None:
+    """真实链路：落盘的门禁报告必须带分层字段（取证要依据报告本身，不能只看内存返回值）。"""
+    pack = _fake_pack()
+    out = tmp_path / "delivery"
+    r = pack_delivery(svc=_svc_with(pack), session_id="SESS-TEST-0001",
+                      out_dir=str(out), settings=Settings())
+    saved = json.loads((Path(r.pack_dir) / GATE_REPORT_NAME).read_text(encoding="utf-8"))
+    for key in ("blocked", "blocked_model", "blocked_process",
+                "block_count", "block_count_model", "block_count_process", "scope_policy"):
+        assert key in saved, f"门禁报告缺分层字段：{key}"
+    assert saved["scope_policy"] == GATE_SCOPE_POLICY
+    assert saved["block_count"] == saved["block_count_model"] + saved["block_count_process"]
+    assert all(b.get("scope") in ("model", "process") for b in saved["blocks"]), (
+        f"BLOCK 条目缺归属侧：{saved['blocks']}"
+    )
+    # 无人工台账的预演包：流程项必须被识别出来（否则分层等于没接上）
+    assert "human_review.missing" in saved["process_block_codes"]

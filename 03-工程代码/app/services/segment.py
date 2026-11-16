@@ -181,61 +181,130 @@ def is_multi_part(plan: Sequence[str]) -> bool:
 
 
 # ------------------------------------------------------- 逐场编排（`T-100`／`PRO-014`）
+def _scan_script_structure(script: Any) -> tuple[list[tuple[str, dict[str, Any]]], list[int]]:
+    """剧本 `acts[]`／`scenes[]` 的**元素级结构扫描**（`ISSUE-094` 的单点实现）。
+
+    ⚠️ **唯一口径**（本工程明令禁止第二份）：本函数是「剧本结构缺陷」的**唯一**判定处，
+    两个调用方各自取用自己需要的那一半：
+
+    | 调用方 | 取用 | 性质 |
+    | --- | --- | --- |
+    | `` scene_nos_of() `` | 抛错（取**第一条**问题） | 下游使用前 fail-fast（`GENERATION_FAILED`） |
+    | `` artifact_contract.check_shape() `` | 返回 verdict（取**第一条**问题＋条数） | 生成后形态闸（`script_structure_invalid`） |
+
+    为什么必须是同一个函数：缺陷（`ISSUE-094`）的现场正是「**两处判定口径打架**」——
+    形态闸只判顶层形态（可解析／形态相符／必需键齐备），逐场编排却在**元素级**上判定
+    ⇒ `acts[2]` 是字符串时，闸门放行、下游 `plan_scene_segments` 才炸（`502`）。
+    前移的唯一安全做法是**把下游那把尺子原样搬到上游**，而不是在上游另写一把。
+
+    返回 ``(问题清单, 已是合法场号的清单)``：
+
+    - 问题清单**不抛错**（判定与裁决分离，同 `artifact_contract` 的分层纪律）；
+      每条为 ``(人类可读文案, details)``，**文案与 details 与改造前的逐条 `AppError` 完全一致**
+      （文案守恒：外部可见的报错文本一字未变）；
+    - 场号清单只在**无问题**时有意义（有问题时是「扫到一半」的残值，调用方不得使用）。
+
+    ⚠️ 场号重复只在**其余全合法**时才统计（与改造前语义一致：先逐元素判定、后查重）。
+    """
+    if not isinstance(script, dict):
+        return [("上游剧本不是对象，无法推导逐场调用计划", {})], []
+    acts = script.get("acts")
+    if not isinstance(acts, list) or not acts:
+        return [
+            (
+                "上游剧本缺 `acts[]`（或为空），无法推导逐场调用计划",
+                {"acts_type": type(acts).__name__},
+            )
+        ], []
+
+    problems: list[tuple[str, dict[str, Any]]] = []
+    nos: list[int] = []
+    for ai, act in enumerate(acts):
+        if not isinstance(act, dict):
+            problems.append(
+                (f"上游剧本 acts[{ai}] 不是对象，无法推导逐场调用计划", {"index": ai})
+            )
+            continue
+        scenes = act.get("scenes")
+        if not isinstance(scenes, list) or not scenes:
+            problems.append(
+                (
+                    f"上游剧本 acts[{ai}] 缺 `scenes[]`（或为空），无法推导逐场调用计划",
+                    {"act_index": ai},
+                )
+            )
+            continue
+        for si, scene in enumerate(scenes):
+            if not isinstance(scene, dict):
+                problems.append(
+                    (
+                        f"上游剧本 acts[{ai}].scenes[{si}] 不是对象，无法推导逐场调用计划",
+                        {"act_index": ai, "scene_index": si},
+                    )
+                )
+                continue
+            no = scene.get("no")
+            if not isinstance(no, int) or isinstance(no, bool):
+                problems.append(
+                    (
+                        f"上游剧本 acts[{ai}].scenes[{si}] 的 `no` 不是整数，"
+                        "无法推导逐场调用计划",
+                        {"act_index": ai, "scene_index": si, "no": no},
+                    )
+                )
+                continue
+            nos.append(no)
+
+    if problems:
+        return problems, nos
+    dup = sorted({n for n in nos if nos.count(n) > 1})
+    if dup:
+        problems.append(
+            (
+                "上游剧本场号重复（" + "、".join(str(n) for n in dup) + "），"
+                "无法推导逐场调用计划",
+                {"scene_nos": nos, "duplicated": dup},
+            )
+        )
+    return problems, nos
+
+
+def script_structure_problems(script: Any) -> list[tuple[str, dict[str, Any]]]:
+    """剧本 `acts[]`／`scenes[]` 的**结构缺陷清单**（不抛错；`ISSUE-094` 的单点判定）。
+
+    覆盖的缺陷面（逐条与 `` scene_nos_of() `` 改造前抛出的错误**文案／details 逐字一致**）：
+
+    | # | 缺陷 | details |
+    | --- | --- | --- |
+    | 1 | 剧本不是对象 | `{}` |
+    | 2 | 缺 `acts[]`（或为空） | `acts_type` |
+    | 3 | `acts[ai]` 不是对象 | `index` |
+    | 4 | `acts[ai]` 缺 `scenes[]`（或为空） | `act_index` |
+    | 5 | `acts[ai].scenes[si]` 不是对象 | `act_index`、`scene_index` |
+    | 6 | `scenes[si].no` 不是整数 | `act_index`、`scene_index`、`no` |
+    | 7 | 场号重复 | `scene_nos`、`duplicated` |
+
+    ⚠️ **不抛错、不改写**：本函数只描述事实（同 `SafetyService`「服务层只判定、
+    编排层阻断」的分层纪律）；是否阻断、以什么错误码阻断由调用方裁决。
+    """
+    return _scan_script_structure(script)[0]
+
+
 def scene_nos_of(script: dict[str, Any] | None) -> list[int]:
     """上游剧本的**场号清单**（按 `acts[]` 出现顺序、场内按 `no` 升序）。
 
     ⚠️ 异常一律**显式报错、不猜测**：场号缺失／非整数／重复 ⇒ 逐场编排无从保证
     「每场一次调用」，静默跳过会导致该场**无人负责**（正是 `PRO-014` 要消灭的漏场形态）。
+
+    ⚠️ **判定不在此处实现**（`ISSUE-094`）：结构缺陷的唯一口径是
+    `` script_structure_problems() ``；本函数只负责「有问题 ⇒ 用**第一条**问题抛错」，
+    即改造前的行为与文案一字不变（现有测试 `app/tests/test_segment.py`／
+    `test_scene_orchestration.py` 未改动）。
     """
-    if not isinstance(script, dict):
-        raise AppError(
-            ErrorCode.GENERATION_FAILED,
-            "上游剧本不是对象，无法推导逐场调用计划",
-        )
-    acts = script.get("acts")
-    if not isinstance(acts, list) or not acts:
-        raise AppError(
-            ErrorCode.GENERATION_FAILED,
-            "上游剧本缺 `acts[]`（或为空），无法推导逐场调用计划",
-            details={"acts_type": type(acts).__name__},
-        )
-    nos: list[int] = []
-    for ai, act in enumerate(acts):
-        if not isinstance(act, dict):
-            raise AppError(
-                ErrorCode.GENERATION_FAILED,
-                f"上游剧本 acts[{ai}] 不是对象，无法推导逐场调用计划",
-                details={"index": ai},
-            )
-        scenes = act.get("scenes")
-        if not isinstance(scenes, list) or not scenes:
-            raise AppError(
-                ErrorCode.GENERATION_FAILED,
-                f"上游剧本 acts[{ai}] 缺 `scenes[]`（或为空），无法推导逐场调用计划",
-                details={"act_index": ai},
-            )
-        for si, scene in enumerate(scenes):
-            if not isinstance(scene, dict):
-                raise AppError(
-                    ErrorCode.GENERATION_FAILED,
-                    f"上游剧本 acts[{ai}].scenes[{si}] 不是对象，无法推导逐场调用计划",
-                    details={"act_index": ai, "scene_index": si},
-                )
-            no = scene.get("no")
-            if not isinstance(no, int) or isinstance(no, bool):
-                raise AppError(
-                    ErrorCode.GENERATION_FAILED,
-                    f"上游剧本 acts[{ai}].scenes[{si}] 的 `no` 不是整数，无法推导逐场调用计划",
-                    details={"act_index": ai, "scene_index": si, "no": no},
-                )
-            nos.append(no)
-    dup = sorted({n for n in nos if nos.count(n) > 1})
-    if dup:
-        raise AppError(
-            ErrorCode.GENERATION_FAILED,
-            "上游剧本场号重复（" + "、".join(str(n) for n in dup) + "），无法推导逐场调用计划",
-            details={"scene_nos": nos, "duplicated": dup},
-        )
+    problems, nos = _scan_script_structure(script)
+    if problems:
+        message, details = problems[0]
+        raise AppError(ErrorCode.GENERATION_FAILED, message, details=details)
     return nos
 
 

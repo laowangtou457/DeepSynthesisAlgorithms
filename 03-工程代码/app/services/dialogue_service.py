@@ -67,6 +67,20 @@ _UPSTREAM_VARS: dict[str, dict[str, str]] = {
     "shot_prompt": {"storyboard_json": "storyboard", "script_json": "script"},
 }
 
+#: 形态闸失败中**可重试**的原因码（`ISSUE-094`）。
+#:
+#: - `artifact_shape_invalid`：`_guard_artifact_shape` 在 `verdict.reason` 为空时的兜底码；
+#: - `script_structure_invalid`：`check_shape` 第四层（元素级结构，仅 `script`）的原因码。
+#:
+#: ⚠️ **只收这两码**：其余形态闸原因码（`artifact_empty`／`artifact_not_json`／
+#: `artifact_shape_mismatch`／`artifact_missing_required_keys`）同样是**单次采样的
+#: 随机波动**，但它们此前就**没有**重试额度；本批裁决只要求把「生成失败可自愈」这条
+#: 打通到形态闸，故按裁决给定的两码**精确收口**，不擅自扩大（多给额度＝成倍耗时，
+#: 属 `T-086` 量测后另议的范围）。
+_SHAPE_GATE_RETRY_REASONS: frozenset[str] = frozenset(
+    {"artifact_shape_invalid", "script_structure_invalid"}
+)
+
 #: **客户侧自由文本字段**——`SW-009`／`SW-011` 输入闸的检测范围（`T-005`）。
 #:
 #: ⚠️ 刻意**排除**三类字段，理由须可举证：
@@ -2298,10 +2312,33 @@ class DialogueService:
         max_attempts = (
             max(1, int(get_settings().quality_gate_max_attempts)) if retry_enabled else 1
         )
+        # ---- `ISSUE-094`：形态闸是**第二路额度驱动者** ----
+        # ⚠️ 为什么必须单独给额度：`script` 段通常不适用质量门禁（`gate_applies=False`）
+        #    ⇒ 上式给出 `max_attempts=1` ⇒ **形态闸判失败即抛、零重试**。而形态缺陷
+        #    （`acts[2]` 非对象这类元素级结构）是**单次采样的随机波动**，重采一次多半自愈。
+        # ⚠️ 取 `max` 而不是相加：两路额度服务的是**同一件资源**（本阶段的采样次数），
+        #    相加会让「质量门禁 2 次 ＋ 形态闸 2 次」变成 4 次调用，成倍拉长墙钟时间。
+        # ⚠️ **两份额度各自独立判停**（`ISSUE-094` 施工时实测出的必要约束）：
+        #    循环上限取两路最大值，但**质量门禁的判停仍只用 `quality_max_attempts`**
+        #    ——否则「给形态闸 2 次额度」会顺带把 `quality_gate_retry_enabled=false`
+        #    （重试默认关，开关是**成倍耗时**的取舍）悄悄打开：实测该串扰会让
+        #    `script` 段在质量门禁不过时多跑一次采样（真跑日志 `quality_gate_retry`
+        #    在 `retry_enabled=false` 下出现），属**裁决之外的副作用**，故在此隔离。
+        # ⚠️ 受 `shape_gate_enforce` 约束：受控旁路下形态闸不阻断，也就无需重试额度。
+        # ⚠️ 读法（独立 QA 指出注释一处易误读，故作措辞收紧）：这里**只有判定阈值是两路各自的**，
+        #    而**循环上限是共享的一个数** ⇒ 抬高 `shape_gate_max_attempts` 会在质量门禁重试
+        #    已开启时一并抬高其尝试上限（反之亦然）；`quality_gate_retry_enabled=false` 时
+        #    质量门禁仍按 `quality_max_attempts=1` 判停（下方隔离），故不受影响。
+        quality_max_attempts = max_attempts
+        if get_settings().shape_gate_enforce and get_settings().shape_gate_retry_enabled:
+            max_attempts = max(max_attempts, max(1, int(get_settings().shape_gate_max_attempts)))
         retry_segs: list[str] = list(plan)
         retry_scope_note: str | None = None
         gate_verdicts: list[dict[str, Any]] = []
         quality_verdict: Any = None
+        #: 形态闸逐次尝试留痕（`ISSUE-094`）：**只记失败**那次，成功不记。
+        #: 有内容 ⇒ `artifact["artifact_shape_retry"]` 落盘（无重试＝不写，同 `amp_norm` 纪律）。
+        shape_attempts: list[dict[str, Any]] = []
 
         texts_by_seg: dict[str, str] = {}
         trace: list[dict[str, Any]] = []
@@ -2468,7 +2505,54 @@ class DialogueService:
                 # 改造前：多段会经 `_merge_parts` → `parse_json_object`（但那是「合并的必要步骤」），
                 # 单段则 `final_text = texts[0]` **完全不解析** ⇒ 产物是否被检查**取决于 `segment` 取值**。
                 # 现统一收口：无论单段多段，最终产物都必须过形态闸。
-                artifact_verdict = self._guard_artifact_shape(tpl_stage, final_text)
+                #
+                # ---- `ISSUE-094`：形态闸失败 ⇒ **段内重试**（不再「判出即抛」）----
+                # ⚠️ 捕获必须**就地**（在本 try 内）：外层 `except AppError` 走的是
+                #    「重试把产物弄坏 ⇒ 回退上一轮合法快照」这条**不同**的语义；
+                #    形态闸失败的正确响应是**重采一次样**，不是回退（首轮无快照可退）。
+                try:
+                    artifact_verdict = self._guard_artifact_shape(tpl_stage, final_text)
+                except AppError as exc:
+                    shape_reason = str((exc.details or {}).get("reason") or "")
+                    shape_path = (exc.details or {}).get("structure_path")
+                    # 留痕只记**失败那次**（成功不记）：无重试 ⇒ 该列表为空 ⇒ 不落盘。
+                    shape_attempts.append(
+                        {
+                            "attempt": attempt,
+                            "reason": shape_reason,
+                            "stage": tpl_stage,
+                            "shape": artifact_contract.STAGE_TO_SHAPE.get(tpl_stage),
+                            # 元素级缺陷的定位串（`acts[2]` 等）；非元素级失败为 `None`。
+                            "path": shape_path,
+                            # 摘要而非全文：留痕不落产物原文（同 `amp_norm` 纪律）。
+                            "error": str(exc.message or "")[:200],
+                        }
+                    )
+                    if shape_reason in _SHAPE_GATE_RETRY_REASONS and attempt < max_attempts:
+                        # 重跑**全部段**：形态缺陷通常来自单段采样，而 `_retry_segments`
+                        # 的精确到段依赖「门禁报错文本 → 段」的映射，形态闸没有那个粒度
+                        # ⇒ 宁可多跑（不得漏跑），代价由 `shape_gate_max_attempts` 封顶。
+                        retry_segs = list(plan)
+                        logger.info(
+                            "artifact_shape_retry",
+                            extra={
+                                "extra_fields": {
+                                    "session_id": rec.session_id,
+                                    "stage": tpl_stage,
+                                    "attempt": attempt,
+                                    "next_attempt": attempt + 1,
+                                    "reason": shape_reason,
+                                    "path": shape_path,
+                                    "retry_segments": retry_segs,
+                                }
+                            },
+                        )
+                        continue
+                    # 额度用尽／原因码不可重试：**原样抛出**（不改错误码、不改文案）；
+                    # 只把「形态闸尝试过几次」挂进 details，供调用方与离线审计举证。
+                    # ⚠️ 追加键不碰 `reason`（闸门原因码），故既有断言面零改动。
+                    exc.details["shape_attempts"] = list(shape_attempts)
+                    raise
             except AppError:
                 # ⚠️ **重试的语义是「改善」，不是「换成另一版」**（本批实测踩到的坑）：
                 #    脚本化后端只预置了一轮响应时，第 2 次调用返回 `{}` ⇒ 形态闸判「无法识别」。
@@ -2535,6 +2619,11 @@ class DialogueService:
                     tpl_stage, final_text, gate_upstream
                 )
                 retry_scope_note = "retry_degraded_fallback"
+                if shape_attempts:
+                    # `ISSUE-094` 留痕校正：这一条失败属于**被回退掉的那次采样**
+                    # （最终入库的仍是上一轮合法产物）。必须标注，否则审计会把
+                    # 「试过但被丢弃」读成「入库的产物没过闸」。
+                    shape_attempts[-1]["fallback"] = retry_scope_note
                 logger.warning(
                     "quality_gate_retry_degraded",
                     extra={
@@ -2584,7 +2673,10 @@ class DialogueService:
             if not quality_gate.should_retry(quality_verdict):
                 retry_scope_note = "no_retryable_failure"
                 break
-            if attempt >= max_attempts:
+            # ⚠️ `ISSUE-094`：质量门禁的判停只看**自己**的额度（`quality_max_attempts`）——
+            #    循环上限还含形态闸额度，若此处用 `max_attempts`，等于「给形态闸额度」
+            #    顺带把 `quality_gate_retry_enabled=false` 打开（裁决之外的副作用）。
+            if attempt >= quality_max_attempts:
                 break
             retry_segs, retry_scope_note = self._retry_segments(plan, quality_verdict, texts_by_seg)
             logger.info(
@@ -2613,13 +2705,13 @@ class DialogueService:
             if get_settings().quality_gate_enforce:
                 raise AppError(
                     ErrorCode.GENERATION_FAILED,
-                    f"「{tpl_stage}」段产物用尽 {max_attempts} 次尝试仍未通过质量门禁"
+                    f"「{tpl_stage}」段产物用尽 {quality_max_attempts} 次尝试仍未通过质量门禁"
                     f"（形态：{quality_verdict.shape}；可重试失败 {len(quality_verdict.retryable)} 项、"
                     f"重试无用 {len(quality_verdict.non_retryable)} 项）",
                     details={
                         "reason": "quality_gate_not_passed",
                         "stage": tpl_stage,
-                        "attempts": max_attempts,
+                        "attempts": quality_max_attempts,
                         "gate": record,
                         "retryable": quality_verdict.retryable[:12],
                         "non_retryable": quality_verdict.non_retryable[:12],
@@ -2686,6 +2778,10 @@ class DialogueService:
                     "artifact_shape_ok": (artifact_verdict or {}).get("ok"),
                     "artifact_shape_reason": (artifact_verdict or {}).get("shape_reason"),
                     "artifact_shape_enforced": (artifact_verdict or {}).get("enforced"),
+                    # `ISSUE-094`：形态闸重试了几次（`0` ＝ 一次过，无需重采）。
+                    # ⚠️ 与 `artifact_shape_checked` 同一纪律：`attempts` 与 `ok` 分开记，
+                    #    「判过且一次过」与「判过且重采过」在单一布尔上长得一样。
+                    "artifact_shape_retry_attempts": len(shape_attempts),
                     "upstream_admission": upstream_admission or None,
                     # ---- 上游输入体积留痕（`ISSUE-037` 方案 D 的服务层一半；
                     #      `ISSUE-044` 起**按段适用**，仅在真的压小时出现）----
@@ -2709,7 +2805,7 @@ class DialogueService:
                     #    （`True`／`False`／`None`＝无法判定）。「没判」不得长得像「判过」。
                     "quality_gate_applies": gate_applies,
                     "quality_gate_attempts": len(gate_verdicts),
-                    "quality_gate_max_attempts": max_attempts,
+                    "quality_gate_max_attempts": quality_max_attempts,
                     "quality_gate_ok": (quality_verdict.ok if quality_verdict else None),
                     "quality_gate_shape": (quality_verdict.shape if quality_verdict else None),
                     "quality_gate_retryable": (
@@ -2758,7 +2854,7 @@ class DialogueService:
             # ---- `T-086` 新增留痕：门禁与重试（**逐次尝试**，可核查「重试了没有」「改了什么」）----
             "quality_gate": {
                 "applies": gate_applies,
-                "max_attempts": max_attempts,
+                "max_attempts": quality_max_attempts,
                 "attempts": len(gate_verdicts),
                 "ok": (quality_verdict.ok if quality_verdict else None),
                 "enforced": (quality_verdict.enforced if quality_verdict else None),
@@ -2772,6 +2868,19 @@ class DialogueService:
         }
         if segment_contributions:
             artifact["segment_contributions"] = segment_contributions
+        if shape_attempts:
+            # `ISSUE-094` 留痕：形态闸**重采过**的逐次失败明细（第几次／原因码／阶段／
+            # 元素级定位串／报错摘要）。⚠️ 同 `amp_norm`／`appearance_echo_clean` 纪律——
+            # **无重试（空列表）不写**，不污染每一次生成；一旦重采过就必须留：
+            # 否则「产物是第一次采的还是第二次采的」在留痕上无从区分，
+            # 而形态闸恰恰改的就是「采几次」这件事。
+            # ⚠️ 落点说明：`artifact["artifact_shape"]` 是**形态名字符串**（多份既有测试
+            #   断言其等于 `"pack"`／`"storyboard"` 等），不能改成对象把明细塞进去；
+            #    故明细落在这组 `artifact_shape_*` 同族字段的**兄弟键**上，键名自带语义。
+            artifact["artifact_shape_retry"] = {
+                "attempts": len(shape_attempts),
+                "attempts_history": shape_attempts,
+            }
         if meta_overrides:
             # 覆盖清单（含未变更项）一并留痕：可核查「覆盖**看过**哪些字段」，
             # 与「覆盖**改过**哪些字段」是两件事（同 `checked`/`ok` 分列的纪律）。
