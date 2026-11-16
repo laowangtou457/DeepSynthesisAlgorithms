@@ -229,6 +229,14 @@ _APPEARANCE_ECHO_MAX_ROUNDS = 5
 _APPEARANCE_ECHO_MIN_ZH_CHARS = 10
 _APPEARANCE_ECHO_MIN_EN_WORDS = 6
 
+#: **占位镜**在 `notes` 上的固定前缀 —— 本文件内的**唯一真值源**。
+#: ① `_reconcile_pack_conservation` 补占位镜时用它拼 `notes`；
+#: ② 投影规则⑥ 用它判「这一镜是服务层构造的占位镜」并**整镜跳过**（SPEC-008 V2.6 §3.7.2 边界⑤）。
+#: ⚠️ 与判据 `R27P PLACEHOLDER`（`prompts/validate_output.py`，`notes` 以「服务层构造占位」开头）
+#:    是**同一锚点字符串**——判据侧为内联字面量，本批**不改判据**，故此处以常量表达并在注释里点明同源；
+#:    今后若改这串中文，两处必须同批改（否则「服务层认定的占位镜」与「判据认定的占位镜」会分叉）。
+_PLACEHOLDER_NOTES_PREFIX = "服务层构造占位"
+
 #: 子句分隔符族（删除粒度＝**完整子句**）：中文按 `。！？；，、`、英文按 `. ! ? ; ,`。
 #: ⚠️ 英文的 `.` 会把 `2.5`／`Mr.` 一并切断，但提示词正文里罕见，且判据本身也不区分
 #:    「句」与「分句」——宁可粗切（切细了最多多删一个片段，切粗了会整句消失）。
@@ -1992,8 +2000,13 @@ class DialogueService:
 
         跳过与保护
         ----------
-        - **占位镜**（`prompt_en` 为空／缺失）不参与：服务层占位镜无外观锚，
-          且 `_reconcile_pack_conservation` 明令其 `prompt_en` 留空「不伪造创作内容」；
+        - **占位镜整镜跳过**（`skipped_placeholder`）：识别锚是 `notes` 以
+          `_PLACEHOLDER_NOTES_PREFIX`（「服务层构造占位」）开头——那正是
+          `_reconcile_pack_conservation` 自己写进去的一句，也是判据 `R27P PLACEHOLDER` 的同一锚。
+          ⚠️ **不得用「`prompt_en` 为空」当占位镜判据**：`prompt_en` 空也可能是**模型漏写**
+          的真实镜，其 `prompt_zh` 是**模型创作内容**，该被清洗；而占位镜的 `prompt_zh`
+          是服务层由 `action` 机械派生的，替它清洗等于服务层改写自己刚生成的东西
+          （既不增信息，又抹掉追溯线索）；
         - **英文 `The camera` 起句的子句一律不删**：那是投影规则⑤ 刚投影进来的合规内容
           （删它等于打开 `R34` 的洞），同时也保护模型自己写对的那句；若命中只落在该句内
           ⇒ 该镜英文侧记 `skipped_unresolvable`。
@@ -2055,9 +2068,21 @@ class DialogueService:
         scrubbed = 0
         skipped_unresolvable = 0
         skipped_would_empty = 0
+        skipped_placeholder = 0
         unchanged = 0
         for shot in shots:
             if not isinstance(shot, dict):
+                continue
+            # ---- **占位镜整镜跳过**（SPEC-008 V2.6 §3.7.2 边界⑤ 的实现对齐）----
+            # ⚠️ 识别锚**只认 `notes` 前缀**（＝守恒兜底 `_reconcile_pack_conservation` 自己写的
+            #    那句「服务层构造占位…」，也是判据 `R27P PLACEHOLDER` 的同一锚）——
+            #    **不得**用「`prompt_en` 为空」当占位镜判据：`prompt_en` 空也可能是
+            #    **模型漏写**的真实镜，其 `prompt_zh` 是模型创作内容、**该被清洗**；
+            #    而占位镜的 `prompt_zh` 是由 `action` 机械派生的服务层产物，
+            #    替它清洗等于让服务层改写自己刚生成的东西（既不增信息，又抹掉可追溯线索）。
+            notes = shot.get("notes")
+            if isinstance(notes, str) and notes.startswith(_PLACEHOLDER_NOTES_PREFIX):
+                skipped_placeholder += 1
                 continue
             shot_id = shot.get("shot_id")
             for lang, key, grams in (
@@ -2068,7 +2093,7 @@ class DialogueService:
                     continue
                 raw = shot.get(key)
                 if not isinstance(raw, str) or not raw.strip():
-                    # 占位镜／空字段：**不参与**（不是「查过没问题」，故不计入 `unchanged`）
+                    # 空字段（模型漏写本语言正文）：**无可清洗内容**，不计入 `unchanged`
                     continue
                 if lang == "zh":
                     def _hit_zh(candidate: str, _grams=grams) -> str | None:
@@ -2122,6 +2147,7 @@ class DialogueService:
                 "scrubbed": 0,
                 "skipped_unresolvable": skipped_unresolvable,
                 "skipped_would_empty": skipped_would_empty,
+                "skipped_placeholder": skipped_placeholder,
                 "unchanged": unchanged,
                 "items": [],
                 "items_truncated": False,
@@ -2136,6 +2162,7 @@ class DialogueService:
             "scrubbed": scrubbed,
             "skipped_unresolvable": skipped_unresolvable,
             "skipped_would_empty": skipped_would_empty,
+            "skipped_placeholder": skipped_placeholder,
             "unchanged": unchanged,
             "items": items[:50],
             "items_truncated": len(items) > 50,
@@ -3100,7 +3127,7 @@ def _reconcile_pack_conservation(
             #    是「词表值——说明」散文形态，shot_prompt 层 R32 要纯词表 code；
             #    R33 的规则即「留空须省略键」）。占位镜没有真实表达内容，省略这些键
             #    交判据如实判／后续补写。
-            "notes": "服务层构造占位（2026-11-07 裁决甲）：模型漏生成本镜；"
+            "notes": _PLACEHOLDER_NOTES_PREFIX + "（2026-11-07 裁决甲）：模型漏生成本镜；"
             "机械承继字段引用上游分镜镜定义，prompt_zh 由 action 派生，"
             "prompt_en 留空待补——占位本身不构成创作合格，交判据如实判。",
         }

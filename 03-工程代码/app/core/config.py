@@ -309,8 +309,11 @@ class Settings(BaseSettings):
     #: ③ **不删空保护**（硬要求）：删到「中文去空白后 <10 字」或「英文 <6 实词」⇒ **整镜回滚**
     #:    （`skipped_would_empty`，原文不动）——否则本机制会把 `R27`（正文非空／可读）的洞
     #:    洗成**新缺陷**，即用一个判据的绿去换另一个判据的红。
-    #: ④ **跳过占位镜**：`prompt_en` 为空／缺失的镜不参与（服务层占位镜无外观锚，且
-    #:    `_reconcile_pack_conservation` 明令其 `prompt_en` 留空「不伪造创作内容」）。
+    #: ④ **跳过占位镜**（`skipped_placeholder`）：识别锚是 `notes` 以「服务层构造占位」开头
+    #:    （＝`_reconcile_pack_conservation` 自己写的锚，也是判据 `R27P PLACEHOLDER` 的同一锚），
+    #:    **整镜**不参与清洗。⚠️ 不用「`prompt_en` 为空」当判据——那也可能是**模型漏写**的真实镜，
+    #:    其 `prompt_zh` 是模型创作内容、该被清洗；占位镜的 `prompt_zh` 则是服务层由 `action`
+    #:    机械派生的，替它清洗既不增信息、又抹掉追溯线索。
     #: ⑤ **不静默**：逐镜留痕（镜号／语言／命中 gram／删除长度）＋ `merge_warnings` 一条；
     #:    留痕**不落原文**（照 `camera_amp_speed_normalize` 的纪律）。
     #: ⑥ **判据零改动**：3 字／3 实词阈值与 `R28` 本身一字未动，本项只是「产物不许复述外观」

@@ -14,7 +14,7 @@
 ------------
 被测对象是 `DialogueService._clean_pack_appearance_echo`（**纯函数式**，`__new__` 免依赖构造，
 与 `test_pack_en_camera_sentence_fill.py`／`test_camera_amp_speed_normalize.py` 同构）。
-共 **15 个用例**，覆盖十二组：
+共 **17 个用例**，覆盖十三组：
 
   ① 中文单锚 ⇒ 子句整删、`R28` 复算归零、其他字段一字不动；
   ② 同子句含两锚 ⇒ **一次删整句**即归零（证明不是逐词手术）；
@@ -22,6 +22,9 @@
      `skipped_unresolvable`、原文不动**（不硬凑，交判据判）；
   ④ 英文 3 实词命中 ⇒ 删子句、归零；
   ⑤ 命中只落在 `The camera …` 句内 ⇒ **该句不删**（保护投影规则⑤ 补的句子）；
+  ⑤′ **占位镜整镜跳过**（`notes` 以「服务层构造占位」开头）⇒ `prompt_zh` 逐字不变、
+     记 `skipped_placeholder`；同包内的**真实镜**（`notes` 无前缀）照常清洗
+     （⇒ 既证明「不是把开关关掉」，也证明「识别锚不是 `prompt_en` 为空」）；
   ⑥ **不删空保护**：删到低于阈值 ⇒ 整镜回滚、字段值完全不变；
   ⑦ 无外观锚 ⇒ **字节级 no-op**；
   ⑧ 开关关闭 ⇒ 原样返回（回退路径）；
@@ -48,6 +51,7 @@ from app.core.config import get_settings
 from app.services import quality_gate
 from app.services.dialogue_service import (
     DialogueService,
+    _PLACEHOLDER_NOTES_PREFIX,
     _scrub_appearance_echo_field,
 )
 
@@ -303,6 +307,88 @@ def test_camera_sentence_clause_is_protected() -> None:
     assert "The camera pushes in over an orange rescue suit." in doc["shots"][0]["prompt_en"]
     # 承认删不动：判据侧仍会报（本机制不掩盖）
     assert _r28_errors(doc)
+
+
+# --------------------------------------------------------------------------- ⑤′
+def test_placeholder_shot_fully_skipped_but_real_shot_scrubbed() -> None:
+    """**占位镜整镜跳过**、非占位镜照常清洗（SPEC-008 V2.6 §3.7.2 边界⑤ 的实现对齐）。
+
+    ⚠️ 为什么这条必须存在（`7006072` 的真实缺陷）：首版只对「空字段」做 continue，
+       占位镜（`prompt_en` 为空、`notes` 明写「服务层构造占位…」）的 **`prompt_zh` 仍被清洗**——
+       而 `prompt_zh` 是服务层由 `action` 机械派生的自有产物，清洗它＝服务层改写自己刚生成的东西
+       （既不增信息，又抹掉追溯线索），且与规范／开关注释／docstring 三处承诺冲突。
+
+    ⚠️ 识别锚**只认 `notes` 前缀**，**不认**「`prompt_en` 为空」：后者也可能是**模型漏写**的
+       真实镜，其 `prompt_zh` 是模型创作内容，**该被清洗**（本用例的镜 B 就是这种形态下的对照）。
+
+    ⚠️ 判据侧的归零断言只能**按镜**做：占位镜的正文仍含外观锚，`R28` 会继续如实报它
+       （本机制**不掩盖**服务层占位镜的洞），故断言「只剩占位镜那一处、镜 B 已消失」。
+    """
+    # 生产侧常量与 `_reconcile_pack_conservation` 写入的文案同源（防两处字面量分叉）
+    assert _PLACEHOLDER_NOTES_PREFIX == "服务层构造占位"
+    placeholder_notes = (
+        "服务层构造占位（2026-11-07 裁决甲）：模型漏生成本镜；"
+        "机械承继字段引用上游分镜镜定义，prompt_zh 由 action 派生，"
+        "prompt_en 留空待补——占位本身不构成创作合格，交判据如实判。"
+    )
+    placeholder_zh = "角色穿着深蓝色潜水服登场，随后下潜，光线渐暗。"
+    real_zh = "近景：他站在甲板上，海风吹动衣角，穿着深蓝色潜水服，目光望向远处。"
+    raw = _pack(
+        [
+            {   # 镜 A：**服务层占位镜**
+                "shot_id": "S01-SH001",
+                "notes": placeholder_notes,
+                "prompt_zh": placeholder_zh,
+                "prompt_en": "",
+            },
+            {   # 镜 B：真实镜（`notes` 无前缀）
+                "shot_id": "S01-SH002",
+                "notes": "本层正文由模型创作。",
+                "prompt_zh": real_zh,
+                "prompt_en": "Close-up of him on the deck. The camera pushes in.",
+            },
+        ],
+        [_char(lock_zh="深蓝色潜水服")],
+    )
+    out, rec = _svc()._clean_pack_appearance_echo("shot_prompt", raw)
+
+    assert rec is not None
+    assert rec["skipped_placeholder"] == 1, "占位镜未被识别（notes 前缀锚失效）"
+    assert rec["scrubbed"] == 1, "本机制被整体关掉或被占位镜拖累"
+    assert rec["items"][0]["shot_id"] == "S01-SH002"
+
+    doc = json.loads(out)
+    by_id = {s["shot_id"]: s for s in doc["shots"]}
+    # 镜 A：**逐字不变**（整镜跳过，不止跳过 `prompt_en`）
+    assert by_id["S01-SH001"]["prompt_zh"] == placeholder_zh
+    assert by_id["S01-SH001"]["prompt_en"] == ""
+    # 镜 B：照常清洗
+    assert "深蓝色" not in by_id["S01-SH002"]["prompt_zh"]
+    assert by_id["S01-SH002"]["prompt_zh"] == "近景：他站在甲板上，海风吹动衣角，目光望向远处。"
+
+    # 判据复算：只剩**占位镜**那一处如实报出，镜 B 已消失（不掩盖、也不敢掩盖）
+    hits = _r28_errors(doc)
+    assert len(hits) == 1, hits
+    assert "S01-SH001" in hits[0] and "S01-SH002" not in hits[0]
+
+
+def test_placeholder_only_package_is_noop() -> None:
+    """整包只有占位镜 ⇒ **字节级 noop**（不因「只跳过占位镜」就写 artifact／重序列化）。"""
+    raw = _pack(
+        [
+            {
+                "shot_id": "S01-SH001",
+                "notes": "服务层构造占位（2026-11-07 裁决甲）：模型漏生成本镜；",
+                "prompt_zh": "角色穿着深蓝色潜水服登场，随后下潜，光线渐暗。",
+                "prompt_en": "",
+            }
+        ],
+        [_char(lock_zh="深蓝色潜水服")],
+    )
+    out, rec = _svc()._clean_pack_appearance_echo("shot_prompt", raw)
+    assert out == raw
+    assert rec["changed"] is False and rec["action"] == "noop"
+    assert rec["skipped_placeholder"] == 1 and rec["scrubbed"] == 0
 
 
 # --------------------------------------------------------------------------- ⑥
