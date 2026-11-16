@@ -311,14 +311,19 @@ def test_native_r27_stays_retryable() -> None:
     )
 
 
-def test_r28_and_r34_are_non_retryable() -> None:
-    """`R28`／`R34` 必须进 `non_retryable`（项目方 2026-11-16 裁决；范式同 `R27P`／T-106 裁决 A）。
+def test_r28_retryable_but_r34_non_retryable() -> None:
+    """`R28` 必须**可重试**、`R34` 必须**不可重试**（项目方 2026-11-16 两次裁决）。
 
-    实测依据：`r6` 复验批 12 轮（`DEV-20261112-012`）`R28` 与 `R34` 均 **12/12 挂、
-    自愈 0/12**；`ab_t101_r6/on/run1` 更实证「**越试越差**」（`R34` attempt1 缺 1 镜 →
-    attempt2 缺 4 镜）。⇒ 把它们当可重试＝每轮白烧一次 `shot_prompt` 重采样（约 304 s）。
+    演进（两段连读，不得只引一段）：
+    ① 同日**上午**第一次裁决：`r6` 复验批 12 轮（`DEV-20261112-012`）`R28`／`R34`
+       均 **12/12 挂、自愈 0/12** ⇒ 两个码**都**列入不可重试；
+    ② 同日**下午**第二次裁决：投影规则⑥（`pack_appearance_echo_clean`）落地后，
+       `R28` 挂包率 **74.7% → 4.0%**（75 份真机产物 56 → 3 份）；剩余 4% 是**英文
+       跨子句伪 gram**（锁串恰好 3 个实词）在当前判据口径下结构不可解 ⇒ **接受残留、
+       配重试兜住** ⇒ `R28` **移出**不可重试。
+    `R34` 不受影响：残留是「词表不可得／开关关闭」等结构性情形，重采样不会改变。
 
-    **双向断言**：两个码只出现在 `non_retryable`，`retryable` 中不得出现；
+    **双向断言**：`R28` 只出现在 `retryable`、`R34` 只出现在 `non_retryable`；
     同时反向锁住「不可重试 ≠ 放行」——`ok` 仍必须是 `False`。
     """
     doc = json.loads(json.dumps(_MODEL_PACK, ensure_ascii=False))
@@ -337,20 +342,26 @@ def test_r28_and_r34_are_non_retryable() -> None:
         "shot_prompt", text=json.dumps(doc, ensure_ascii=False)
     ))
     assert verdict.ok is False, "不可重试 ≠ 放行：产物仍须判失败"
-    for code in ("R28", "R34"):
-        assert any(code in c for c in verdict.non_retryable), (
-            f"{code} 应进 non_retryable，实得 non_retryable={verdict.non_retryable}"
-        )
-        assert not any(code in c for c in verdict.retryable), (
-            f"{code} 不得进 retryable，实得 retryable={verdict.retryable}"
-        )
+    assert any("R28" in c for c in verdict.retryable), (
+        f"R28 应恢复可重试，实得 retryable={verdict.retryable}"
+    )
+    assert not any("R28" in c for c in verdict.non_retryable), (
+        f"R28 不得再进 non_retryable，实得 non_retryable={verdict.non_retryable}"
+    )
+    assert any("R34" in c for c in verdict.non_retryable), (
+        f"R34 应留在 non_retryable，实得 non_retryable={verdict.non_retryable}"
+    )
+    assert not any("R34" in c for c in verdict.retryable), (
+        f"R34 不得进 retryable，实得 retryable={verdict.retryable}"
+    )
 
 
 def test_classify_keeps_other_model_failures_retryable() -> None:
-    """分拣不许误伤：`R28`／`R34` 之外的模型侧失败**仍可重试**（如 `R11`／`R41`）。
+    """分拣不许误伤：`R34` 之外的模型侧失败**仍可重试**（`R28`／`R11`／`R31`／`R35`）。
 
-    ⚠️ 这是新增 marker 的**反向锁**：加两条 marker 若写成整码前缀（如 `"R3"`）会把
-    `R31`／`R35`／`R36` 一起卷进不可重试，那些失败重采样**是**有机会改变的。
+    ⚠️ 这是 marker 的**反向锁**：若写成整码前缀（如 `"R3"`）会把 `R31`／`R35`／`R36`
+    一起卷进不可重试，那些失败重采样**是**有机会改变的；`R28` 恢复可重试后
+    同样落在这一侧（见 `test_r28_retryable_but_r34_non_retryable`）。
     """
     markers = quality_gate._NON_RETRYABLE_ENGINE_MARKERS  # noqa: SLF001 - 分拣口径的唯一真值
     retryable, non_retryable = quality_gate._classify(  # noqa: SLF001
@@ -363,11 +374,9 @@ def test_classify_keeps_other_model_failures_retryable() -> None:
         ],
         markers,
     )
-    assert len(non_retryable) == 2 and all(
-        ("R28" in c or "R34" in c) for c in non_retryable
-    ), non_retryable
-    assert len(retryable) == 3 and all(
-        any(code in c for code in ("R11", "R31", "R35")) for c in retryable
+    assert len(non_retryable) == 1 and "R34" in non_retryable[0], non_retryable
+    assert len(retryable) == 4 and all(
+        any(code in c for code in ("R28", "R11", "R31", "R35")) for c in retryable
     ), retryable
 
 
