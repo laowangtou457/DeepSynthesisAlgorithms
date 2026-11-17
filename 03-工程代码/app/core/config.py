@@ -260,6 +260,15 @@ class Settings(BaseSettings):
     #: **映射不到一律回退为全部段**（宁可多跑，不得漏跑），并在留痕里记 `scope_fallback`。
     quality_gate_retry_scope: Literal["segment", "stage"] = "segment"
 
+    #: **重试反馈注入**（**乙**，2026-11-17 裁决「先甲后乙」落地）。
+    #: `true` ＝ 重采请求附带上一轮 retryable 明细（`_retry_feedback_text`，≤8 条×200 字符，
+    #: 注入位置在**请求侧提示词尾**，不改模板、不改写产物），并启用「承继字段失败跳过
+    #: 本段重试」（`_retry_targets_inherited_moves`：`shot_prompt` 段对 `R11`／`R19` 族
+    #: 跳过——`camera.*` 出生于 `storyboard` 段且承继守恒，甲试点 `DEV-20261117-001`
+    #: 实证盲重试救回 0/4、+40% 时长）。⚠️ `quality_gate_retry_enabled=false` 时本项无效果；
+    #: ⚠️ 乙试点仍须量「反馈重试救回率」，不足再走丙（单元 ≥3 镜）／丁（运镜预算调度）。
+    quality_gate_retry_feedback: bool = True
+
     #: 是否**同时**跑交付层门禁（`delivery/validate_pack.py` 的 `BLOCK` 判据）。
     #: ⚠️ `PRO-006` §7 的验收判据原文针对的**正是它**（「交付包经 `validate_pack.py` 门禁 0 BLOCK」）；
     #: 工程侧门禁（`validate_output.py`）判的是同一批产物的**另一层**，两者**都要**。

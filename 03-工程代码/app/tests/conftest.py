@@ -53,6 +53,7 @@ def client():
 _LEGACY_BEHAVIOR_MODULES = frozenset({
     "test_api_smoke",
     "test_artifact_gate",
+    "test_retry_feedback",
     "test_quality_gate_t086",
 })
 

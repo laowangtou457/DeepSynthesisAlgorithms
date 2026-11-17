@@ -81,6 +81,28 @@ _SHAPE_GATE_RETRY_REASONS: frozenset[str] = frozenset(
     {"artifact_shape_invalid", "script_structure_invalid"}
 )
 
+#: **乙（2026-11-17 裁决「先甲后乙」）：承继字段类失败的判据标记**。
+#:
+#: ⚠️ 甲试点实锤（`DEV-20261117-001`，0/4 救回、+40% 时长）：`camera.move` 出生于
+#: `storyboard` 段（`TPL-008` 导演决策层），`shot_prompt` 段（`TPL-009`）对
+#: `camera.*` 是「**承继守恒：原样承继，一字不得改**」⇒ 在 `shot_prompt` 段对这类
+#: 失败做重采**结构上不可能成功**（只会原样继承上游运镜），且盲重采实测产出过
+#: 更差样本（`schema.pack` 缺 `action`／`prompt_en` 空串）。凡 retryable 明细**全部**
+#: 命中下列标记 ⇒ 跳过本段重试（`retry_skipped_inherited_move`），判定照旧如实留痕。
+#:
+#: ⚠️ **只收 `R11`，不收 `R19`**（独立 QA 证伪结论 A1，2026-11-17）：`R19 GATE`
+#: 目前**只在 storyboard 形态报出** —— `validate_output.validate_doc` 的 pack 分支
+#: 不接线 `rule_gate`（pack 只跑 `R27/R10/R11/R35/R36/R26/R33/R34/外观复述/卫生/
+#: R30/R31/R32`），所以 `shot_prompt` 段的 retryable **不可能**含 `R19`；把它放进
+#: 标记是一段走不到的死代码，还会在测试里制造「生产可达」假象。
+#: ⚠️ **豁免理由（明写，QA 缺口 5）**：`R10`（单元成员数）与 `R31`（镜数低于上游）
+#: 同属承继面，但 **B 期 A/B 实测 `R31` 盲重试救回 3/5**（`shots_floor` 注释），
+#: `R10` 亦无「重试必败」证据 ⇒ 二者保持可重试，不进本标记。
+#: ⚠️ **已知风险（QA 结论 A2，登记）**：若未来把 `R19` 接进 pack 判据，**必须先拆
+#: 「覆盖率族」**——构图/轴线/画面结果覆盖读 `shot_language.composition/axis/result`
+#: （`CFG-006` required），属**本段可修**；届时直接并标记会错杀可重试项。
+_INHERITED_MOVE_MARKERS: tuple[str, ...] = ("R11 UNIT_MOVE_UNIQUE",)
+
 #: **客户侧自由文本字段**——`SW-009`／`SW-011` 输入闸的检测范围（`T-005`）。
 #:
 #: ⚠️ 刻意**排除**三类字段，理由须可举证：
@@ -995,6 +1017,8 @@ class DialogueService:
         backend: Any,
         scene_ctx: dict[int, dict[str, Any]] | None = None,
         scope_ctx: dict[str, Any] | None = None,
+        retry_feedback: str | None = None,
+        retry_feedback_unlocated: bool = False,
     ) -> tuple[dict[str, str], list[dict[str, Any]], int, int, list[str]]:
         """按 `segs` 逐段调用引擎，返回 `(段→文本, 本批留痕, prompt_tokens, completion_tokens, 截断段)`。
 
@@ -1007,6 +1031,13 @@ class DialogueService:
         ⚠️ `scope_ctx`（`T-101`／`PRO-015` 段级输入裁剪）：`{"storyboard": <已解析的上游>}`；
         非空且段名为 `package_head`／`unit:<id>` 时，把 `storyboard_json` 换成**按段裁剪副本**。
         裁剪失败 ⇒ 原样整份（`scope_storyboard_for_segment` 返回 `None` 时），留痕在 trace。
+        ⚠️ `retry_feedback`（**乙**，2026-11-17 裁决）：重采请求附带的**判据反馈**文本
+        （由 `_retry_feedback_text` 构造，只含 retryable 明细）。甲试点（`DEV-20261117-001`）
+        实证盲重采救回 0/4——模型不知道「为什么重采」，系统性偏置原样复现。注入位置在
+        **请求侧**（提示词尾追加），不改写产物、不改模板正文；trace 记 `retry_feedback` 布尔。
+        ⚠️ `retry_feedback_unlocated`（QA 结论 b 的缓解）：反馈随**全段**注入（定位回退）
+        时，每段前置「只纠正与本段相关者」免责句——防未失败段被反馈诱发改写
+        （甲试点第 2 轮「重采产出更差样本」的同族风险）。
         """
         produced: dict[str, str] = {}
         trace: list[dict[str, Any]] = []
@@ -1065,6 +1096,17 @@ class DialogueService:
                     )
                     schema_capped = True
             rendered = self.prompts.render(template, seg_vars)
+            # ---- 乙：重采请求侧注入判据反馈（不改模板、不改产物；见 `_retry_feedback_text`）----
+            # QA 结论 b（2026-11-17）：定位回退（`scope_fallback`）时反馈随**全段**注入，
+            # 未失败段也会读到与本段无关的条目 ⇒ 前置「只纠正与本段相关者」免责句，防未
+            # 失败段被反馈诱发改写（甲试点第 2 轮「重采产出更差样本」的同族风险）。
+            prompt_text = f"[stage:{tpl_stage}]\n{rendered.as_text()}"
+            if retry_feedback:
+                note = (
+                    "（失败未能定位到具体段：以下为本轮全段需注意的判据失败；"
+                    "请只纠正与本段相关者，其余内容保持不变）\n" if retry_feedback_unlocated else ""
+                )
+                prompt_text = prompt_text + "\n\n" + note + retry_feedback
             # ---- 段级采样收紧（`ISSUE-084` 改判后 B3，DEV-20261113-006 续）----
             # ⚠️ 只动 `package_head` 段：该段是 `meta`／`style_bible`／`characters`
             # 等**元数据**，不是镜头创意正文，`SW-007` 的 0.7 只约束镜头正文。
@@ -1073,7 +1115,7 @@ class DialogueService:
             if seg == "package_head":
                 seg_params = _package_head_sampling(seg_params)
             result = await backend.generate(
-                f"[stage:{tpl_stage}]\n{rendered.as_text()}",
+                prompt_text,
                 seg_params,
                 seg_schema,
             )
@@ -1097,6 +1139,8 @@ class DialogueService:
                     #    时间）。补段级 token 后，截断归因可直接对账 usage。
                     "prompt_tokens": result.prompt_tokens,
                     "completion_tokens": result.completion_tokens,
+                    # ---- 乙：本段采样是否带判据反馈（「注入了没有」必须可核查）----
+                    "retry_feedback": bool(retry_feedback),
                 }
             )
         truncated = [t["segment"] for t in trace if t.get("finish_reason") == "length"]
@@ -1235,6 +1279,31 @@ class DialogueService:
                         if isinstance(u, dict) and u.get("scene_no") in scene_hits:
                             picked.append(seg)
                             break
+        # ---- 乙：unit→scene 映射（`storyboard` 段 plan=`scene:N`，报错只提 `U<id>`）----
+        # ⚠️ 甲试点实锤（`DEV-20261117-001`）：retryable 明写 `U02`，旧规则只能靠
+        # 「场 N」／`S<场>-SH` 字面命中 ⇒ 打偏到 `scene:1`。这里从上一轮**各段产物文本**
+        # 解析 `units[].unit_id`／`shots[].unit_id`，把被点名的单元映射回所属场。
+        # 宁多勿漏：同一 id 出现在多个场（不应发生，发生了就多场都重采）。
+        mentioned_units = set(re.findall(r"\bU\d{2,}\b", joined))
+        if mentioned_units:
+            for seg in plan:
+                if seg in picked or not seg.startswith("scene:"):
+                    continue
+                try:
+                    seg_doc = parse_json_object(texts.get(seg, ""))
+                except AppError:
+                    continue
+                if not isinstance(seg_doc, dict):
+                    continue
+                unit_ids: set[str] = set()
+                for u in seg_doc.get("units") or []:
+                    if isinstance(u, dict) and u.get("unit_id"):
+                        unit_ids.add(str(u["unit_id"]))
+                for s in seg_doc.get("shots") or []:
+                    if isinstance(s, dict) and s.get("unit_id"):
+                        unit_ids.add(str(s["unit_id"]))
+                if unit_ids & mentioned_units:
+                    picked.append(seg)
         if any(k in joined for k in ("meta.", "total_duration_ms", "package_head", "package")):
             if "package_head" in plan:
                 picked.append("package_head")
@@ -1251,6 +1320,47 @@ class DialogueService:
         if not uniq:
             return list(plan), "scope_fallback"
         return uniq, None
+
+    @staticmethod
+    def _retry_feedback_text(attempt: int, verdict: Any, limit: int = 8) -> str | None:
+        """**乙**（2026-11-17 裁决「先甲后乙」）：构造重采请求的**判据反馈**文本。
+
+        ⚠️ 只带 **retryable** 明细（non_retryable 是「重试改了也白改」项，放进反馈会
+        诱导模型去撞死路）；每条截断 ≤200 字符、最多 `limit` 条——反馈是**指向灯**，
+        不是全文回显（甲试点之前的「全文重注」曾被 v2.2.1 事故证伪：模型会抄错值）。
+        ⚠️ 措辞（QA 结论 d 附带发现）：注入对象是**下一次**请求 ⇒ 写「上一轮（第 N 次
+        尝试）产物」，不得写「这是第 N 次尝试」（会让第 2 次采样读到「这是第 1 次」）。
+        ⚠️ 返回 `None`＝无可反馈内容（retryable 空），调用方不得注入空块。
+        """
+        items = [str(x) for x in (getattr(verdict, "retryable", None) or []) if str(x).strip()]
+        if not items:
+            return None
+        lines = [
+            "[整改反馈] 上一轮（第 %d 次尝试）产物以下交付判据未通过，本轮必须逐条纠正：" % attempt,
+        ]
+        lines += ["- %s" % s[:200] for s in items[:limit]]
+        if len(items) > limit:
+            lines.append("- （另有 %d 条同类失败未列出，本轮须同样避免）" % (len(items) - limit))
+        lines.append("未列出的内容保持不变；输出仍必须是符合引擎 schema 的合法 JSON。")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _retry_targets_inherited_moves(tpl_stage: str, verdict: Any) -> bool:
+        """**乙**：本段（`shot_prompt` 形态 `pack`）的 retryable 是否**全部**为承继字段失败。
+
+        ⚠️ 全部命中 `_INHERITED_MOVE_MARKERS` 才跳过：混合形态（如 `R11` 运镜＋`R35`
+        道具锚）里后者本段可修 ⇒ 照常重试（反馈文本里本段可修项照带）。
+        ⚠️ 跳过 ≠ 放行：判定照旧走 `gate_failed` 分支如实留痕／如实拒绝，
+        改变的只是「要不要在本段白烧一次重采」。
+        ⚠️ 标记清单为什么只有 `R11`：见模块常量 `_INHERITED_MOVE_MARKERS` 的注释
+        （QA 结论 A1／缺口 5／A2，2026-11-17）。
+        """
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) != "pack":
+            return False
+        items = [str(x) for x in (getattr(verdict, "retryable", None) or [])]
+        if not items:
+            return False
+        return all(any(m in x for m in _INHERITED_MOVE_MARKERS) for x in items)
 
     def _apply_service_truth(
         self, tpl_stage: str, text: str, rec: SessionRecord, backend: Any,
@@ -2334,6 +2444,10 @@ class DialogueService:
             max_attempts = max(max_attempts, max(1, int(get_settings().shape_gate_max_attempts)))
         retry_segs: list[str] = list(plan)
         retry_scope_note: str | None = None
+        #: **乙**：下一轮重采要带的判据反馈（由质量门禁重试决策时构造；每轮**消费即清**）。
+        retry_feedback_pending: str | None = None
+        #: **乙**：反馈是否「未定位」（`scope_fallback` 全段重采）⇒ 注入免责句（见 `_run_segments`）。
+        retry_feedback_unlocated_pending: bool = False
         gate_verdicts: list[dict[str, Any]] = []
         quality_verdict: Any = None
         #: 形态闸逐次尝试留痕（`ISSUE-094`）：**只记失败**那次，成功不记。
@@ -2362,11 +2476,17 @@ class DialogueService:
 
         for attempt in range(1, max_attempts + 1):
             segs = list(plan) if attempt == 1 else list(retry_segs)
+            # ---- 乙：本轮重采若带判据反馈，**消费即清**（每轮反馈只对应一次决策）----
+            feedback = retry_feedback_pending
+            feedback_unlocated = retry_feedback_unlocated_pending
+            retry_feedback_pending = None
+            retry_feedback_unlocated_pending = False
             trace_len_before = len(trace)
             try:
                 produced, seg_trace, pt, ct, _truncated_now = await self._run_segments(
                     template, tpl_stage, merged, segs, supports_segment, json_schema,
-                    backend, scene_ctx, scope_ctx,
+                    backend, scene_ctx, scope_ctx, retry_feedback=feedback,
+                    retry_feedback_unlocated=feedback_unlocated,
                 )
                 for record in seg_trace:
                     record["attempt"] = attempt  # 留痕：这一条是第几次尝试采到的
@@ -2714,12 +2834,39 @@ class DialogueService:
             if not quality_gate.should_retry(quality_verdict):
                 retry_scope_note = "no_retryable_failure"
                 break
+            # ---- 乙（2026-11-17 裁决「先甲后乙」）：承继字段失败**跳过本段重试** ----
+            # 甲试点实锤（`DEV-20261117-001`，0/4 救回）：`camera.*` 出生于 `storyboard`
+            # 段，`shot_prompt` 段承继守恒 ⇒ 本段重采结构上无效且有过退化先例。跳过≠放行：
+            # 判定照旧走下方 `gate_failed` 分支如实留痕／如实拒绝。
+            if (get_settings().quality_gate_retry_feedback
+                    and self._retry_targets_inherited_moves(tpl_stage, quality_verdict)):
+                retry_scope_note = "retry_skipped_inherited_move"
+                logger.info(
+                    "quality_gate_retry_skipped",
+                    extra={
+                        "extra_fields": {
+                            "session_id": rec.session_id,
+                            "stage": tpl_stage,
+                            "attempt": attempt,
+                            "reason": "inherited_move_failure",
+                            "retryable": quality_verdict.retryable[:8],
+                        }
+                    },
+                )
+                break
             # ⚠️ `ISSUE-094`：质量门禁的判停只看**自己**的额度（`quality_max_attempts`）——
             #    循环上限还含形态闸额度，若此处用 `max_attempts`，等于「给形态闸额度」
             #    顺带把 `quality_gate_retry_enabled=false` 打开（裁决之外的副作用）。
             if attempt >= quality_max_attempts:
                 break
+            # ---- 乙：重采请求**带判据反馈**（盲重试救回 0/4 的直接对策）----
+            retry_feedback_pending = (
+                self._retry_feedback_text(attempt, quality_verdict)
+                if get_settings().quality_gate_retry_feedback else None
+            )
             retry_segs, retry_scope_note = self._retry_segments(plan, quality_verdict, texts_by_seg)
+            # 定位回退 ⇒ 反馈随全段注入 ⇒ 下轮每段带免责句（QA 结论 b 的缓解）。
+            retry_feedback_unlocated_pending = retry_scope_note == "scope_fallback"
             logger.info(
                 "quality_gate_retry",
                 extra={
@@ -2732,6 +2879,7 @@ class DialogueService:
                         "retry_scope": retry_scope_note,
                         "retryable": quality_verdict.retryable[:8],
                         "non_retryable": quality_verdict.non_retryable[:8],
+                        "feedback_chars": len(retry_feedback_pending or ""),
                     }
                 },
             )
