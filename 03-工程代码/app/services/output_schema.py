@@ -230,6 +230,7 @@ def cap_pack_array_bounds(
     units_cap: int,
     shots_cap: int,
     shots_floor: int | None = None,
+    units_floor: int | None = None,
 ) -> dict[str, Any] | None:
     """按段收窄 pack 引擎 schema 的 `units`/`shots` 数组上限（`T-101`／`PRO-015` §7）。
 
@@ -253,6 +254,13 @@ def cap_pack_array_bounds(
       「事后判 `R31`」升级为「事中不可少写」。只作用于 `shots`（`units_floor` 不设）；
       `floor > shots_cap` 时以 `shots_cap` 为准（`maxItems < minItems` 会不可满足）；
       头部段（`shots_cap=0`）不得传 `shots_floor`；
+    - `units_floor`（2026-11-17 新增，`丙` 组段的独立 QA 证伪项）：
+      组段（`unit:U01+U02`）把 `units_cap` 放宽到组宽后，**单元存在性不再由 schema 钉死**
+      ——实测模型可少产一个单元、把其镜并入同场其它单元，而 `R9`／`R10`／`R31` 全绿
+      （`R10` 只查 2–3、`R31` 只查总量与逐镜 zip，均不核对单元数）。⇒ 组段必须同时抬
+      `units.minItems` 到组宽：**组内每个单元一镜不能少**，把「单元覆盖」从判据升级为
+      事中不可少写。单单元段传 1 与旧行为一致（原本就是 `minItems=1`）。
+      `floor > units_cap` 时以 `units_cap` 为准（不可满足的 schema 引擎编译期即拒收）。
     - 其余键（`$defs`／嵌套 item 形态）**一字不改**；
     - 引擎侧收窄**不碰交付契约**（`CFG-006` 原样），只作用于受约束解码的副本。
 
@@ -270,6 +278,10 @@ def cap_pack_array_bounds(
             continue
         node["maxItems"] = cap
         floor = node.get("minItems")
+        if key == "units" and isinstance(units_floor, int) and units_floor >= 0:
+            # 组段：单元数下限抬到组宽（`丙` 独立 QA 证伪项——见函数注释）。
+            node["minItems"] = min(units_floor, cap)
+            continue
         if key == "shots" and isinstance(shots_floor, int) and shots_floor >= 0:
             # 单元段：镜数下限抬到上游镜数（`R31` 的「事中不生成」版）；
             # 仍受 `maxItems` 封顶——`maxItems < minItems` 不可满足，引擎编译期即拒收。

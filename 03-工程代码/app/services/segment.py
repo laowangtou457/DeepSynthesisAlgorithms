@@ -120,11 +120,117 @@ def unit_ids_of(storyboard: dict[str, Any] | None) -> list[str]:
 
 
 # --------------------------------------------------------------------- 计划
+def unit_shot_counts_of(storyboard: dict[str, Any] | None) -> list[int]:
+    """上游分镜产物**逐单元镜数**（与 `unit_ids_of()` 同序对齐）。
+
+    `丙`（2026-11-17，分段最小镜数）：组段需要「每单元几镜」才能把相邻单元攒到
+    ≥ N 镜。取数口径＝**声明与实测必须逐单元相等**；任一单元 `shot_ids` 声明长度与
+    `shots[]` 实测归属不一致 ⇒ 返回 `[]`（调用方退回逐单元）。
+    ⚠️ 早期版本取两者**较大者**，被独立 QA 证伪：声明大于实测时组段按「声明」判定
+    ≥N，而 schema 的 `shots_floor` 只能按「实测」设 ⇒ 2 镜小段原地复活（`[2,2]` 声明、
+    `[1,1]` 实测时组段只有 2 镜可分配）。**一处组段、一处压 floor，两头必须同源**。
+    ⚠️ 无法判定时返回 `[]`（与 `unit_ids` 不对齐）⇒ 放弃组段，不猜测。
+    """
+    if not isinstance(storyboard, dict):
+        return []
+    units = storyboard.get("units")
+    shots = storyboard.get("shots")
+    if not isinstance(units, list) or not isinstance(shots, list):
+        return []
+    by_unit: dict[str, int] = {}
+    for s in shots:
+        if isinstance(s, dict) and s.get("unit_id") not in (None, ""):
+            uid = str(s["unit_id"])
+            by_unit[uid] = by_unit.get(uid, 0) + 1
+    pairs: list[tuple[int, int]] = []
+    for unit in units:
+        if not isinstance(unit, dict):
+            return []
+        uid = unit.get("unit_id")
+        if uid in (None, ""):
+            return []
+        declared = unit.get("shot_ids")
+        declared_n = len(declared) if isinstance(declared, list) else 0
+        pairs.append((declared_n, by_unit.get(str(uid), 0)))
+    if pairs and all(d == 0 for d, _ in pairs) and all(a > 0 for _, a in pairs):
+        # 上游整体只靠 `shots[].unit_id` 归属（`units[].shot_ids` 未填）⇒ 按实测计，
+        # 不与 `shots_floor`（也按实测）冲突。
+        counts = [a for _, a in pairs]
+    elif any(d != a for d, a in pairs):
+        # 逐单元声明≠实测 ⇒ 放弃组段（口径必须与 schema `shots_floor` 同源）
+        return []
+    else:
+        counts = [d for d, _ in pairs]
+    if any(n < 2 or n > 3 for n in counts):
+        # `TPL-008` BR-11：单元镜数 ∈[2,3]。出现 1 镜／≥4 镜单元（脏上游或上游 `R10`
+        # 失守）时**不组段**——组段要求「这几个单元都被写全」，而 1 镜单元本身不满足
+        # `unit.shot_ids` 的 2–3 下限 ⇒ 语义无解（独立 QA 复验条件①）。
+        return []
+    return counts
+
+
+def segment_unit_ids(seg: str) -> list[str]:
+    """`unit:U01` / `unit:U01+U02` → `["U01", "U02"]`；非 `unit:` 段返回 `[]`。
+
+    `丙` 起段名可为**多单元组**（`+` 连接，顺序即上游单元序）。解析失败（空 id）时
+    返回 `[]`——调用方按「非单元段」处理，不得静默当成单单元。
+    """
+    if not isinstance(seg, str) or not seg.startswith("unit:"):
+        return []
+    body = seg.split(":", 1)[1]
+    uids = [p.strip() for p in body.split("+")]
+    if not uids or any(not u for u in uids):
+        return []
+    return uids
+
+
+def group_units_by_min_shots(
+    unit_ids: Sequence[str],
+    unit_shot_counts: Sequence[int],
+    min_shots: int,
+) -> list[list[str]]:
+    """`丙`：把相邻单元攒成**每段 ≥ `min_shots` 镜**的组（单元不拆、不跨单元重排）。
+
+    - `min_shots < 2` ⇒ 逐单元分组（与旧行为等价，调用方也可直接不用本函数）；
+    - 数与 `unit_ids` 不对齐 / 含非正数 ⇒ 逐单元分组（**不猜**，宁可不组）；
+    - **末组余数并入上一组**：余数组 `< min_shots` 时并进前一组（否则「2 镜小段」这一
+      最严形态会在片尾复现，正好是本法要消灭的对象）；只有一组时如实保留原样。
+    """
+    if min_shots < 2 or len(unit_ids) != len(unit_shot_counts):
+        return [[uid] for uid in unit_ids]
+    if any(not isinstance(n, int) or n <= 0 for n in unit_shot_counts):
+        return [[uid] for uid in unit_ids]
+    groups: list[list[str]] = []
+    sums: list[int] = []
+    cur: list[str] = []
+    acc = 0
+    for uid, n in zip(unit_ids, unit_shot_counts):
+        cur.append(uid)
+        acc += n
+        if acc >= min_shots:
+            groups.append(cur)
+            sums.append(acc)
+            cur, acc = [], 0
+    if cur:
+        groups.append(cur)
+        sums.append(acc)
+    # 末组余数并入上一组（避免片尾复现「< min_shots 的小段」；只有一组则保留原样）
+    # ⚠️ 体积上限（独立 QA 2026-11-17）：合并后不得超过 `2 × min_shots`——超过则
+    # **保留原样**（宁可留一个诚实的小段，也不把单次调用推到 `AUTO_SHOT_THRESHOLD`
+    # 之上；`auto` 拆段的原始理由就是单次体积）。不可行输入（如 `[2,3,2]`）如实保留。
+    if len(groups) >= 2 and sums[-1] < min_shots:
+        if sums[-2] + sums[-1] <= 2 * min_shots:
+            groups[-2].extend(groups.pop())
+    return groups
+
+
 def plan_segments(
     segment: str | None,
     *,
     shot_count: int,
     unit_ids: Sequence[str] = (),
+    min_shots: int = 0,
+    unit_shot_counts: Sequence[int] = (),
 ) -> list[str]:
     """解析 `segment` 取值 → **调用计划**（每项对应一次生成调用）。
 
@@ -138,19 +244,21 @@ def plan_segments(
         return [value]
 
     if value.startswith("unit:"):
-        uid = value[len("unit:") :].strip()
-        if not uid:
+        uids = segment_unit_ids(value)
+        if not uids:
             raise AppError(
                 ErrorCode.VALIDATION_ERROR,
                 "`segment` 取值 `unit:` 后缺单元 id",
                 details={"segment": value},
             )
-        if unit_ids and uid not in unit_ids:
-            raise AppError(
-                ErrorCode.VALIDATION_ERROR,
-                f"`segment` 指定的单元「{uid}」不在上游 units[] 中",
-                details={"segment": value, "available_units": list(unit_ids)},
-            )
+        if unit_ids:
+            unknown = [u for u in uids if u not in unit_ids]
+            if unknown:
+                raise AppError(
+                    ErrorCode.VALIDATION_ERROR,
+                    f"`segment` 指定的单元「{'、'.join(unknown)}」不在上游 units[] 中",
+                    details={"segment": value, "available_units": list(unit_ids)},
+                )
         return [value]
 
     if value == "auto":
@@ -163,7 +271,14 @@ def plan_segments(
                 "无法按 `auto` 拆分为 `package_head` ＋ 逐单元",
                 details={"shot_count": shot_count, "threshold": AUTO_SHOT_THRESHOLD},
             )
-        return ["package_head", *(f"unit:{uid}" for uid in unit_ids)]
+        # `丙`（2026-11-17）：分段最小镜数。`min_shots>=2` 时把相邻单元攒成
+        # ≥ min_shots 镜的组（段名 `unit:U01+U02`），消灭「2 镜单元单独成段」这一最严
+        # 形态（单元 need=2 且只有 2 镜 ⇒ 强制全异；见 `DEV-20261117-003`／`-004`）。
+        groups = group_units_by_min_shots(unit_ids, unit_shot_counts, min_shots)
+        return [
+            "package_head",
+            *(f"unit:{'+'.join(g)}" for g in groups),
+        ]
 
     raise AppError(
         ErrorCode.VALIDATION_ERROR,
@@ -683,8 +798,8 @@ def scope_storyboard_for_segment(
     ----
     - `package_head`：头部键全保留＋`units[]` 全量＋`unspecified` 全量，
       **`shots[]` 置空**（头部段不产镜；镜明细是上游里最大的体积块）；
-    - `unit:<id>`：头部键全保留＋**只该单元**＋**只该单元的镜**
-      （按 `shots[].unit_id == uid` 与 `units[].shot_ids` 的**并集**过滤；
+    - `unit:<id>`／`unit:<id>+<id>…`（`丙` 起的多单元组）：头部键全保留＋**该组各单元**＋
+      **该组各单元的镜**（按 `shots[].unit_id ∈ 组` 与 `units[].shot_ids` 的**并集**过滤；
       `unspecified` 全量保留）；
     - 其余段名（`all` 等）⇒ **返回 `None`（不裁剪）**；
     - `unit:<id>` 在 `units[]` 中找不到 ⇒ **返回 `None` 并告警**——
@@ -722,10 +837,29 @@ def scope_storyboard_for_segment(
         scoped["shots"] = []
         return scoped, warnings
 
-    uid = seg.split(":", 1)[1].strip()
-    mine = [u for u in units if isinstance(u, dict) and str(u.get("unit_id")) == uid]
-    if not mine:
-        return None, [f"裁剪目标单元「{uid}」不在上游 units[] 中——回退整份注入（不猜测）"]
+    uids = segment_unit_ids(seg)
+    if not uids:
+        return None, [f"段名「{seg}」解析不出单元 id——回退整份注入（不猜测）"]
+    uidset = set(uids)
+    mine: list[dict[str, Any]] = []
+    seen_uids: set[str] = set()
+    for u in units:
+        if not isinstance(u, dict):
+            continue
+        uid = str(u.get("unit_id"))
+        # 去重：上游脏数据里同 id 重复出现时只取首条——否则单单元段的 `units_cap`
+        # 会被算成 2（独立 QA 2026-11-17 低优先级项）。
+        if uid in uidset and uid not in seen_uids:
+            seen_uids.add(uid)
+            mine.append(u)
+    got = {str(u.get("unit_id")) for u in mine}
+    missing_uids = [u for u in uids if u not in got]
+    if missing_uids:
+        # ⚠️ 组内**任一**单元缺失即回退整份（不得只裁到存在的那个）：部分裁剪等于
+        # 「抽掉证据的输入」，会让模型对缺失单元无所依据地补写。
+        return None, [
+            f"裁剪目标单元「{'、'.join(missing_uids)}」不在上游 units[] 中——回退整份注入（不猜测）"
+        ]
     wanted_ids = {
         str(sid)
         for u in mine
@@ -736,13 +870,13 @@ def scope_storyboard_for_segment(
         s
         for s in shots
         if isinstance(s, dict)
-        and (str(s.get("unit_id")) == uid or str(s.get("shot_id")) in wanted_ids)
+        and (str(s.get("unit_id")) in uidset or str(s.get("shot_id")) in wanted_ids)
     ]
     if wanted_ids and len(mine_shots) < len(wanted_ids):
         got = {str(s.get("shot_id")) for s in mine_shots}
         missing = sorted(wanted_ids - got)
         warnings.append(
-            "单元「" + uid + "」声明的镜在上游 shots[] 中缺 " + str(len(missing)) + " 条（"
+            "单元「" + "、".join(uids) + "」声明的镜在上游 shots[] 中缺 " + str(len(missing)) + " 条（"
             + "、".join(missing[:5]) + "）——按并集如实收窄，缺项交 R9／R41 判"
         )
     scoped["units"] = mine

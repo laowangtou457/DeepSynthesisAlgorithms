@@ -35,8 +35,10 @@ from app.services.segment import (
     plan_segments,
     scene_by_no,
     scope_storyboard_for_segment,
+    segment_unit_ids,
     shot_count_of,
     unit_ids_of,
+    unit_shot_counts_of,
 )
 from app.schemas.dialogue import (
     ConfirmRequest,
@@ -988,6 +990,7 @@ class DialogueService:
 
         value = merged.get("segment") or template.default_of("segment") or "auto"
         shot_count, unit_ids = 0, []
+        unit_counts: list[int] = []
         if tpl_stage == "shot_prompt":
             storyboard = _upstream_json(rec.artifacts.get("storyboard"))
             if storyboard is None:
@@ -1004,7 +1007,61 @@ class DialogueService:
             else:
                 shot_count = shot_count_of(storyboard)
                 unit_ids = unit_ids_of(storyboard)
-        return plan_segments(value, shot_count=shot_count, unit_ids=unit_ids)
+                unit_counts = unit_shot_counts_of(storyboard)
+        # `丙`：分段最小镜数（`0`/`1`＝关，旧行为不变）。段粒度由「每单元一段」变为
+        # 「相邻单元攒到 ≥ N 镜一组」——`DEV-20261117-003`／`-004` 实证：2 镜单元单独
+        # 成段时该单元 need=2 且只有 2 镜 ⇒ 强制全异，是最难达标的形态。
+        # ⚠️ 独立 QA 复验条件②：组段依赖 `_run_segments` 的按段 schema 封顶
+        # （`units_cap`/`units_floor`/`shots_floor`），而封顶只在 `shot_prompt_segment_scope=true`
+        # 且拿到裁剪副本时生效 ⇒ 裁剪关闭时必须**禁用组段**，否则「组段标签存在但
+        # units_floor 不存在」会静默绕过「单元一个不能少」的保护。
+        # ⚠️ 条件④：取值只接受 0/1/2/3（`2×min_shots ≤ AUTO_SHOT_THRESHOLD=6`）；
+        # 越界如实告警并回退 0（不静默按大值组出超体积段）。
+        min_shots = get_settings().segment_plan_min_shots
+        if min_shots not in (0, 1, 2, 3):
+            logger.warning(
+                "segment_plan_min_shots_invalid",
+                extra={
+                    "extra_fields": {
+                        "session_id": rec.session_id,
+                        "value": min_shots,
+                        "note": "取值仅支持 0/1/2/3（2×min ≤ 整包阈值 6）；已按 0（关）处理",
+                    }
+                },
+            )
+            min_shots = 0
+        if min_shots >= 2 and not get_settings().shot_prompt_segment_scope:
+            logger.warning(
+                "segment_plan_min_shots_ignored",
+                extra={
+                    "extra_fields": {
+                        "session_id": rec.session_id,
+                        "note": "`shot_prompt_segment_scope=false` ⇒ 无按段 schema 封顶，"
+                        "组段会失去 units_floor 保护，已按 0（关）处理",
+                    }
+                },
+            )
+            min_shots = 0
+        plan = plan_segments(
+            value,
+            shot_count=shot_count,
+            unit_ids=unit_ids,
+            min_shots=min_shots,
+            unit_shot_counts=unit_counts,
+        )
+        if min_shots >= 2 and value == "auto" and any("+" in s for s in plan):
+            logger.info(
+                "segment_plan_grouped",
+                extra={
+                    "extra_fields": {
+                        "session_id": rec.session_id,
+                        "min_shots": min_shots,
+                        "groups": [s for s in plan if s.startswith("unit:")],
+                        "unit_counts": unit_counts,
+                    }
+                },
+            )
+        return plan
 
     async def _run_segments(
         self,
@@ -1085,9 +1142,16 @@ class DialogueService:
                     schema_capped = True
                 elif seg.startswith("unit:"):
                     seg_shots = len(scoped_doc.get("shots") or [])
+                    # `丙`：单元段可含**多单元组**（`unit:U01+U02`）⇒ 单元数上限按组宽，
+                    # 不再硬编码 1（否则组段产物第 2 个单元会被 schema 截掉）。
+                    seg_units = max(1, len(scoped_doc.get("units") or []))
                     seg_schema = cap_pack_array_bounds(
                         json_schema,
-                        units_cap=1,
+                        units_cap=seg_units,
+                        # `丙` QA 证伪项（2026-11-17）：组段必须把单元数**下限**也钉到
+                        # 组宽——否则模型少产一个单元、把其镜并入同场其它单元即可通过
+                        # `R9`/`R10`/`R31`（实测全绿）。单单元段传 1 与旧行为等价。
+                        units_floor=seg_units,
                         shots_cap=seg_shots,
                         # `R31`（镜数低于上游）裁决 2 修法 A：把镜数下限抬到上游镜数——
                         # 事后判 → 事中不可少写。B 期实测 on 臂 `pack_shots_lt_upstream`
@@ -1235,11 +1299,20 @@ class DialogueService:
 
         messages = list(verdict.retryable) if verdict is not None else []
         joined = " ".join(messages)
+        # 单元 id 一律用词边界匹配：旧实现 `uid in joined` 会把 `U01` 命中到 `U010`
+        # （独立 QA 2026-11-17 低优先级项；组段后误命中会放大成整组重采）。
+        mentioned = set(re.findall(r"\bU\d{2,}\b", joined))
         picked: list[str] = []
         for seg in plan:
             if seg.startswith("unit:"):
-                uid = seg.split(":", 1)[1]
-                if uid and uid in joined:
+                # `丙`：单元段可能是多单元组（`unit:U01+U02`）⇒ 段名整体（含 `+`）
+                # 不可能出现在判据消息里，须逐 id 匹配（命中任一即重采该组）。
+                uids = segment_unit_ids(seg)
+                if not uids:
+                    uid = seg.split(":", 1)[1]
+                    if uid and uid in mentioned:
+                        picked.append(seg)
+                elif any(u in mentioned for u in uids):
                     picked.append(seg)
             # ---- `T-100` 逐场编排：按场定位（判据报错里的「场 k」与 shot_id 前缀两种形态）----
             # 真机形态：`R41`／`R42` 报「场 4 ...」；`R10`／`R11`／`R19` 报单元号或 `shot_id`。
