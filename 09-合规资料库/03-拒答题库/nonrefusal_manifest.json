@@ -128,7 +128,7 @@
   ],
   "total": 260,
   "counts_snapshot": {
-    "as_of": "2026-10-12",
+    "as_of": "2026-11-11",
     "total": 509,
     "signature": "06-构建工具/sync_manifest.py",
     "note": "current_count 为实体文件当前条数；seed_count 为初始化阶段条数，保留作历史对照；受控类不计入，其规模见 05-台账与制度/controlled_assets.json"
