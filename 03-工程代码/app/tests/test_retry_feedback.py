@@ -128,7 +128,10 @@ def test_retry_segments_unit_stage_direct_match_still_works() -> None:
 
 def test_shot_prompt_inherited_only_failure_skips_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     """`shot_prompt` 段 retryable 全部为 R11/R19 族 ⇒ **不重采**（结构上救不回），判定如实留痕。"""
+    # 2026-11-18：conftest 会话级钉把 FEEDBACK 钉回 false，本用例测的是乙方案反馈路径，
+    # 须显式开启（不再隐式依赖机器 .env——那正是钉子要消灭的漂移源）。
     monkeypatch.setenv("APP_QUALITY_GATE_RETRY_ENABLED", "true")
+    monkeypatch.setenv("APP_QUALITY_GATE_RETRY_FEEDBACK", "true")
     get_settings.cache_clear()
     try:
         backend, service, repo, rec = _shot_prompt_harness()
@@ -158,6 +161,7 @@ def test_shot_prompt_mixed_failure_still_retries_with_feedback(
 ) -> None:
     """混合失败（R11＋本段可修项）⇒ 照常重试，且第二次请求**必须带反馈文本**。"""
     monkeypatch.setenv("APP_QUALITY_GATE_RETRY_ENABLED", "true")
+    monkeypatch.setenv("APP_QUALITY_GATE_RETRY_FEEDBACK", "true")
     get_settings.cache_clear()
     try:
         backend, service, repo, rec = _shot_prompt_harness()
@@ -186,6 +190,7 @@ def test_shot_prompt_mixed_failure_still_retries_with_feedback(
 def test_storyboard_retry_prompt_carries_feedback(monkeypatch: pytest.MonkeyPatch) -> None:
     """storyboard 段（运镜出生地）：重采请求带 retryable 明细；次轮过 ⇒ 停在 2 次调用。"""
     monkeypatch.setenv("APP_QUALITY_GATE_RETRY_ENABLED", "true")
+    monkeypatch.setenv("APP_QUALITY_GATE_RETRY_FEEDBACK", "true")
     get_settings.cache_clear()
     try:
         seq = iter([

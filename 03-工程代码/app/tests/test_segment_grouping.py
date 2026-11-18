@@ -57,11 +57,26 @@ def test_group_tail_merge_when_smaller_than_min() -> None:
 
 
 def test_group_tail_merge_capped_at_twice_min() -> None:
-    """[2,3,2]：末组并入会到 7 镜 > 2×min=6 ⇒ **不并**，如实留一个小段（QA 中优先级项）。"""
+    """[2,3,2]：上限放宽为 `2×min−2+max_unit`＝7 ⇒ 并入成 7 镜组（裁决⑤，消灭 2 镜小段）。"""
     assert group_units_by_min_shots(["U01", "U02", "U03"], [2, 3, 2], 3) == [
-        ["U01", "U02"],
-        ["U03"],
+        ["U01", "U02", "U03"]
     ]
+
+
+def test_group_tail_merge_bound_is_closed() -> None:
+    """上界封闭性：min=3、单元 ∈[2,3] 时最大并入组 = 7（不会出现 8+ 镜组）。"""
+    import itertools
+
+    for combo in itertools.product([2, 3], repeat=6):
+        groups = group_units_by_min_shots(
+            ["U%02d" % i for i in range(1, 7)], list(combo), 3
+        )
+        for g in groups:
+            n = sum(combo[int(u[1:]) - 1] for u in g)
+            assert n <= 7, (combo, g, n)
+        # 组与组之间不重叠、覆盖全部单元
+        flat = [u for g in groups for u in g]
+        assert flat == ["U%02d" % i for i in range(1, 7)]
 
 
 def test_group_off_or_misaligned_falls_back_to_per_unit() -> None:

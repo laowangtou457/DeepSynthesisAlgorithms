@@ -194,7 +194,14 @@ def group_units_by_min_shots(
     - `min_shots < 2` ⇒ 逐单元分组（与旧行为等价，调用方也可直接不用本函数）；
     - 数与 `unit_ids` 不对齐 / 含非正数 ⇒ 逐单元分组（**不猜**，宁可不组）；
     - **末组余数并入上一组**：余数组 `< min_shots` 时并进前一组（否则「2 镜小段」这一
-      最严形态会在片尾复现，正好是本法要消灭的对象）；只有一组时如实保留原样。
+      最严形态会在片尾复现，正好是本法要消灭的对象）；只有一组时如实保留原样；
+    - **并入上限**（2026-11-18 项目方裁决⑤「倾向放宽、先实测 7 镜组」）：上限从固定
+      `2×min_shots` 放宽为 **`2×min_shots − 2 + max(unit_shot_counts)`** —— 这是
+      「贪心攒组＋末组并入」的**可达理论上界**（min=3、单元 ∈[2,3] 时＝7：前组最大
+      `min−1+max_unit=5`，末组最大 `min−1=2`）。固定 `2×min=6` 会把 `[2,3,2]` 这类
+      输入卡成 7>6 而留下 2 镜小段；放宽后 **7 镜组是封闭上界、不会无限增长**（`min`
+      已被 `_segment_plan` 收窄到 0~3）。9 镜组（QA 首轮的 `[3,3,3] min=4` 例）在
+      `min ≤ 3` 下不可达。
     """
     if min_shots < 2 or len(unit_ids) != len(unit_shot_counts):
         return [[uid] for uid in unit_ids]
@@ -215,11 +222,12 @@ def group_units_by_min_shots(
         groups.append(cur)
         sums.append(acc)
     # 末组余数并入上一组（避免片尾复现「< min_shots 的小段」；只有一组则保留原样）
-    # ⚠️ 体积上限（独立 QA 2026-11-17）：合并后不得超过 `2 × min_shots`——超过则
-    # **保留原样**（宁可留一个诚实的小段，也不把单次调用推到 `AUTO_SHOT_THRESHOLD`
-    # 之上；`auto` 拆段的原始理由就是单次体积）。不可行输入（如 `[2,3,2]`）如实保留。
+    # ⚠️ 体积上限（2026-11-18 裁决⑤放宽）：并入后不得超过 `2×min − 2 + max_unit`
+    # ——贪心攒组＋末组并入的可达理论上界（min=3、单元 ∈[2,3] 时＝7）。超过则
+    # **保留原样**（宁可留一个诚实的小段，也不把单次调用推到无界）。
     if len(groups) >= 2 and sums[-1] < min_shots:
-        if sums[-2] + sums[-1] <= 2 * min_shots:
+        cap = 2 * min_shots - 2 + max(unit_shot_counts)
+        if sums[-2] + sums[-1] <= cap:
             groups[-2].extend(groups.pop())
     return groups
 

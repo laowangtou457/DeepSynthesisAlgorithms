@@ -60,12 +60,22 @@ _LEGACY_BEHAVIOR_MODULES = frozenset({
 
 @pytest.fixture(autouse=True)
 def _pin_legacy_behavior_defaults(request, monkeypatch):
-    """仅在上述三模块内把两开关钉为 false（含 `Settings()` 直接构造路径）。"""
-    if request.module.__name__.rsplit(".", 1)[-1] not in _LEGACY_BEHAVIOR_MODULES:
-        yield
-        return
-    monkeypatch.setenv("APP_STORYBOARD_SCENE_ORCHESTRATION", "false")
-    monkeypatch.setenv("APP_SHOT_PROMPT_SEGMENT_SCOPE", "false")
+    """全模块会话级基线钉 ＋ 上述四模块的遗留行为钉。
+
+    ⚠️ 2026-11-18 起**全模块**钉 `APP_QUALITY_GATE_RETRY_ENABLED=false`（含
+    `Settings()` 直接构造路径）：生产 `.env` 已按项目方裁决①打开重试（乙转正，
+    `ISSUE-098` ①），而大量用例隐式依赖「retry 关」的确定性调用数——若不钉，
+    测试结果随**机器 `.env` 漂移**。需要重试的用例自行显式开启
+    （`test_retry_feedback`／`test_quality_gate_t086` 的重试用例均已自带 env）。
+    这与既有「测试夹具与生产默认解耦」纪律同源：解耦≠改松断言。
+    """
+    name = request.module.__name__.rsplit(".", 1)[-1]
+    monkeypatch.setenv("APP_QUALITY_GATE_RETRY_ENABLED", "false")
+    monkeypatch.setenv("APP_QUALITY_GATE_RETRY_FEEDBACK", "false")
     get_settings.cache_clear()
+    if name in _LEGACY_BEHAVIOR_MODULES:
+        monkeypatch.setenv("APP_STORYBOARD_SCENE_ORCHESTRATION", "false")
+        monkeypatch.setenv("APP_SHOT_PROMPT_SEGMENT_SCOPE", "false")
+        get_settings.cache_clear()
     yield
     get_settings.cache_clear()
