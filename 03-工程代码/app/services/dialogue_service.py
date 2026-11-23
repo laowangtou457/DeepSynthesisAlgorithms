@@ -2627,6 +2627,11 @@ class DialogueService:
                                     "next_attempt": attempt + 1,
                                     "truncated_segments": bad_segs,
                                     "retry_segments": retry_segs,
+                                    # 批次 1c 收口补观测（批次 1b 收口后的真机缺口）：
+                                    # 截断反馈只落在 trace（失败轮不落盘不可回溯）⇒
+                                    # 注入与否必须在**日志事件**上可核查（同乙臂
+                                    # `feedback_chars` 纪律）。0＝未注入（异常信号）。
+                                    "feedback_chars": len(retry_feedback_pending or ""),
                                 }
                             },
                         )
