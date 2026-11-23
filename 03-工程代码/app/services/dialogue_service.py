@@ -2543,6 +2543,7 @@ class DialogueService:
         amp_norm: dict[str, Any] | None = None
         en_camera_fill: dict[str, Any] | None = None
         appearance_echo_clean: dict[str, Any] | None = None
+        acts_repair: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -2636,6 +2637,20 @@ class DialogueService:
                     final_text, warnings = _merge_parts(ordered, tpl_stage, merge_upstream)
                 else:
                     final_text, warnings = ordered[0], []
+
+                # ---- 批次1a（`ISSUE-095`/`096`）：acts 元素级预修复（双重序列化归一化）----
+                # ⚠️ **位置在归一化链最前**：标识归一化／机械清洗／守恒兜底都要先解析
+                #    JSON，结构先合法它们才判得到真形态；修复失败（纯文本等不可解析形态）
+                #    **原样留给形态闸拒**——本层只修「确定可修」的，不洗白任何真缺陷。
+                # ⚠️ **无条件重赋值**（同 `identity_norm` 写法）：修复只对本次采样的
+                #    文本有效，重采后必须清掉上一轮的记录，不得跨尝试残留。
+                final_text, acts_repair = _repair_acts_strings(final_text)
+                if acts_repair:
+                    warnings.append(
+                        "acts_repair: "
+                        f"{len(acts_repair['acts_unwrapped']) + sum(len(v) for v in acts_repair['scenes_unwrapped'].values())}"
+                        " 处双重序列化的 acts/scenes 元素已解析回对象（明细见 artifact）"
+                    )
 
                 # ---- `T-100` 标识归一化（`R7`／`R9` 派生量；合并后、门禁前）----
                 # ⚠️ 顺序纪律与真值覆盖/派生回填一致：门禁要判**最终入库的那一份**。
@@ -2805,6 +2820,10 @@ class DialogueService:
                 text_penultimate = last_ok_state["text_penultimate"]
                 meta_overrides = last_ok_state["meta_overrides"]
                 truncated_segments = last_ok_state["truncated_segments"]
+                # ⚠️ 回退重放的各归一化对快照文本都是幂等 noop，**唯独本项例外**：
+                #    快照文本已修复 ⇒ 重放必然返回 `None`，直接沿用会把它**误抹掉**
+                #    ⇒ 必须从快照显式还原（否则「入库产物修过没有」在留痕上失真）。
+                acts_repair = last_ok_state["acts_repair"]
                 final_text, meta_overrides = self._apply_service_truth(
                     tpl_stage, text_penultimate, rec, backend, guard_input, guard_output
                 )
@@ -2880,6 +2899,7 @@ class DialogueService:
                 "meta_overrides": meta_overrides,
                 "derived_backfill": derived_backfill,
                 "truncated_segments": list(truncated_segments),
+                "acts_repair": acts_repair,
             }
 
             # ---- 门禁判定（`T-086`）----
@@ -3180,6 +3200,12 @@ class DialogueService:
             # ⚠️ 同 `amp_norm` 纪律——`scrubbed=0` 的 noop 不写（不污染每次生成）；
             #    一旦删过就必须留：否则「正文少了那句是模型没写还是服务层删的」无从区分。
             artifact["appearance_echo_clean"] = appearance_echo_clean
+        if acts_repair:
+            # 批次1a（`ISSUE-095`/`096`）留痕：双重序列化 acts/scenes 元素的逐处解包
+            # 明细（索引＋归属）。⚠️ 同 `amp_norm` 纪律——noop 不写（不污染每次生成）；
+            # 一旦修过就必须留：否则「acts[i] 是对象是模型写对的还是服务层解包的」
+            # 无从区分，那是本工程明令禁止的「静默修补」。
+            artifact["acts_repair"] = acts_repair
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:
@@ -3311,6 +3337,77 @@ def _compact_upstream_json(raw: str) -> tuple[str, dict[str, int]]:
         return raw, info
     info["changed"] = 1
     return compacted, info
+
+
+def _loads_json_value(s: str) -> Any:
+    """字符串 → JSON 值；解析失败返回 `None`（调用方以 `isinstance(..., dict)` 判定）。"""
+    try:
+        return json.loads(s)
+    except ValueError:
+        return None
+
+
+def _repair_acts_strings(raw: str) -> tuple[str, dict[str, Any] | None]:
+    """**acts 元素级预修复**（批次1a，`ISSUE-095`/`096`）：把**双重序列化**的
+    `acts[i]`／`acts[i].scenes[j]` 元素从 JSON 字符串解析回对象。
+
+    缺陷现场（分层对照两臂 30 轮实测）：模型偶发把剧本的某一幕（场）**再序列化一层**
+    ——`acts[i]` 的值是一个 JSON 字符串，其内容本是合法对象。形态闸第四层当场拒绝
+    （`script_structure_invalid` ⇒ 重采），重采再犯 ⇒ 整轮失败，是达标率天花板的
+    主失败族之一。该形态是**确定可修**的：内容本身合法，只是多包了一层引号。
+
+    三条纪律（与 `_compact_upstream_json` 同族）：
+    - **只修确定可修的**：仅当元素是字符串、且 `json.loads` 的结果是**对象（dict）**
+      才解包；纯文本（真机现场 `acts[2]＝"第三幕：直接写成了字符串"`）、解析出
+      非对象（数组／标量）、二次序列化（字符串里还是字符串）**一律不碰**，
+      原样留给形态闸裁决——本层只修「确定可修」的，不洗白任何真缺陷；
+    - **解析失败原样返回**：本函数不是校验环节，上游/产物解析不了时不得抢先报错；
+    - **修过必留痕**：返回值带逐处定位（索引/形态），调用方写进 `artifact["acts_repair"]`；
+      noop 返回 `(原文, None)`（同 `amp_norm` 纪律：不污染每次生成）。
+
+    返回 `(修复后文本, 修复明细 | None)`；文本变更时以 `ensure_ascii=False`
+    重序列化（中文可读性守恒）。
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return raw, None
+    try:
+        doc = parse_json_object(raw)
+    except AppError:
+        return raw, None
+    if not isinstance(doc, dict):
+        return raw, None
+    acts = doc.get("acts")
+    if not isinstance(acts, list):
+        return raw, None
+
+    unwrapped_acts: list[int] = []
+    unwrapped_scenes: dict[str, list[int]] = {}
+    for ai, act in enumerate(acts):
+        if isinstance(act, str):
+            parsed_act = _loads_json_value(act)
+            if isinstance(parsed_act, dict):
+                acts[ai] = parsed_act
+                unwrapped_acts.append(ai)
+        act = acts[ai]
+        if not isinstance(act, dict):
+            continue
+        scenes = act.get("scenes")
+        if not isinstance(scenes, list):
+            continue
+        for si, scene in enumerate(scenes):
+            if isinstance(scene, str):
+                parsed_scene = _loads_json_value(scene)
+                if isinstance(parsed_scene, dict):
+                    scenes[si] = parsed_scene
+                    unwrapped_scenes.setdefault(f"acts[{ai}]", []).append(si)
+    if not unwrapped_acts and not unwrapped_scenes:
+        return raw, None
+    info: dict[str, Any] = {
+        "changed": True,
+        "acts_unwrapped": unwrapped_acts,
+        "scenes_unwrapped": unwrapped_scenes,
+    }
+    return json.dumps(doc, ensure_ascii=False), info
 
 
 def _upstream_json(artifact: Any) -> dict[str, Any] | None:
