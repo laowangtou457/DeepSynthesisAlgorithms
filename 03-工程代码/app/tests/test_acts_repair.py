@@ -265,6 +265,18 @@ def test_noop_on_valid_script_returns_identical_text() -> None:
     assert info is None
 
 
+def test_deeply_nested_json_string_does_not_escape_recursion_error() -> None:
+    """**负向锁（独立 QA 证伪 D1）**：深嵌套 JSON 字符串元素 `json.loads` 抛的是
+    `RecursionError`（非 `ValueError` 子类）——不捕会把「修复前可重试的采样失败」
+    （形态闸拒字符串 ⇒ 重采）逃逸成整轮硬崩，失败模式反而变差。
+    语义＝解析不了就不碰，原样留给形态闸拒。"""
+    deep = '{"a":' * 3000 + "1" + "}" * 3000
+    raw = json.dumps(_script([deep]), ensure_ascii=False)
+    repaired, info = _repair_acts_strings(raw)
+    assert repaired == raw
+    assert info is None
+
+
 # ------------------------------------- ③ 端到端：可修 ⇒ 首采即过 ＋ 留痕
 def test_repairable_script_passes_on_first_attempt_with_trace() -> None:
     """核心端到端：`acts[2]` 双重序列化 ⇒ 解包后**首采即过形态闸**（零重采），

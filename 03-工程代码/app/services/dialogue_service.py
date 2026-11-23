@@ -2602,6 +2602,21 @@ class DialogueService:
                     )
                     if trunc_reason == "segment_truncated" and attempt < max_attempts and bad_segs:
                         retry_segs = [s for s in plan if s in bad_segs] or list(plan)
+                        # ---- 批次 1b（`ISSUE-090` ①）：截断重采**带收敛反馈** ----
+                        # ⚠️ 盲重采在退化轮上有**再犯率**（同温度同输入，模型可能再次
+                        #    跑飞写散文）——探针实测正常产出 1889~7329 tok、8192 上限
+                        #    最小余量仅 863 tok（`.wb-e2e/_probe_script_tokens_report.json`），
+                        #    截断是长尾但余量并不宽裕。此处把乙臂已验证的「判据反馈
+                        #    重采」机制复用到截断族：反馈明写「上次被截断 ⇒ 收敛输出」，
+                        #    注入被截断段的重采提示词（trace 的 `retry_feedback` 可核查）。
+                        # ⚠️ 消费即清语义与质量门禁反馈一致（循环顶消费后置 `None`）。
+                        retry_feedback_pending = (
+                            "上一次采样在 " + "、".join(bad_segs) + " 段被 max_tokens "
+                            "长度上限截断（finish_reason=length），产物 JSON 不完整。"
+                            "本次必须收敛输出：压缩铺陈与重复描写、缩短超长字段值，"
+                            "确保 JSON 结构完整闭合且远小于长度上限。"
+                        )
+                        retry_feedback_unlocated_pending = False
                         logger.info(
                             "segment_truncated_retry",
                             extra={
@@ -3340,10 +3355,16 @@ def _compact_upstream_json(raw: str) -> tuple[str, dict[str, int]]:
 
 
 def _loads_json_value(s: str) -> Any:
-    """字符串 → JSON 值；解析失败返回 `None`（调用方以 `isinstance(..., dict)` 判定）。"""
+    """字符串 → JSON 值；解析失败返回 `None`（调用方以 `isinstance(..., dict)` 判定）。
+
+    ⚠️ 必须同捕 `RecursionError`（独立 QA 证伪 D1）：深嵌套 JSON 字符串
+    `json.loads` 抛的是 `RecursionError`（非 `ValueError` 子类）——只捕 ValueError
+    会把它逃逸成整轮硬崩，把修复前的「可重试失败」（形态闸拒字符串 ⇒ 重采）
+    变成「不可重试崩溃」，失败模式反而变差。语义＝解析不了就不碰，留给形态闸拒。
+    """
     try:
         return json.loads(s)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
 
 

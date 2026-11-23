@@ -243,6 +243,37 @@ def test_length_finish_reason_is_attributed_as_truncation() -> None:
     assert len(attempts) == 2 and all(a["reason"] == "segment_truncated" for a in attempts)
 
 
+def test_truncation_retry_carries_convergence_feedback() -> None:
+    """批次 1b（`ISSUE-090` ①）：截断重采**必须带收敛反馈**——盲重采有再犯率。
+
+    探针实测（`.wb-e2e/_probe_script_tokens_report.json`）：正常 script 产出
+    1889~7329 tok、8192 上限最小余量仅 863 tok ⇒ 截断是长尾但余量不宽裕，
+    退化轮盲重采可能再犯。本批把乙臂已验证的「判据反馈重采」复用到截断族。
+
+    三层断言：① 第 2 次调用的提示词确实注入「上次被截断 ⇒ 收敛输出」反馈；
+    ② 段 trace 的 `retry_feedback=true`（注入与否可核查，同乙臂纪律）；
+    ③ 重采成功 ⇒ 产物正常入库（反馈只改善重采质量，不改变放行面）。
+    """
+    backend = ScriptedBackend(
+        ['{"title": "被切断"', json.dumps(VALID_SYNOPSIS, ensure_ascii=False)],
+        finish_reasons=["length", "stop"],
+    )
+    service, repo = _svc(backend)
+    rec = _record(repo, Stage.SYNOPSIS_REVISING)
+
+    _gen(service, rec, Stage.SYNOPSIS_REVISING)  # ⚠️ 不抛错 ＝ 带反馈重采后自愈
+
+    artifact = rec.artifacts["synopsis"]
+    assert artifact["artifact_shape_ok"] is True
+    # ① 反馈注入第 2 次调用的提示词
+    assert "被 max_tokens" in backend.calls[1]["prompt"]
+    assert "收敛输出" in backend.calls[1]["prompt"]
+    # ② 段留痕可核查：第 2 次尝试的注入标记必须是 true
+    retry_trace = [s for s in artifact["segments"] if s.get("attempt") == 2]
+    assert retry_trace and retry_trace[0]["retry_feedback"] is True
+    assert len(backend.calls) == 2, "一次截断 ＋ 一次带反馈重采，不多不少"
+
+
 def test_valid_artifact_is_stored_and_records_checked_true() -> None:
     """正向对照：合法产物照常入库，且留痕里 `checked=true`。
 
