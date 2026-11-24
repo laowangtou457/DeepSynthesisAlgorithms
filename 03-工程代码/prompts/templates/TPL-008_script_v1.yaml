@@ -228,9 +228,32 @@ sections:
     - 头部模式（package_head）：只输出 `title`/`logline`/`genre`/`style_bible`/`characters`/`props`
       与 `acts[]` **骨架**（每幕 `{"act_no":…, "act_name":…, "act_summary":…, "scene_nos":[场号…]}`，
       **scenes 场内容一律不写**）与 `unspecified`。
+      ⚠️⚠️ **头部模式铁律（优先级高于下方字段结构的任何引导）**：
+      ① **绝对不写任何场的内容**——`action`/`dialogue`/`sfx_hint`/`slug` 等场级键**一个都不出现**；
+         下方字段结构里的 `scenes[]` 场对象示例**是给整片模式和单场模式看的，头部模式不得照抄**；
+      ② 每幕 `scene_nos` **至少 1 场**（不得出现空幕）；三幕按叙事节奏划分，
+         `scene_nos` 的并集必须恰好等于梗概 scenes_outline 的场号全集（不重不漏）；
+      ③ 正确的头部模式产物 ≈ 500~800 tokens——若你发现自己写到第 300 token 还没停，就是写错了。
+      ✅ 头部模式骨架示例（照着这个形态写）：
+        {"title": "雨夜信使", "logline": "…", "genre": "剧情",
+         "style_bible": {"style_id": "STYLE-01", "style_prompt_zh": "…", "style_anchors": ["…"],
+                          "lighting_default": "…", "negative_global": ["…"], "design_source": "系统提议待确认"},
+         "characters": [{"character_id": "CHR-01", "name": "未指定", "role": "主角", "identity": "…",
+                          "source": "承继上游", "age_band": "青年", "appearance_lock_zh": "…",
+                          "voice": "…", "design_source": "系统提议待确认"}],
+         "props": [],
+         "acts": [
+           {"act_no": 1, "act_name": "第一幕 · 建置", "act_summary": "…≤60 字", "scene_nos": [1, 2]},
+           {"act_no": 2, "act_name": "第二幕 · 对抗", "act_summary": "…≤60 字", "scene_nos": [3, 4]},
+           {"act_no": 3, "act_name": "第三幕 · 结局", "act_summary": "…≤60 字", "scene_nos": [5]}
+         ],
+         "unspecified": []}
+      —— 就这么多。**没有 scenes 键、没有 action、没有 dialogue**。写完 acts 骨架与 unspecified 即停。
     - 单场模式（scene:<场号>）：只输出**该场场对象本身**——即下方 scenes[] 里单个场元素的全部键
       （no/slug/location/time_of_day/present/props_present/action/sfx_hint/dialogue/beat/purpose/
       est_seconds），**不带 acts 包装、不带 title 等顶层键、不输出 act_no**。
+      ⚠️ 单场模式同样只写这一场——**台词总量受该场 est_seconds 预算约束**（见硬性约束 11），
+      不得把本场写成多场戏。正确的单场产物 ≈ 200~600 tokens。
 
     字段结构：
     {

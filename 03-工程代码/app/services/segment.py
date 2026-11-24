@@ -558,7 +558,13 @@ def cap_script_schema_for_segment(
                 "act_no": {},
                 "act_name": {},
                 "act_summary": {},
-                "scene_nos": {"type": "array", "items": {"type": "integer"}},
+                "scene_nos": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    # 复测 r1/r4 实锤：空幕（scene_nos=[]）⇒ 合并产物 acts[].scenes=[]
+                    # 被形态闸「缺 scenes[]（或为空）」拒——解码期直接禁空幕。
+                    "minItems": 1,
+                },
             },
             "required": ["act_no", "act_name", "act_summary", "scene_nos"],
             # QA 证伪 L2 修复：三幕约束（R6）在 head 段解码期下沉——全量 schema 的
@@ -698,6 +704,11 @@ def merge_script_parts(
             nos = act.get("scene_nos")
             scenes_for_act: list[dict[str, Any]] = []
             if isinstance(nos, list):
+                if not nos:
+                    warnings.append(
+                        f"幕骨架 scene_nos 为空（act_no={act.get('act_no')!r}）——空幕缺陷，"
+                        "该幕装配出空 scenes[]，交形态闸判（复测 r1/r4 实锤形态）"
+                    )
                 for no in nos:
                     if isinstance(no, bool) or not isinstance(no, int):
                         warnings.append(

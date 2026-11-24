@@ -26,7 +26,7 @@ from app.services.output_schema import (
 )
 from app.services.pack_meta import apply_service_truth, build_pack_meta
 from app.services import artifact_contract, content_adequacy, quality_gate
-from app.services.coverage_reconcile import reconcile_coverage_gaps
+from app.services.coverage_reconcile import DIALOGUE_SPEED_MAX, reconcile_coverage_gaps
 from app.services.segment import (
     SCRIPT_HEAD_TOP_KEYS,
     SCRIPT_SCENE_KEYS,
@@ -1363,8 +1363,10 @@ class DialogueService:
                 "**头部模式**——本次调用只输出全片锚点与幕骨架：`title`/`logline`/`genre`/"
                 "`style_bible`/`characters`/`props` 与 `acts[]` 骨架（每幕含 `act_no`/`act_name`/"
                 "`act_summary`/`scene_nos` 场号归属清单，**不含任何场内容**）与 `unspecified`。"
-                "各场正文由别的调用负责：**不要写任何场的正文（action/dialogue 等）**。"
-                "`acts[].scene_nos` 的并集必须恰好覆盖梗概 scenes_outline 的全部场号（不重不漏）。"
+                "各场正文由别的调用负责：**不要写任何场的正文（action/dialogue 等）——"
+                "output 节的 scenes[] 场对象示例是给整片/单场模式看的，本段不得照抄**。"
+                "`acts[].scene_nos` **每幕至少 1 场**（不得空幕），并集必须恰好覆盖梗概 "
+                "scenes_outline 的全部场号（不重不漏）。正确产物 ≈ 500~800 tokens，写完即停。"
             )
             return {
                 "scene_scope": scope,
@@ -1377,13 +1379,21 @@ class DialogueService:
             return {}
         scene = scenes.get(no) or {}
         total = len(scenes)
+        est = scene.get("est_seconds")
+        budget = (
+            f"本场台词**总字数（含旁白/画外音）不得超过 {int(est) * DIALOGUE_SPEED_MAX} 字**"
+            f"（est_seconds={int(est)} × 门禁上限 {DIALOGUE_SPEED_MAX} 字/秒，复测 r5 scene:3 "
+            "两连截断实锤的收敛约束）；台词写完须自校验字数，超出就删冗余、合并短句。"
+            if isinstance(est, (int, float)) and not isinstance(est, bool) and est > 0
+            else "本场梗概 est_seconds 缺失——台词总量保守控制（总字数 ≤ 200 字）。"
+        )
         scope = (
             f"**单场模式**——本次调用只输出剧本第 {no} 场（共 {total} 场）的**场对象**"
             f"（no/slug/location/time_of_day/present/props_present/action/sfx_hint/"
             f"dialogue/beat/purpose/est_seconds）。"
             f"其他场由别的调用负责：**不要写别的场、不要留占位、不要替别的场补内容**。"
             f"场号 `no` 恒为 **{no}**；**不输出 `act_no`**——幕归属由头部段的幕骨架决定，"
-            f"本段无权判断。"
+            f"本段无权判断。{budget}"
         )
         # ---- QA 证伪 B1 修复：本批 `produced` 缺 head（段级重采只传坏段）时回退查
         #      `prior_texts`（此前 attempt 已成功的采样）——最新成功值优先。
