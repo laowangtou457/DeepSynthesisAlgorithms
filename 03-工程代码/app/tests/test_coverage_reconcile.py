@@ -174,8 +174,129 @@ def test_units_are_processed_independently() -> None:
     assert doc["shots"][3]["lighting"] is None
     assert [b["shot_id"] for b in trace["lighting_backfilled"]] == ["S02-SH001"]
 
+# ---------------------------------------------------------------- ④ 运镜轮换（批次 2 二期）
+def _gate_check_camera(rows: list[dict]) -> list[str]:
+    """同源复算自证：调判据文件同款 `_gate_check`，只取运镜相关未达标项。"""
+    bad = coverage_reconcile._VO._gate_check(rows)
+    return [b for b in bad if any(k in b for k in ("运镜", "静止镜", "单一运镜", "类型数"))]
 
-# ---------------------------------------------------------------- ③ 结构与幂等
+
+def _shots_moves(spec: list[tuple[str, str, str | None]]) -> list[dict]:
+    """(shot_id, unit_id, move) → shots；move 传 None 表示缺 camera.move（整镜缺失）。"""
+    out = []
+    for sid, uid, mv in spec:
+        shot = {"shot_id": sid, "unit_id": uid, "duration_ms": 4000,
+                "lighting": "daylight"}
+        if mv is not None:
+            shot["camera"] = {"move": mv}
+        out.append(shot)
+    return out
+
+
+def test_camera_rotation_below_denominator_is_untouched() -> None:
+    """**三态化同源口径**：R19/R11 在镜数 < `N_MIN_DENOMINATOR` 时门禁 not_tested
+    ⇒ 改写器同口径不动（1~5 镜短片上「类型数 ≥ 2」甚至不可满足，动了也白动）。"""
+    n_min = coverage_reconcile._VO.N_MIN_DENOMINATOR
+    assert n_min == 6
+    spec = [("S01-SH001", "U01", "static"), ("S01-SH002", "U01", "static")]
+    doc = {"shots": _shots_moves(spec)}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is False and trace is None
+
+
+def test_camera_rotation_r3_scene_changes_exactly_one() -> None:
+    """核心正向（真机 r3 现场，`DEV-20261124-003`）：8 镜整片含一个 2 镜全 static
+    单元 ⇒ R11 重复＋该单元类型结构问题由**恰 1 镜**改写修复（最小干预——首版
+    无条件把 2 镜都拖入曾被快测抓出）；改后同源 `_gate_check` 复算零运镜未达标。"""
+    doc = {"shots": _shots_moves([
+        ("S01-SH001", "U01", "static"), ("S01-SH002", "U01", "static"),
+        ("S02-SH001", "U02", "push_in"), ("S02-SH002", "U02", "pull_out"),
+        ("S03-SH001", "U03", "zoom_in"), ("S03-SH002", "U03", "truck_left"),
+        ("S04-SH001", "U04", "arc"), ("S04-SH002", "U04", "tracking"),
+    ])}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is True
+    rot = trace["camera_rotated"]
+    assert [r["shot_id"] for r in rot] == ["S01-SH002"]
+    assert rot[0]["before"] == "static" and rot[0]["after"] == "push_in"
+    u01 = [s["camera"]["move"] for s in doc["shots"] if s["unit_id"] == "U01"]
+    assert len(set(u01)) == 2  # R11 修复
+    assert _gate_check_camera(doc["shots"]) == []
+
+
+def test_camera_rotation_static_over_rotates_tail_only() -> None:
+    """静止镜超限（尾部）：12 镜 static×6（各一单元、无 R11 冲突）＋6 异值 ⇒
+    超出 `_allow(0.4,12)=5` 恰 **1 台**（尾部 SH06）；改后 `_gate_check` 零运镜未达标。"""
+    spec = ([("S-SH%02d" % i, "U%02d" % i, "static") for i in range(1, 7)]
+            + [("S-SH%02d" % i, "U%02d" % i, mv) for i, mv in zip(
+                range(7, 13), ["pan_left", "pan_right", "tilt_up", "tilt_down", "arc", "tracking"])])
+    doc = {"shots": _shots_moves(spec)}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is True
+    rot = trace["camera_rotated"]
+    assert [r["shot_id"] for r in rot] == ["S-SH06"]
+    after = doc["shots"][5]["camera"]["move"]
+    assert after not in ("static", "pov")  # 不引入 NO_PARAM 值（R17 参数面）
+    assert _gate_check_camera(doc["shots"]) == []
+
+
+def test_camera_rotation_single_move_over_via_simulation() -> None:
+    """单一运镜超限走**模拟改后**路径：static 与 push_in 两类各 6/12 双超限
+    （每单元 [push_in, static] 交替、无 R11 冲突）⇒ 恰补 2 台；改后 `_gate_check`
+    零运镜未达标。"""
+    spec = [("S-SH%02d" % i, "U%02d" % i, "push_in" if i % 2 else "static")
+            for i in range(1, 13)]
+    doc = {"shots": _shots_moves(spec)}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is True
+    rot = trace["camera_rotated"]
+    assert [r["shot_id"] for r in rot] == ["S-SH11", "S-SH12"], [
+        (r["shot_id"], r["before"], r["after"]) for r in rot]
+    assert _gate_check_camera(doc["shots"]) == []
+
+
+def test_camera_rotation_missing_move_is_filled() -> None:
+    """move 缺失（运镜覆盖门槛 1.00）⇒ 补值；camera 对象缺失时就地创建；
+    同单元已用 push_in ⇒ 跳到下一候选 pull_out（R11）。"""
+    doc = {"shots": _shots_moves([
+        ("S01-SH001", "U01", "push_in"), ("S01-SH002", "U01", None),
+        ("S02-SH001", "U02", "pull_out"), ("S02-SH002", "U02", "zoom_in"),
+        ("S03-SH001", "U03", "truck_left"), ("S03-SH002", "U03", "arc"),
+    ])}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is True
+    rot = trace["camera_rotated"]
+    assert [r["shot_id"] for r in rot] == ["S01-SH002"]
+    assert rot[0]["before"] is None
+    assert doc["shots"][1]["camera"]["move"] == "pull_out"
+    assert _gate_check_camera(doc["shots"]) == []
+
+
+def test_camera_rotation_compliant_is_noop() -> None:
+    """已合规 ⇒ noop（不污染每次生成）。"""
+    doc = {"shots": _shots_moves([
+        ("S01-SH001", "U01", "push_in"), ("S01-SH002", "U01", "pull_out"),
+        ("S02-SH001", "U02", "zoom_in"), ("S02-SH002", "U02", "truck_left"),
+        ("S03-SH001", "U03", "arc"), ("S03-SH002", "U03", "tracking"),
+    ])}
+    changed, trace = reconcile_coverage_gaps(doc)
+    assert changed is False and trace is None
+
+
+def test_camera_rotation_is_idempotent() -> None:
+    """幂等锁：轮换后再跑 ⇒ noop（改写器输出自身达标）。"""
+    doc = {"shots": _shots_moves([
+        ("S01-SH001", "U01", "static"), ("S01-SH002", "U01", "static"),
+        ("S02-SH001", "U02", "push_in"), ("S02-SH002", "U02", "pull_out"),
+        ("S03-SH001", "U03", "zoom_in"), ("S03-SH002", "U03", "truck_left"),
+        ("S04-SH001", "U04", "arc"), ("S04-SH002", "U04", "tracking"),
+    ])}
+    changed, _ = reconcile_coverage_gaps(doc)
+    assert changed is True
+    changed2, trace2 = reconcile_coverage_gaps(doc)
+    assert changed2 is False and trace2 is None
+
+# ---------------------------------------------------------------- ⑤ 结构与幂等
 def test_no_shots_or_unexpected_doc_is_noop() -> None:
     for doc in [{}, {"shots": []}, {"shots": ["不是字典"]}, {"shots": None}]:
         changed, trace = reconcile_coverage_gaps(doc)  # type: ignore[arg-type]
