@@ -54,20 +54,26 @@ def test_gate_thresholds_are_identical_in_both_validators() -> None:
 
 
 def test_dialogue_speed_threshold_is_identical() -> None:
-    """★ 语速阈值：`validate_pack.MAX_CHARS_PER_SECOND` ≡ `validate_output` R15 字面量。
+    """★ 语速阈值：`validate_pack.MAX_CHARS_PER_SECOND` ≡ `validate_output.DIALOGUE_SPEED_MAX`。
 
-    `validate_output.py` 的 R15 把 9 硬编码在 `if rate > 9:`（无命名常量）⇒
-    本测试从其源码提取该字面量与 `validate_pack` 的命名常量对拍。
-    ⚠️ 若 R15 将来改为命名常量，本测试仍兼容（正则同样命中 `if rate > X:`）。
+    批次 2（覆盖分配器，2026-11-23）已把 R15 比较式从字面量 `9` 提取为命名常量
+    `DIALOGUE_SPEED_MAX`（语义零改动；改写器同源引用它）⇒ 本测试升级为直接对拍
+    两份**命名常量**，并加**防回退结构锁**：R15 比较式若回退成数字字面量，
+    常量即成死值、改写器同源失效 ⇒ 必须红。
     """
     pack_mod = _load(PACK_VALIDATOR)
+    out_mod = _load(OUTPUT_VALIDATOR)
     src = OUTPUT_VALIDATOR.read_text(encoding="utf-8")
-    hits = re.findall(r"if rate > ([0-9]+(?:\.[0-9]+)?):", src)
-    assert len(hits) == 1, f"R15 语速字面量应恰有 1 处，实测 {len(hits)} 处（判据结构变更，须同步改本测试）"
-    r15_threshold = float(hits[0])
-    assert pack_mod.MAX_CHARS_PER_SECOND == r15_threshold, (
+    assert hasattr(out_mod, "DIALOGUE_SPEED_MAX"), (
+        "R15 阈值命名常量缺失（判据结构变更，须同步改本测试）"
+    )
+    assert re.findall(r"if rate > [0-9]+(?:\.[0-9]+)?:", src) == [], (
+        "R15 比较式回退为数字字面量 ⇒ DIALOGUE_SPEED_MAX 成死值、"
+        "覆盖分配器同源引用失效（两把尺子家族），禁止"
+    )
+    assert pack_mod.MAX_CHARS_PER_SECOND == out_mod.DIALOGUE_SPEED_MAX, (
         f"语速阈值分叉：validate_pack={pack_mod.MAX_CHARS_PER_SECOND} vs "
-        f"validate_output R15={r15_threshold}"
+        f"validate_output DIALOGUE_SPEED_MAX={out_mod.DIALOGUE_SPEED_MAX}"
     )
 
 

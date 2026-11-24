@@ -26,6 +26,7 @@ from app.services.output_schema import (
 )
 from app.services.pack_meta import apply_service_truth, build_pack_meta
 from app.services import artifact_contract, content_adequacy, quality_gate
+from app.services.coverage_reconcile import reconcile_coverage_gaps
 from app.services.segment import (
     is_multi_part,
     merge_segments,
@@ -2544,6 +2545,7 @@ class DialogueService:
         en_camera_fill: dict[str, Any] | None = None
         appearance_echo_clean: dict[str, Any] | None = None
         acts_repair: dict[str, Any] | None = None
+        coverage_reconcile: dict[str, Any] | None = None
 
         #: 上一轮「结构合法」的状态快照 —— 供「**重试把产物弄坏**」时回退（改造不得变差）。
         last_ok_state: dict[str, Any] | None = None
@@ -2763,6 +2765,23 @@ class DialogueService:
                 if conservation_fills:
                     warnings.extend(conservation_fills)
 
+                # ---- 批次 2 一期（覆盖分配器）：门禁同源阈值的确定性兜底改写 ----
+                # ⚠️ **必须在派生回填之前**：延展 `duration_ms` 后 `Σ total_duration_ms`
+                #    才能被派生回填重算（先回填再延展会让补出的时长漏出总量）。
+                # ⚠️ **改写不裁决**：阈值全部同源 import 门禁判据（不抄第二份），
+                #    改写后由既有门禁复算——不达标照旧走重采/如实拒绝，本层不洗白。
+                # ⚠️ **无条件重赋值**（同 `acts_repair`）：重采后清掉上一轮记录。
+                if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) in ("storyboard", "pack"):
+                    final_text, coverage_reconcile = _run_coverage_reconcile(final_text)
+                    if coverage_reconcile:
+                        _n = len(coverage_reconcile["dialogue_stretched"]) + len(
+                            coverage_reconcile["lighting_backfilled"]
+                        )
+                        warnings.append(
+                            f"coverage_reconcile: {_n} 处门禁判据族缺陷经确定性兜底改写"
+                            "（台词延时长/光线同单元回填，明细见 artifact）"
+                        )
+
                 # ---- 派生量回填（`R14`；2026-11-04 项目方裁决）**必须在门禁之前** ----
                 # ⚠️ 与 `_apply_service_truth` 同一顺序纪律：门禁要判「最终入库的那一份」。
                 # ⚠️ 只补「由模型自己的数据唯一决定」的量（`Σ duration_ms`），不动创作字段。
@@ -2844,6 +2863,9 @@ class DialogueService:
                 #    快照文本已修复 ⇒ 重放必然返回 `None`，直接沿用会把它**误抹掉**
                 #    ⇒ 必须从快照显式还原（否则「入库产物修过没有」在留痕上失真）。
                 acts_repair = last_ok_state["acts_repair"]
+                # 批次 2：同 `acts_repair`——快照文本已改写 ⇒ 重放必为 noop，
+                # 直接沿用重放会把已改写记录误抹掉 ⇒ 从快照显式还原。
+                coverage_reconcile = last_ok_state["coverage_reconcile"]
                 final_text, meta_overrides = self._apply_service_truth(
                     tpl_stage, text_penultimate, rec, backend, guard_input, guard_output
                 )
@@ -2920,6 +2942,7 @@ class DialogueService:
                 "derived_backfill": derived_backfill,
                 "truncated_segments": list(truncated_segments),
                 "acts_repair": acts_repair,
+                "coverage_reconcile": coverage_reconcile,
             }
 
             # ---- 门禁判定（`T-086`）----
@@ -3226,6 +3249,11 @@ class DialogueService:
             # 一旦修过就必须留：否则「acts[i] 是对象是模型写对的还是服务层解包的」
             # 无从区分，那是本工程明令禁止的「静默修补」。
             artifact["acts_repair"] = acts_repair
+        if coverage_reconcile:
+            # 批次 2 一期（覆盖分配器）留痕：台词延时长/光线回填的逐镜 before/after。
+            # ⚠️ 同 `amp_norm`/`acts_repair` 纪律——noop 不写键；改过必留：
+            # 「产物里的时长/光线是模型写的还是服务层兜底的」必须可核查。
+            artifact["coverage_reconcile"] = coverage_reconcile
         if upstream_admission:
             artifact["upstream_admission"] = upstream_admission
         if compact_trace:
@@ -3434,6 +3462,24 @@ def _repair_acts_strings(raw: str) -> tuple[str, dict[str, Any] | None]:
         "scenes_unwrapped": unwrapped_scenes,
     }
     return json.dumps(doc, ensure_ascii=False), info
+
+
+def _run_coverage_reconcile(text: str) -> tuple[str, dict[str, Any] | None]:
+    """覆盖分配器的**调用包装**：仅对 `storyboard`/`pack` 形态生效。
+
+    解析失败原样返回（本层不是校验环节，同 `_compact_upstream_json` 口径）；
+    有改动时以 `ensure_ascii=False` 重序列化（中文可读性守恒）。
+    """
+    try:
+        doc = parse_json_object(text)
+    except AppError:
+        return text, None
+    if not isinstance(doc, dict):
+        return text, None
+    changed, trace = reconcile_coverage_gaps(doc)
+    if not changed:
+        return text, None
+    return json.dumps(doc, ensure_ascii=False), trace
 
 
 def _upstream_json(artifact: Any) -> dict[str, Any] | None:

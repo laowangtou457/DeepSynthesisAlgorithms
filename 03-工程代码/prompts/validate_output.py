@@ -390,6 +390,12 @@ GATE = {
     "画面结果覆盖": 0.60,
 }
 
+#: R15 台词语速上限（字/秒）——原硬编码在 R15 报错文本与比较式里；
+#: 批次 2（覆盖分配器）需要**同源引用**做确定性兜底改写，故提取为常量。
+#: ⚠️ 语义零改动：比较式改为引用本常量，报错文本保持原字面（「超 9 字/秒」）。
+DIALOGUE_SPEED_MAX = 9
+
+
 # 单镜时长区间（毫秒）—— 默认取 MiniMax H3 口径（唯一 verified 的目标模型）
 DURATION_MIN_MS, DURATION_MAX_MS = 4000, 15000
 
@@ -1028,7 +1034,7 @@ def rule_dialogue_speed(doc, where):
             continue
         checked += 1
         rate = len(d) / (ms / 1000.0)
-        if rate > 9:
+        if rate > DIALOGUE_SPEED_MAX:
             over.append(f"{r.get('shot_id')} {len(d)}字/{ms / 1000:.0f}s≈{rate:.1f}字/秒")
     if over:
         err(f"{where} · R15 DIALOGUE_SPEED：超 9 字/秒 → " + "；".join(over[:6]))
