@@ -1,9 +1,19 @@
 id: script_v1
 name: 剧本生成
-version: "2.1.4"
+version: "3.0.0"
 task_type: generate
 stage: script
 language: zh-CN
+
+# 版本说明（v3.0.0，2026-11-24）：**script 段逐场拆段**（`T-116`，治理 `ISSUE-090` 截断长尾的
+#   script 层根因——单段全量输出撞 8192；批次 2 二期复测 r2/r4 实锤；项目方批准方案 B）。
+#   **结构变更**（主版本）：新增 4 个可选变量 `segment`（`all`／`package_head`／`scene:<场号>`）／
+#   `scene_scope`（调用范围声明）／`scene_json`（单场模式：该场梗概对象）／`script_head_json`
+#   （单场模式：头部段锚点承继）；context 增「本次调用范围」块；output 增三种段模式说明。
+#   ⚠️ **整片模式（segment=all，默认）提示词语义与 v2.1.4 一致**——新增内容只在
+#   逐场/头部模式下生效；最终产物契约（output 字段集）与判据水位（`R1`~`R43`）零改动。
+#   幕骨架形态（acts[].scene_nos）只在 package_head 段产物内存在，合并后还原为
+#   全量契约（acts[].scenes[]），下游零感知。
 
 # 版本说明（v2.1.4，2026-11-12）：**R29 收窄冲突解除注记**（`T-103` 快赢先行，项目方 2026-11-12 裁决；
 #   `DEV-20261109-005` §二把 `R29` 归因为「程序引导副作用——上下文收窄族」：模型自造锚／丢锚后，
@@ -82,6 +92,22 @@ variables:
     required: false
     default: 未指定
     description: 客户直接给出的角色外观、道具外观或全片风格要求；有则优先采用，不再由本层提议
+  - name: segment
+    required: false
+    default: all
+    description: 调用粒度（T-116 逐场拆段）：all（默认，整片一次输出完整剧本）／package_head（头部模式：只出锚点与幕骨架）／scene:<场号>（单场模式：只出该场场对象）；由调用方按梗概 scenes_outline 场号升序编排
+  - name: scene_scope
+    required: false
+    default: 整片模式
+    description: 本次调用范围声明（逐场/头部模式由调用方注入强制约束；整片模式取默认值，向后兼容）
+  - name: scene_json
+    required: false
+    default: ""
+    description: 单场模式下该场的梗概场对象（scenes_outline 元素原文；整片/头部模式不适用）
+  - name: script_head_json
+    required: false
+    default: ""
+    description: 单场模式下头部段产物的锚点承继（title/logline/genre/style_bible/characters/props；整片/头部模式不适用）
 
 sampling:
   temperature: 0.8
@@ -159,6 +185,26 @@ sections:
     {client_visual_input}
 
   context: |
+    **本次调用范围（先读这一条，它决定下面所有"全片/逐场"要求怎么理解）**——`segment` = `{segment}`：
+    {scene_scope}
+
+    - 若为**整片模式**（默认，`segment=all`）：下面的"全片"就是字面意思，一次输出完整剧本。
+    - 若为**头部模式**（`segment=package_head`）：只输出 `title`/`logline`/`genre`/`style_bible`/
+      `characters`/`props` 与 `acts[]` **骨架**（每幕含 `act_no`/`act_name`/`act_summary`/`scene_nos`
+      ——场号归属清单，**不含任何场内容**）与 `unspecified`；`scene_nos` 的并集必须恰好覆盖梗概
+      scenes_outline 的全部场号（不重不漏）。各场正文由别的调用负责，**不要写任何场的正文**。
+    - 若为**单场模式**（`segment=scene:<场号>`）：只输出该场的**场对象**（`no`/`slug`/`location`/
+      `time_of_day`/`present`/`props_present`/`action`/`sfx_hint`/`dialogue`/`beat`/`purpose`/
+      `est_seconds`；**不输出 `act_no`**——幕归属由幕骨架决定，本段无权判断）；不要为别的场留占位
+      或补内容。**外观与风格锚点从 `script_head_json` 逐字承继，不在本场重定义**；该场台词字数与
+      `est_seconds` 的换算口径与整片模式一致（见硬性约束 11）。
+
+    本场输入（单场模式适用，其他模式可忽略）：
+    · 本场梗概对象（scenes_outline 元素原文）：
+    {scene_json}
+    · 头部段锚点（单场模式须逐字承继，不重定义）：
+    {script_head_json}
+
     承接要求（逐条核对后再动笔）：
     - 角色：角色数量与 character_id 与梗概一一对应（梗概里有几名，本层就是几名，编号原样沿用）。
     - 场次：no 沿用梗概 scenes_outline 的 no，逐场写透（动作调度、对白、旁白、声音线索与道具）。
@@ -176,6 +222,15 @@ sections:
 
   output: |
     只输出一个 JSON 对象。不要输出任何解释文字，不要用 Markdown 代码块包裹，不要输出 JSON 之外的任何字符。
+
+    ⚠️ **输出范围随 `segment` 变化**（见 context 首块，这是唯一例外于"只输出一个完整 JSON"的地方）：
+    - 整片模式：输出下方**全部字段**（完整剧本）。
+    - 头部模式（package_head）：只输出 `title`/`logline`/`genre`/`style_bible`/`characters`/`props`
+      与 `acts[]` **骨架**（每幕 `{"act_no":…, "act_name":…, "act_summary":…, "scene_nos":[场号…]}`，
+      **scenes 场内容一律不写**）与 `unspecified`。
+    - 单场模式（scene:<场号>）：只输出**该场场对象本身**——即下方 scenes[] 里单个场元素的全部键
+      （no/slug/location/time_of_day/present/props_present/action/sfx_hint/dialogue/beat/purpose/
+      est_seconds），**不带 acts 包装、不带 title 等顶层键、不输出 act_no**。
 
     字段结构：
     {

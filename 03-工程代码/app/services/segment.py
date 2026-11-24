@@ -450,6 +450,347 @@ def plan_scene_segments(script: dict[str, Any] | None) -> list[str]:
     return [f"scene:{n}" for n in sorted(scene_nos_of(script))]
 
 
+# ------------------------------------------------- script 逐场拆段（`T-116`）
+#: `script` 段 `package_head`（头部）段的**顶层键集**。
+#: ⚠️ 这**不是契约真值**——契约真值仍是 `` REQUIRED_TOP_KEYS["script"] ``（唯一口径）；
+#:    段级键集只约束「这一段调用要出什么」，合并后的完整产物仍按全量契约判定
+#:    （与 `cap_pack_array_bounds`「解码约束不是判据第二份」同性质）。
+SCRIPT_HEAD_TOP_KEYS: tuple[str, ...] = (
+    "title",
+    "logline",
+    "genre",
+    "style_bible",
+    "characters",
+    "props",
+    "acts",
+    "unspecified",
+)
+
+#: 单场段（`scene:<no>`）的**场对象键集**。`act_no` 刻意不在内：
+#: 幕归属由 head 段的 acts 骨架**一次定义**（场段无此键 ⇒ 跨段归属不一致在
+#: 结构上不可能发生——「把约束从模型移到程序」同族纪律）。
+SCRIPT_SCENE_KEYS: tuple[str, ...] = (
+    "no",
+    "slug",
+    "location",
+    "time_of_day",
+    "present",
+    "props_present",
+    "action",
+    "sfx_hint",
+    "dialogue",
+    "beat",
+    "purpose",
+    "est_seconds",
+)
+
+#: 场对象中**必须是数组**的键（段级 schema 钉类型，防模型把数组写成标量）。
+_SCRIPT_SCENE_ARRAY_KEYS = ("present", "props_present", "sfx_hint", "dialogue")
+
+
+def synopsis_scene_nos(synopsis: dict[str, Any] | None) -> list[int]:
+    """梗概 `` scenes_outline `` 的**场号清单**（升序）。
+
+    与 `` scene_nos_of() ``（剧本侧，fail-fast 抛错）**刻意不同**：梗概侧不抛错——
+    场号异常（缺失／重复／非正整数）时逐场拆段无从保证「每场一次调用」，
+    返回空清单由调用方**降级整段＋留痕**（同 storyboard 的上游不可解析口径；
+    形态闸生效时该分支不可达——上游准入闸已先阻断）。
+    """
+    if not isinstance(synopsis, dict):
+        return []
+    outline = synopsis.get("scenes_outline")
+    if not isinstance(outline, list) or not outline:
+        return []
+    nos: list[int] = []
+    for item in outline:
+        no = item.get("no") if isinstance(item, dict) else None
+        if isinstance(no, bool) or not isinstance(no, int) or no <= 0:
+            return []
+        nos.append(no)
+    if len(set(nos)) != len(nos):
+        return []
+    return sorted(nos)
+
+
+def synopsis_scene_by_no(synopsis: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+    """场号 → 梗概场对象（`` scenes_outline `` 元素**原样**，不裁剪、不改写）。"""
+    out: dict[int, dict[str, Any]] = {}
+    if not isinstance(synopsis, dict):
+        return out
+    for item in synopsis.get("scenes_outline") or []:
+        if isinstance(item, dict) and isinstance(item.get("no"), int):
+            out[int(item["no"])] = item
+    return out
+
+
+def plan_script_segments(synopsis: dict[str, Any] | None) -> list[str]:
+    """script 段**逐场拆段**的调用计划：`` ["package_head", "scene:1", …] ``（场号升序）。
+
+    梗概场号异常 ⇒ 返回 `[]`（调用方降级整段＋留痕）。
+    """
+    nos = synopsis_scene_nos(synopsis)
+    if not nos:
+        return []
+    return ["package_head"] + [f"scene:{n}" for n in nos]
+
+
+def cap_script_schema_for_segment(
+    schema: dict[str, Any] | None, seg: str
+) -> dict[str, Any] | None:
+    """script 段级 schema 收窄（`T-116`；受约束解码的**段投影**）。
+
+    为什么必须收窄：script 的派生引擎 schema 按 `` REQUIRED_TOP_KEYS["script"] ``
+    投影（`acts` 等全量键全为 required）——逐场段若仍拿全量 schema 做受约束解码，
+    xgrammar 会**强制**模型在每个场段里重出全部顶层键（含 `style_bible` 大对象），
+    「单场小输出」的拆段动机即被 schema 自身抵消。
+
+    - `package_head` 段：required＝head 键集；`acts` 收窄为**骨架形态**
+      （`act_no`/`act_name`/`act_summary`/`scene_nos[]` 整数数组）；
+    - `scene:<no>` 段：required＝场对象键集（无 `act_no`），数组键钉 `array` 类型；
+    - 其他取值（含 `all`）原样返回（不收窄）。
+    """
+    if not isinstance(schema, dict) or seg == "all":
+        return schema
+    if seg == "package_head":
+        act_skeleton = {
+            "type": "object",
+            "properties": {
+                "act_no": {},
+                "act_name": {},
+                "act_summary": {},
+                "scene_nos": {"type": "array", "items": {"type": "integer"}},
+            },
+            "required": ["act_no", "act_name", "act_summary", "scene_nos"],
+            # QA 证伪 L2 修复：三幕约束（R6）在 head 段解码期下沉——全量 schema 的
+            # `FIELD_CONSTRAINTS["script"]["acts"]` 带 minItems/maxItems=3（T-096 线 3
+            # 真机实证），段级收窄不得把它丢掉（否则只能靠合并后 R6 事后拦）。
+            "minItems": 3,
+            "maxItems": 3,
+        }
+        return {
+            "type": "object",
+            "properties": {
+                **{k: {} for k in SCRIPT_HEAD_TOP_KEYS if k != "acts"},
+                "acts": {"type": "array", "items": act_skeleton},
+            },
+            "required": list(SCRIPT_HEAD_TOP_KEYS),
+        }
+    if seg.startswith("scene:"):
+        props: dict[str, Any] = {}
+        for key in SCRIPT_SCENE_KEYS:
+            props[key] = (
+                {"type": "array", "items": {}}
+                if key in _SCRIPT_SCENE_ARRAY_KEYS
+                else {}
+            )
+        return {
+            "type": "object",
+            "properties": props,
+            "required": list(SCRIPT_SCENE_KEYS),
+        }
+    return schema
+
+
+def merge_script_parts(
+    parts: Sequence[dict[str, Any]],
+    *,
+    synopsis: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """script 逐场拆段产物 → 合并后的完整剧本（`T-116`）。
+
+    与 `` merge_storyboard_parts() `` 同族纪律（每处刻意不同都对应一种真失败形态）：
+
+    1. **头部键只在 head 段定义一次**：`` style_bible ``／`` characters ``／`` props ``
+       是锚点类大对象，场段不重出（重出既浪费又引入段间漂移）——合并器从 head 段
+       取 `` SCRIPT_HEAD_TOP_KEYS ``；后续段越界重出且取值不同 ⇒ 显式告警（先到先得）。
+    2. **幕骨架 → 场装配**：head 段 `` acts[] `` 是**骨架形态**（含 `` scene_nos[] ``），
+       合并侧按 `` scene_nos `` 把场段对象装配进各幕 `` scenes[] ``；骨架键
+       `` scene_nos `` **删除**（最终契约不含）；场段越界输出的 `` act_no `` **丢弃**
+       ——幕归属唯一真值是骨架，装配出的 `` act_no `` 由骨架派生（机械一致）。
+    3. **机械承继/派生**：`` forbidden_items ``（原样承继梗概）与
+       `` total_est_seconds ``（各场之和）由合并侧**机械计算**——「把约束从模型
+       移到程序」同族纪律（这两个字段连截断风险都消失）。
+    4. **重号/缺场不静默**：同一场号出现于两段以上、骨架 `` scene_nos `` 有场无段、
+       场段对象无幕认领——一律**显式告警**（条目按语义保留或如实缺失，
+       交形态闸/判据判，不洗白、不伪造归属）。
+
+    ⚠️ 本函数**不判合规**：合并结果能否过形态闸与判据，是既有闸门职责。
+    """
+    warnings: list[str] = []
+    merged: dict[str, Any] = {}
+    head: dict[str, Any] | None = None
+    scenes_by_no: dict[int, dict[str, Any]] = {}
+    scene_owner: dict[int, int] = {}
+    dupe_scene: set[int] = set()
+    unspecified_out: list[dict[str, Any]] = []
+    seen_unspec: set[tuple[str, str]] = set()
+
+    for idx, part in enumerate(parts, start=1):
+        if not isinstance(part, dict):
+            warnings.append(f"第 {idx} 段不是 JSON 对象，已跳过（实际 {type(part).__name__}）")
+            continue
+        # ---- 头部段识别：含锚点类键且无场对象键（`no`）----
+        if head is None and "no" not in part and (
+            "style_bible" in part or "acts" in part
+        ):
+            head = part
+            for item in part.get("unspecified") or []:
+                if not isinstance(item, dict):
+                    warnings.append(f"第 {idx} 段的 unspecified 含非对象项，已跳过")
+                    continue
+                key = (str(item.get("field")), str(item.get("reason")))
+                if key in seen_unspec:
+                    continue
+                seen_unspec.add(key)
+                unspecified_out.append(item)
+            continue
+        # ---- 场段：裸场对象或 `scenes[]` 包装（容忍两种形态）----
+        if isinstance(part.get("scenes"), list):
+            scene_iter = part.get("scenes")
+        elif isinstance(part.get("no"), int) and not isinstance(part.get("no"), bool):
+            scene_iter = [part]
+        else:
+            warnings.append(
+                f"第 {idx} 段既非头部段也无场对象（缺 `no`/`scenes[]`），已跳过"
+            )
+            continue
+        for sc in scene_iter:
+            if not isinstance(sc, dict):
+                warnings.append(f"第 {idx} 段含非对象场元素，已跳过")
+                continue
+            no = sc.get("no")
+            if isinstance(no, bool) or not isinstance(no, int):
+                warnings.append(
+                    f"第 {idx} 段含缺 `no`（或非整数）的场对象，无法装配进幕，交形态闸判"
+                )
+                continue
+            if no in scene_owner and scene_owner[no] != idx:
+                dupe_scene.add(no)
+            scene_owner.setdefault(no, idx)
+            scenes_by_no[no] = sc
+        for item in part.get("unspecified") or []:
+            if not isinstance(item, dict):
+                warnings.append(f"第 {idx} 段的 unspecified 含非对象项，已跳过")
+                continue
+            key = (str(item.get("field")), str(item.get("reason")))
+            if key in seen_unspec:
+                continue
+            seen_unspec.add(key)
+            unspecified_out.append(item)
+
+    if dupe_scene:
+        warnings.append(
+            "场号重复出现于多段（"
+            + "、".join(str(n) for n in sorted(dupe_scene))
+            + "）——模型越界写了别的场；后到者覆盖先到者，交 R5/场号判据判"
+        )
+
+    # ---- 幕骨架装配 ----
+    acts_out: list[dict[str, Any]] = []
+    assigned: set[int] = set()
+    skeleton = head.get("acts") if isinstance(head, dict) else None
+    if isinstance(skeleton, list) and skeleton:
+        for act in skeleton:
+            if not isinstance(act, dict):
+                warnings.append("幕骨架含非对象元素，已原样保留（交形态闸判）")
+                acts_out.append(act)
+                continue
+            nos = act.get("scene_nos")
+            scenes_for_act: list[dict[str, Any]] = []
+            if isinstance(nos, list):
+                for no in nos:
+                    if isinstance(no, bool) or not isinstance(no, int):
+                        warnings.append(
+                            f"幕骨架 scene_nos 含非整数场号（{no!r}），跳过"
+                        )
+                        continue
+                    sc = scenes_by_no.get(no)
+                    if sc is None:
+                        warnings.append(
+                            f"幕骨架声明了场 {no}，但无对应场段产物——该场缺内容，交形态闸判"
+                        )
+                        continue
+                    if no in assigned:
+                        warnings.append(
+                            f"场 {no} 被多个幕声明（scene_nos 重叠）——装配进先声明的幕"
+                        )
+                        continue
+                    assigned.add(no)
+                    assembled = {k: v for k, v in sc.items() if k != "act_no"}
+                    assembled["act_no"] = act.get("act_no")
+                    scenes_for_act.append(assembled)
+            else:
+                warnings.append(
+                    f"幕骨架缺 `scene_nos`（act_no={act.get('act_no')!r}），该幕无法装配场"
+                )
+            act_out = {k: v for k, v in act.items() if k != "scene_nos"}
+            act_out["scenes"] = scenes_for_act
+            acts_out.append(act_out)
+        unclaimed = sorted(set(scenes_by_no) - assigned)
+        if unclaimed:
+            warnings.append(
+                "场段产出的场无幕认领（场号："
+                + "、".join(str(n) for n in unclaimed)
+                + "）——未装配、**不计入 total_est_seconds**（不伪造归属），"
+                "场号集合缺陷交判据判"
+            )
+    else:
+        warnings.append(
+            "head 段缺 acts 骨架（或为空）——逐场产物无法装配为幕结构，交形态闸判"
+        )
+
+    # ---- 头部键（先到先得只针对 head 段本身；后续段越界重出 ⇒ 告警）----
+    if isinstance(head, dict):
+        for key in SCRIPT_HEAD_TOP_KEYS:
+            if key == "acts":
+                continue
+            if key in head:
+                merged[key] = head[key]
+        for idx, part in enumerate(parts, start=1):
+            if part is head or not isinstance(part, dict):
+                continue
+            for key in ("style_bible", "characters", "props", "title"):
+                if key in part and part.get(key) != merged.get(key):
+                    warnings.append(
+                        f"第 {idx} 段越界重出头部键「{key}」且取值不同——"
+                        "锚点以头部段为准（先到先得），交判据判"
+                    )
+    merged["acts"] = acts_out
+    merged["unspecified"] = unspecified_out
+
+    # ---- 机械承继/派生（`forbidden_items`/`total_est_seconds`）----
+    if isinstance(synopsis, dict):
+        merged["forbidden_items"] = json.loads(
+            json.dumps(synopsis.get("forbidden_items") or [], ensure_ascii=False)
+        )
+    elif isinstance(head, dict) and "forbidden_items" in head:
+        merged["forbidden_items"] = head["forbidden_items"]
+        warnings.append("梗概未传入：forbidden_items 退为 head 段值（无法机械承继）")
+    else:
+        merged["forbidden_items"] = []
+        warnings.append("梗概未传入且 head 段无 forbidden_items——已置空数组，交判据判")
+
+    # ---- 机械求和只计**已装配**的场（QA 证伪 L4 修复）：无幕认领的场若也计入，
+    #      会出现「total ≠ Σ(acts 内各场)」的自相矛盾产物（R4 判失败且归因绕远）。
+    total = 0
+    bad_est = []
+    for no in sorted(assigned):
+        sc = scenes_by_no.get(no) or {}
+        est = sc.get("est_seconds")
+        if isinstance(est, bool) or not isinstance(est, (int, float)):
+            bad_est.append(no)
+            continue
+        total += est
+    if bad_est:
+        warnings.append(
+            "以下场次 est_seconds 缺失或非数值（"
+            + "、".join(str(n) for n in sorted(bad_est))
+            + "）——total_est_seconds 求和已跳过这些场，交 R4 判"
+        )
+    merged["total_est_seconds"] = total
+    return merged, warnings
+
+
 # --------------------------------------------------------------------- 解析
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$")
 

@@ -426,6 +426,16 @@ class Settings(BaseSettings):
     #: ⚠️ 与 `quality_gate_enforce` **是两套开关**：翻本项不触发 ENFORCE（准入见 `PRO-011` §5）。
     storyboard_scene_orchestration: bool = True
 
+    #: **剧本段逐场拆段**（`T-116`；2026-11-24 项目方批准方案 B）。
+    #: `true` ＝ script 段按梗概 `` scenes_outline `` 的**场号清单**逐场调用
+    #: （`package_head` 锚点＋幕骨架一次定义 ＋ `scene:<no>` 每场一次），
+    #: 治理 `ISSUE-090` 截断长尾的 script 层根因（单段全量输出撞 8192 长尾，
+    #: 批次 2 二期复测 r2/r4 实锤）；`false` ＝ 维持现状整段一次调用（默认，
+    #: 零回归；回滚＝`APP_SCRIPT_SCENE_ORCHESTRATION=false`，成本零）。
+    #: ⚠️ 1b 截断收敛反馈重采**按段兜底**（粒度随拆段变细）不受本开关影响。
+    #: ⚠️ 与 `quality_gate_enforce` 是两套开关：翻本项不触发 ENFORCE。
+    script_scene_orchestration: bool = False
+
     #: **分镜标识归一化**（`R7`/`R9` 派生量；`T-100` 配套，2026-11-05 授权代决落地）。
     #: `true` ＝ 合并后按「场号＋数组序」重编 `shot_id`（`S<场号两位>-SH<镜号三位>`）与
     #: `unit_id`（`U01..Un`），并同步 `units[].shot_ids`／`shots[].unit_id`。

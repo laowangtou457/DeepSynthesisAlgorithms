@@ -28,16 +28,22 @@ from app.services.pack_meta import apply_service_truth, build_pack_meta
 from app.services import artifact_contract, content_adequacy, quality_gate
 from app.services.coverage_reconcile import reconcile_coverage_gaps
 from app.services.segment import (
+    SCRIPT_HEAD_TOP_KEYS,
+    SCRIPT_SCENE_KEYS,
+    cap_script_schema_for_segment,
     is_multi_part,
+    merge_script_parts,
     merge_segments,
     merge_storyboard_parts,
     parse_json_object,
     plan_scene_segments,
+    plan_script_segments,
     plan_segments,
     scene_by_no,
     scope_storyboard_for_segment,
     segment_unit_ids,
     shot_count_of,
+    synopsis_scene_by_no,
     unit_ids_of,
     unit_shot_counts_of,
 )
@@ -916,7 +922,15 @@ class DialogueService:
         """
         from app.services.segment import HEAD_KEYS
 
-        contributable = set(HEAD_KEYS) | {"units", "shots"}
+        if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "script":
+            # `T-116`：script 拆段产物的键集是 head 键集 ∪ 场对象键集
+            # （`HEAD_KEYS` 是交付包键，与 script 形态不同族，不适用）；
+            # `scenes` 是合并器容忍的包装形态键（QA 证伪 L5：两处口径取齐）。
+            contributable = (
+                set(SCRIPT_HEAD_TOP_KEYS) | set(SCRIPT_SCENE_KEYS) | {"scenes"}
+            )
+        else:
+            contributable = set(HEAD_KEYS) | {"units", "shots"}
         records: list[dict[str, Any]] = []
         empty: list[str] = []
         for seg, text in zip(plan, texts):
@@ -988,6 +1002,29 @@ class DialogueService:
                 )
                 return ["all"]
             return plan_scene_segments(script)
+
+        # ---- `T-116`：script 段逐场拆段（package_head + scene:N）----
+        # ⚠️ 计划来源是**上游梗概的场号清单**（`scenes_outline`）——场号沿用梗概是
+        #    本层硬性约束（不得重编、不得增删），场号真值在梗概侧。
+        # ⚠️ 开关关 ⇒ 整段模式（旧行为零改动）；梗概场号异常 ⇒ 降级整段＋留痕
+        #    （形态闸生效时本分支不可达——上游准入闸已先阻断）。
+        if tpl_stage == "script":
+            if not get_settings().script_scene_orchestration:
+                return ["all"]
+            plan_script = plan_script_segments(_upstream_json(rec.artifacts.get("synopsis")))
+            if not plan_script:
+                logger.warning(
+                    "script_plan_upstream_unparsed",
+                    extra={
+                        "extra_fields": {
+                            "session_id": rec.session_id,
+                            "note": "梗概 scenes_outline 场号异常，逐场拆段退为整片一次调用"
+                            "（⚠️ 形态闸生效时本分支不可达——上游准入闸已先阻断）",
+                        }
+                    },
+                )
+                return ["all"]
+            return plan_script
 
         value = merged.get("segment") or template.default_of("segment") or "auto"
         shot_count, unit_ids = 0, []
@@ -1075,6 +1112,8 @@ class DialogueService:
         backend: Any,
         scene_ctx: dict[int, dict[str, Any]] | None = None,
         scope_ctx: dict[str, Any] | None = None,
+        script_ctx: dict[str, Any] | None = None,
+        prior_texts: dict[str, str] | None = None,
         retry_feedback: str | None = None,
         retry_feedback_unlocated: bool = False,
     ) -> tuple[dict[str, str], list[dict[str, Any]], int, int, list[str]]:
@@ -1096,6 +1135,11 @@ class DialogueService:
         ⚠️ `retry_feedback_unlocated`（QA 结论 b 的缓解）：反馈随**全段**注入（定位回退）
         时，每段前置「只纠正与本段相关者」免责句——防未失败段被反馈诱发改写
         （甲试点第 2 轮「重采产出更差样本」的同族风险）。
+        ⚠️ `prior_texts`（`T-116` QA 证伪 B1 修复）：**此前各 attempt 已成功的段文本**
+        （调用方的 `texts_by_seg`，在本方法返回前不含本批产出）。段级重采只传坏段，
+        本批 `produced` 缺 head ⇒ script 场段的锚点承继须回退查 `prior_texts`——
+        否则重采场段会拿到「头部不可解析」的**假降级文案**（与事实相反的指令）
+        并在 unspecified 里登记假台账条目。
         """
         produced: dict[str, str] = {}
         trace: list[dict[str, Any]] = []
@@ -1106,6 +1150,13 @@ class DialogueService:
                 seg_vars["segment"] = seg
             if scene_ctx is not None and seg.startswith("scene:"):
                 seg_vars.update(self._scene_seg_vars(seg, scene_ctx, produced))
+            # ---- `T-116` script 逐场拆段：段级变量（范围声明／梗概场对象／head 锚点承继）----
+            if script_ctx is not None and (
+                seg == "package_head" or seg.startswith("scene:")
+            ):
+                seg_vars.update(
+                    self._script_seg_vars(seg, script_ctx, produced, prior_texts)
+                )
             storyboard_scope = "full"
             scoped_doc: dict[str, Any] | None = None
             if scope_ctx is not None and (
@@ -1136,6 +1187,14 @@ class DialogueService:
             # （`R31`/`R7`），这里只是把「事后判」升级为「事中不生成」。
             seg_schema = json_schema
             schema_capped = False
+            # ---- `T-116` script 段级 schema 收窄：head 段＝head 键集＋幕骨架形态；
+            #      场段＝场对象键集（无 `act_no`）。全量 script schema 会强制场段
+            #      重出全部顶层键（含 style_bible 大对象），拆段动机被 schema 抵消。
+            if script_ctx is not None and (
+                seg == "package_head" or seg.startswith("scene:")
+            ):
+                seg_schema = cap_script_schema_for_segment(json_schema, seg)
+                schema_capped = seg_schema is not json_schema
             if scope_ctx is not None and scoped_doc is not None and isinstance(json_schema, dict):
                 if seg == "package_head":
                     seg_schema = cap_pack_array_bounds(
@@ -1175,9 +1234,12 @@ class DialogueService:
             # ---- 段级采样收紧（`ISSUE-084` 改判后 B3，DEV-20261113-006 续）----
             # ⚠️ 只动 `package_head` 段：该段是 `meta`／`style_bible`／`characters`
             # 等**元数据**，不是镜头创意正文，`SW-007` 的 0.7 只约束镜头正文。
-            # 不改分段编排、不改模板正文、不改判据——收紧只发生在这一次调用的入参上。
+            # ⚠️ QA 证伪 L3 修复：限定 `shot_prompt` 阶段——script 的 head 段承担
+            #    **设计类创作**（`TPL-008` 硬性约束 5：外观／风格锚首定义），降温到
+            #    0.4 是未声明的行为变化，不在本批授权面内（script head 维持模板
+            #    采样 0.8；storyboard 本就无 `package_head` 段，行为不变）。
             seg_params = _params_of(template.sampling)
-            if seg == "package_head":
+            if tpl_stage == "shot_prompt" and seg == "package_head":
                 seg_params = _package_head_sampling(seg_params)
             result = await backend.generate(
                 prompt_text,
@@ -1277,8 +1339,85 @@ class DialogueService:
         )
         return tail
 
+    def _script_seg_vars(
+        self,
+        seg: str,
+        script_ctx: dict[str, Any],
+        produced: dict[str, str],
+        prior_texts: dict[str, str] | None = None,
+    ) -> dict[str, str]:
+        """`T-116` script 段**逐场拆段**的段级变量。
+
+        ⚠️ 与 `_scene_seg_vars`（storyboard）**同构但不共用**：script 的 head 键含
+        `style_bible`/`characters`/`props` 大对象 ⇒ 场段**不重出 head**，而是把
+        head 段产物（锚点）解析后作为 `script_head_json` 注入给每个场段承继——
+        重出既浪费又引入段间漂移。head 不可解析 ⇒ 降级文案＋场段按梗概自行定义
+        （不静默假装锚点在），锚点一致性交判据判。
+
+        ⚠️ 段间存在**前向依赖**（场段要承继 head 锚点）⇒ 逐场必须**串行**（与
+        storyboard 的 `prev_scene_tail` 前向依赖同款，调用序已保证）。
+        """
+        scenes: dict[int, dict[str, Any]] = script_ctx.get("scenes") or {}
+        if seg == "package_head":
+            scope = (
+                "**头部模式**——本次调用只输出全片锚点与幕骨架：`title`/`logline`/`genre`/"
+                "`style_bible`/`characters`/`props` 与 `acts[]` 骨架（每幕含 `act_no`/`act_name`/"
+                "`act_summary`/`scene_nos` 场号归属清单，**不含任何场内容**）与 `unspecified`。"
+                "各场正文由别的调用负责：**不要写任何场的正文（action/dialogue 等）**。"
+                "`acts[].scene_nos` 的并集必须恰好覆盖梗概 scenes_outline 的全部场号（不重不漏）。"
+            )
+            return {
+                "scene_scope": scope,
+                "scene_json": "",
+                "script_head_json": "无（本段即头部段）",
+            }
+        try:
+            no = int(seg.split(":", 1)[1])
+        except (IndexError, ValueError):
+            return {}
+        scene = scenes.get(no) or {}
+        total = len(scenes)
+        scope = (
+            f"**单场模式**——本次调用只输出剧本第 {no} 场（共 {total} 场）的**场对象**"
+            f"（no/slug/location/time_of_day/present/props_present/action/sfx_hint/"
+            f"dialogue/beat/purpose/est_seconds）。"
+            f"其他场由别的调用负责：**不要写别的场、不要留占位、不要替别的场补内容**。"
+            f"场号 `no` 恒为 **{no}**；**不输出 `act_no`**——幕归属由头部段的幕骨架决定，"
+            f"本段无权判断。"
+        )
+        # ---- QA 证伪 B1 修复：本批 `produced` 缺 head（段级重采只传坏段）时回退查
+        #      `prior_texts`（此前 attempt 已成功的采样）——最新成功值优先。
+        head_raw = produced.get("package_head") or (prior_texts or {}).get(
+            "package_head"
+        )
+        head_json = (
+            "无（头部段尚未产出或不可解析）——外观与风格锚点由本段按梗概自行定义，"
+            "并在 unspecified 中登记「头部锚点缺失」。"
+        )
+        if head_raw:
+            try:
+                doc = parse_json_object(head_raw)
+            except AppError:
+                doc = None
+            if isinstance(doc, dict):
+                anchors = {
+                    k: doc[k]
+                    for k in ("title", "logline", "genre", "style_bible", "characters", "props")
+                    if k in doc
+                }
+                head_json = json.dumps(anchors, ensure_ascii=False, indent=2)
+        return {
+            "scene_scope": scope,
+            "scene_json": json.dumps(scene, ensure_ascii=False, indent=2),
+            "script_head_json": head_json,
+        }
+
     def _retry_segments(
-        self, plan: list[str], verdict: Any, texts: dict[str, str]
+        self,
+        plan: list[str],
+        verdict: Any,
+        texts: dict[str, str],
+        tpl_stage: str = "",
     ) -> tuple[list[str], str | None]:
         """从门禁结论**定位要重跑的段**；定位不到就**回退为全部段**。
 
@@ -1378,9 +1517,52 @@ class DialogueService:
                         unit_ids.add(str(s["unit_id"]))
                 if unit_ids & mentioned_units:
                     picked.append(seg)
+        # ---- `T-116` script 拆段定位（QA 证伪 L1/O5 修复；`quality_gate_stages`
+        #      默认含 `script` ⇒ 本分支可达，不是防御性代码）：
+        # ① script 域词 ⇒ head 段（head 承担锚点与幕骨架）；
+        # ② `acts[i]` 索引 → 上一轮 head 产物的骨架 `scene_nos` → 对应场段
+        #    （script 判据报错形态是 `acts[i].scenes[j].…`，无场号字面）。
+        # 宁多勿漏口径不变：定位不到 ⇒ 回退全部段（scope_fallback）。
+        if tpl_stage == "script":
+            if any(
+                k in joined
+                for k in (
+                    "style_bible", "logline", "genre", "characters", "props",
+                    "total_est_seconds", "forbidden_items", "unspecified", "acts",
+                )
+            ):
+                if "package_head" in plan:
+                    picked.append("package_head")
+            act_idx = {int(m) for m in re.findall(r"acts\[(\d+)\]", joined)}
+            if act_idx and "package_head" in texts:
+                try:
+                    head_doc = parse_json_object(texts["package_head"])
+                except AppError:
+                    head_doc = None
+                acts_list = head_doc.get("acts") if isinstance(head_doc, dict) else None
+                if isinstance(acts_list, list):
+                    for i in act_idx:
+                        if not 0 <= i < len(acts_list) or not isinstance(acts_list[i], dict):
+                            continue
+                        for no in acts_list[i].get("scene_nos") or []:
+                            seg = f"scene:{no}"
+                            if seg in plan and seg not in picked:
+                                picked.append(seg)
+            if "scene:" in joined or re.search(r"场\s*\d+", joined):
+                for seg in plan:
+                    no = seg.split(":", 1)[1] if seg.startswith("scene:") else ""
+                    if no and (f"scene:{no}" in joined or f"场 {no}" in joined):
+                        picked.append(seg)
         if any(k in joined for k in ("meta.", "total_duration_ms", "package_head", "package")):
             if "package_head" in plan:
                 picked.append("package_head")
+        # ---- QA 证伪 L1 修复：零贡献键集按阶段取表（与 `_guard_segment_contributions`
+        #      同源同族——`HEAD_KEYS` 是交付包键，script 场段一个都没有 ⇒ 旧表会把
+        #      script 全部场段误判零贡献强制重烧）。
+        if tpl_stage == "script":
+            contributable = set(SCRIPT_HEAD_TOP_KEYS) | set(SCRIPT_SCENE_KEYS) | {"scenes"}
+        else:
+            contributable = set(HEAD_KEYS) | {"units", "shots"}
         for seg in plan:
             text = texts.get(seg, "")
             try:
@@ -1388,7 +1570,7 @@ class DialogueService:
             except AppError:
                 picked.append(seg)  # 解析失败 ⇒ 必须重跑
                 continue
-            if isinstance(doc, dict) and not any(doc.get(k) for k in (set(HEAD_KEYS) | {"units", "shots"})):
+            if isinstance(doc, dict) and not any(doc.get(k) for k in contributable):
                 picked.append(seg)  # 零贡献 ⇒ 必须重跑
         uniq = [s for s in plan if s in set(picked)]
         if not uniq:
@@ -2452,8 +2634,16 @@ class DialogueService:
         plan = self._segment_plan(template, tpl_stage, rec, merged)
         # ---- `T-100` 逐场编排：场号 → 该场对象（供 `scene:<no>` 段动态注入变量）----
         # ⚠️ 只在计划确有 `scene:` 段时解析：整片模式（开关关）不必多解析一次剧本。
+        # ---- `T-116` script 逐场拆段：梗概场对象（`scene:<no>` 段注入）——来源是
+        #      **梗概** `scenes_outline`（场号真值在上游梗概侧），与 storyboard 的
+        #      剧本侧 `scene_ctx` 是两条独立通道，互不复用。
         scene_ctx: dict[int, dict[str, Any]] | None = None
-        if any(str(s).startswith("scene:") for s in plan):
+        script_ctx: dict[str, Any] | None = None
+        if tpl_stage == "script" and any(
+            s == "package_head" or str(s).startswith("scene:") for s in plan
+        ):
+            script_ctx = {"scenes": synopsis_scene_by_no(_upstream_json(rec.artifacts.get("synopsis")))}
+        elif any(str(s).startswith("scene:") for s in plan):
             scene_ctx = scene_by_no(_upstream_json(rec.artifacts.get("script")))
         # ---- `T-101`／`PRO-015`：`shot_prompt` 段级输入裁剪的上下文 ----
         # ⚠️ 解析对象是 `merged["storyboard_json"]`（**已紧凑化**的变量值）——
@@ -2561,7 +2751,8 @@ class DialogueService:
             try:
                 produced, seg_trace, pt, ct, _truncated_now = await self._run_segments(
                     template, tpl_stage, merged, segs, supports_segment, json_schema,
-                    backend, scene_ctx, scope_ctx, retry_feedback=feedback,
+                    backend, scene_ctx, scope_ctx, script_ctx,
+                    prior_texts=dict(texts_by_seg), retry_feedback=feedback,
                     retry_feedback_unlocated=feedback_unlocated,
                 )
                 for record in seg_trace:
@@ -2653,6 +2844,14 @@ class DialogueService:
                     if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
                         try:
                             _up = parse_json_object(merged.get("script_json") or "")
+                        except AppError:
+                            _up = None
+                        merge_upstream = _up if isinstance(_up, dict) else None
+                    elif artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "script":
+                        # `T-116`：script 合并需要**上游梗概**做机械承继
+                        # （forbidden_items 原样承接）与场号基准。
+                        try:
+                            _up = parse_json_object(merged.get("synopsis_json") or "")
                         except AppError:
                             _up = None
                         merge_upstream = _up if isinstance(_up, dict) else None
@@ -3000,7 +3199,9 @@ class DialogueService:
                 self._retry_feedback_text(attempt, quality_verdict)
                 if get_settings().quality_gate_retry_feedback else None
             )
-            retry_segs, retry_scope_note = self._retry_segments(plan, quality_verdict, texts_by_seg)
+            retry_segs, retry_scope_note = self._retry_segments(
+                plan, quality_verdict, texts_by_seg, tpl_stage
+            )
             # 定位回退 ⇒ 反馈随全段注入 ⇒ 下轮每段带免责句（QA 结论 b 的缓解）。
             retry_feedback_unlocated_pending = retry_scope_note == "scope_fallback"
             logger.info(
@@ -3734,6 +3935,9 @@ def _merge_parts(
     parsed = [parse_json_object(text) for text in texts]
     if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
         merged, warnings = merge_storyboard_parts(parsed, upstream=upstream)
+    elif artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "script":
+        # `T-116`：script 逐场拆段产物 → 幕骨架装配（锚点只定义一次＋机械承继）。
+        merged, warnings = merge_script_parts(parsed, synopsis=upstream)
     else:
         merged, warnings = merge_segments(parsed)
     return json.dumps(merged, ensure_ascii=False, indent=2), warnings
