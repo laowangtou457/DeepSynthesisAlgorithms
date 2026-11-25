@@ -149,7 +149,7 @@ def test_template_versions_bumped_with_manifest(repo: PromptRepository) -> None:
     """六模板版本已升位且 manifest↔正文一致（loader 一致性断言之外的显式锁）。"""
     expected = {
         "synopsis_v1": "2.0.1",
-        "script_v1": "3.0.0",
+        "script_v1": "3.0.1",
         "storyboard_v1": "2.3.2",
         "shot_prompt_v1": "2.3.4",
         "revise_v1": "1.2.1",

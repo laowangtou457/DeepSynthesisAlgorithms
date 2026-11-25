@@ -1149,7 +1149,14 @@ class DialogueService:
             if supports_segment:
                 seg_vars["segment"] = seg
             if scene_ctx is not None and seg.startswith("scene:"):
-                seg_vars.update(self._scene_seg_vars(seg, scene_ctx, produced))
+                # ---- `T-117` ④（storyboard 同款 B1 修复）：段级重采只传坏段 ⇒
+                #      重采场段的 `prev_scene_tail` 拿不到上一场产物，会拿到
+                #      「本场为第一场，或上一场尚未产出」的**假降级文案**——
+                #      与事实相反（上一场早已成功）。回退查 `prior_texts`
+                #      （此前 attempt 已成功的段文本），与 script 侧 B1 修复同构。
+                seg_vars.update(
+                    self._scene_seg_vars(seg, scene_ctx, produced, prior_texts)
+                )
             # ---- `T-116` script 逐场拆段：段级变量（范围声明／梗概场对象／head 锚点承继）----
             if script_ctx is not None and (
                 seg == "package_head" or seg.startswith("scene:")
@@ -1193,7 +1200,12 @@ class DialogueService:
             if script_ctx is not None and (
                 seg == "package_head" or seg.startswith("scene:")
             ):
-                seg_schema = cap_script_schema_for_segment(json_schema, seg)
+                # ---- `T-117` ②：dialogue 行数解码上限按 est 同源派生（est 异常 ⇒ None）----
+                seg_schema = cap_script_schema_for_segment(
+                    json_schema,
+                    seg,
+                    dialogue_max_items=_script_dialogue_max_items(script_ctx, seg),
+                )
                 schema_capped = seg_schema is not json_schema
             if scope_ctx is not None and scoped_doc is not None and isinstance(json_schema, dict):
                 if seg == "package_head":
@@ -1241,6 +1253,18 @@ class DialogueService:
             seg_params = _params_of(template.sampling)
             if tpl_stage == "shot_prompt" and seg == "package_head":
                 seg_params = _package_head_sampling(seg_params)
+            # ---- `T-117` ①：script 段 `max_tokens` 按段收口（跑飞快速失败）----
+            # ⚠️ 只动 `max_tokens` 不动温度：script head 是设计类创作（QA 证伪 L3
+            #    裁决维持模板 0.8），scene 是正文创作；收口值给足正常产出余量
+            #    （head 实测 822~1435 tok ⇒ 2048 ≈ 1.4×；scene 实测 235~389 tok
+            #    ⇒ 4096 ≈ 10×），跑飞轮在此快速失败进按段重采，不再烧满 8192。
+            elif tpl_stage == "script" and seg == "package_head":
+                seg_params = _script_head_sampling(seg_params)
+            elif tpl_stage == "script" and seg.startswith("scene:"):
+                seg_params = replace(
+                    seg_params,
+                    max_tokens=min(seg_params.max_tokens, SCRIPT_SCENE_MAX_TOKENS),
+                )
             result = await backend.generate(
                 prompt_text,
                 seg_params,
@@ -1268,6 +1292,13 @@ class DialogueService:
                     "completion_tokens": result.completion_tokens,
                     # ---- 乙：本段采样是否带判据反馈（「注入了没有」必须可核查）----
                     "retry_feedback": bool(retry_feedback),
+                    # ---- `T-117` ② 观测位：本段 dialogue 行数解码上限（非 script
+                    #      场段为 None；截断轮可对账「预算数字是否合理」）----
+                    "dialogue_max_items": (
+                        _script_dialogue_max_items(script_ctx, seg)
+                        if script_ctx is not None and seg.startswith("scene:")
+                        else None
+                    ),
                 }
             )
         truncated = [t["segment"] for t in trace if t.get("finish_reason") == "length"]
@@ -1278,6 +1309,7 @@ class DialogueService:
         seg: str,
         scene_ctx: dict[int, dict[str, Any]],
         produced: dict[str, str],
+        prior_texts: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """`scene:<no>` 段的**逐场变量**（`T-100`／`PRO-014` §3.3）。
 
@@ -1312,14 +1344,27 @@ class DialogueService:
         return {
             "scene_scope": scope,
             "scene_json": json.dumps(scene, ensure_ascii=False, indent=2),
-            "prev_scene_tail": self._prev_scene_tail(no, produced),
+            "prev_scene_tail": self._prev_scene_tail(no, produced, prior_texts),
             "scene_budget": budget,
         }
 
     @staticmethod
-    def _prev_scene_tail(no: int, produced: dict[str, str]) -> str:
-        """上一场末镜摘要（跨场衔接的唯一信息来源；拿不到就如实说、并给保守口径）。"""
-        raw = produced.get(f"scene:{no - 1}")
+    def _prev_scene_tail(
+        no: int,
+        produced: dict[str, str],
+        prior_texts: dict[str, str] | None = None,
+    ) -> str:
+        """上一场末镜摘要（跨场衔接的唯一信息来源；拿不到就如实说、并给保守口径）。
+
+        ⚠️ `T-117` ④（storyboard 同款 B1 修复）：段级重采只传坏段 ⇒ 本批
+        `produced` 不含上一场（早已成功）的产物，旧实现会注入「本场为第一场，
+        或上一场尚未产出」的**假降级文案**——衔接参照凭空丢失，首镜 `transition_in`
+        被误导为保守 `cut`。回退查 `prior_texts`（此前 attempt 的成功采样），
+        最新成功值优先（`produced` 先查，与 script 侧 head 承继同构）。
+        """
+        raw = produced.get(f"scene:{no - 1}") or (prior_texts or {}).get(
+            f"scene:{no - 1}"
+        )
         if not raw:
             return "无（本场为第一场，或上一场尚未产出）——本场首镜 `transition_in` 填 `cut`。"
         try:
@@ -1366,7 +1411,7 @@ class DialogueService:
                 "各场正文由别的调用负责：**不要写任何场的正文（action/dialogue 等）——"
                 "output 节的 scenes[] 场对象示例是给整片/单场模式看的，本段不得照抄**。"
                 "`acts[].scene_nos` **每幕至少 1 场**（不得空幕），并集必须恰好覆盖梗概 "
-                "scenes_outline 的全部场号（不重不漏）。正确产物 ≈ 500~800 tokens，写完即停。"
+                "scenes_outline 的全部场号（不重不漏）。正确产物 ≈ 800~1500 tokens，写完即停。"
             )
             return {
                 "scene_scope": scope,
@@ -2819,6 +2864,14 @@ class DialogueService:
                             "本次必须收敛输出：压缩铺陈与重复描写、缩短超长字段值，"
                             "确保 JSON 结构完整闭合且远小于长度上限。"
                         )
+                        # ---- `T-117` ③：script 段追加**预算数字**反馈 ----
+                        # 复测 r2/r4 实锤 script 段重采兜底 0/3：泛化「收敛输出」
+                        # 对跑飞无约束力。按段给出同源硬数字（head 骨架规模／
+                        # scene 台词字数与行数预算），让模型知道「收到多少算停」。
+                        if tpl_stage == "script":
+                            retry_feedback_pending += _script_truncation_feedback(
+                                bad_segs, script_ctx
+                            )
                         retry_feedback_unlocated_pending = False
                         logger.info(
                             "segment_truncated_retry",
@@ -3517,6 +3570,103 @@ def _params_of(sampling: dict[str, Any]) -> GenParams:
     if "stop" in sampling and isinstance(sampling["stop"], (list, tuple)):
         kwargs["stop"] = tuple(sampling["stop"])
     return GenParams(**kwargs)
+
+
+# ---- `T-117` ①：script 段 `max_tokens` 收口值（跑飞快速失败的成本护栏）----
+# 实测依据（b23 复测 `DEV-20261124-007`）：head 正常产出 822~1435 tok ⇒ 2048 ≈ 1.4×
+# 正常上限；scene 正常产出 235~389 tok ⇒ 4096 ≈ 10×（est 大的场留足余量）。
+# ⚠️ 收口不解决跑飞本身（那是 ② dialogue maxItems 的职责），只把「跑飞烧满
+# 8192 再失败」压成「快速失败进按段重采」——r2 head 两连撞 8192 的代价实证。
+SCRIPT_HEAD_MAX_TOKENS = 2048
+SCRIPT_SCENE_MAX_TOKENS = 4096
+
+
+def _script_head_sampling(seg_params: GenParams) -> GenParams:
+    """script `package_head` 段的 `max_tokens` 收口（`T-117` ①）。
+
+    ⚠️ 只动 `max_tokens`，**不动温度**——`_package_head_sampling` 的降温 0.4 是
+    shot_prompt head（元数据复述）的行为；script head 是设计类创作（QA 证伪 L3
+    裁决维持模板 0.8），不得连带（同批同函数族的两处语义须各守各的授权面）。
+    """
+    return replace(
+        seg_params, max_tokens=min(seg_params.max_tokens, SCRIPT_HEAD_MAX_TOKENS)
+    )
+
+
+# ---- `T-117` ②：dialogue 行数上限的派生参数 ----
+# 同源推导：预算字数（est × DIALOGUE_SPEED_MAX）÷ 每行**最短**字数 ⇒ 行数上限。
+# QA 证伪 ①（2026-11-25）：分母取 4 会压制短行——est=10s 时上限仅 22 行，
+# 而中文有效台词行可短至 2 字（「走。」「好。」），被 xgrammar **静默闭数组**
+# 无任何信号 ⇒ 取 **2**（真实下限，est=10s ⇒ 45 行，距正常产出 5~15 行仍有余量）。
+SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE = 2
+# QA 证伪 ④（适用域上端）：est≈120s 时派生 540 行失去约束意义 ⇒ **绝对封顶**
+# 160 行（est≈71s 触顶；仍远高于正常产出 5~15 行，拦得住数百行的跑飞形态）。
+SCRIPT_DIALOGUE_MAX_ITEMS_CAP = 160
+
+
+def _script_dialogue_max_items(
+    script_ctx: dict[str, Any] | None, seg: str
+) -> int | None:
+    """`scene:<no>` 段的 `dialogue` 行数解码上限（`T-117` ②）。
+
+    est 异常（缺失/非数值/≤0）或段名非场段 ⇒ `None`＝不加约束——缺数据就不造
+    硬数字，硬数字造错比没有更危险（与 scope 的「缺失 ⇒ 保守提示」口径一致）。
+    """
+    if not script_ctx:
+        return None
+    try:
+        no = int(seg.split(":", 1)[1])
+    except (IndexError, ValueError):
+        return None
+    scene = (script_ctx.get("scenes") or {}).get(no) or {}
+    est = scene.get("est_seconds")
+    if isinstance(est, bool) or not isinstance(est, (int, float)) or est <= 0:
+        return None
+    return min(
+        max(
+            1,
+            int(est) * DIALOGUE_SPEED_MAX // SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE,
+        ),
+        SCRIPT_DIALOGUE_MAX_ITEMS_CAP,
+    )
+
+
+def _script_truncation_feedback(
+    bad_segs: list[str], script_ctx: dict[str, Any] | None
+) -> str:
+    """script 段截断重采的**预算数字反馈**（`T-117` ③）。
+
+    复测 r2/r4 实锤：script 段重采兜底 0/3——泛化反馈（「收敛输出」）对跑飞
+    无约束力，模型不知道「收到多少才算停」。按段给出硬数字（同源值，非新造）：
+    head 段给骨架规模；场段给台词字数/行数预算。
+    """
+    parts: list[str] = []
+    for seg in bad_segs:
+        if seg == "package_head":
+            parts.append(
+                f"{seg}：正确骨架 ≈800~1500 tokens——只出锚点键与 acts[].scene_nos，"
+                "不写任何场正文（action/dialogue），写完即停。"
+            )
+            continue
+        if not seg.startswith("scene:"):
+            continue
+        try:
+            no = int(seg.split(":", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        scene = ((script_ctx or {}).get("scenes") or {}).get(no) or {}
+        est = scene.get("est_seconds")
+        if isinstance(est, bool) or not isinstance(est, (int, float)) or est <= 0:
+            parts.append(f"{seg}：台词总量保守控制（总字数 ≤ 200 字），写完即停。")
+            continue
+        budget_chars = int(est) * DIALOGUE_SPEED_MAX
+        max_items = _script_dialogue_max_items({"scenes": {no: scene}}, seg)
+        parts.append(
+            f"{seg}：台词总字数 ≤ {budget_chars} 字（est_seconds={int(est)} × "
+            f"{DIALOGUE_SPEED_MAX} 字/秒上限；dialogue 行数 ≤ {max_items} 行），"
+            "action 收敛不铺陈，写完即停。"
+        )
+    return "".join(parts)
 
 
 def _package_head_sampling(seg_params: GenParams) -> GenParams:

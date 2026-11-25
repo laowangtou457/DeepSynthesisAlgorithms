@@ -1,10 +1,14 @@
 id: script_v1
 name: 剧本生成
-version: "3.0.0"
+version: "3.0.1"
 task_type: generate
 stage: script
 language: zh-CN
 
+# 版本说明（v3.0.1，2026-11-25）：`T-117` ③ QA 证伪订正——头部模式铁律 ③ 的规模锚
+#   「≈500~800 tokens／第 300 token」与真机实测矛盾（b23 复测 4/5 轮 head 正常 stop
+#   于 822~1435 tokens，`DEV-20261124-007`）⇒ 统一改「≈800~1500 tokens／第 1500 token」；
+#   `dialogue_service` 的 head scope 与截断重采反馈同步（三处单一口径）。仅文案数字，零结构变更。
 # 版本说明（v3.0.0，2026-11-24）：**script 段逐场拆段**（`T-116`，治理 `ISSUE-090` 截断长尾的
 #   script 层根因——单段全量输出撞 8192；批次 2 二期复测 r2/r4 实锤；项目方批准方案 B）。
 #   **结构变更**（主版本）：新增 4 个可选变量 `segment`（`all`／`package_head`／`scene:<场号>`）／
@@ -233,7 +237,7 @@ sections:
          下方字段结构里的 `scenes[]` 场对象示例**是给整片模式和单场模式看的，头部模式不得照抄**；
       ② 每幕 `scene_nos` **至少 1 场**（不得出现空幕）；三幕按叙事节奏划分，
          `scene_nos` 的并集必须恰好等于梗概 scenes_outline 的场号全集（不重不漏）；
-      ③ 正确的头部模式产物 ≈ 500~800 tokens——若你发现自己写到第 300 token 还没停，就是写错了。
+      ③ 正确的头部模式产物 ≈ 800~1500 tokens——若你发现自己写到第 1500 token 还没停，就是写错了。
       ✅ 头部模式骨架示例（照着这个形态写）：
         {"title": "雨夜信使", "logline": "…", "genre": "剧情",
          "style_bible": {"style_id": "STYLE-01", "style_prompt_zh": "…", "style_anchors": ["…"],

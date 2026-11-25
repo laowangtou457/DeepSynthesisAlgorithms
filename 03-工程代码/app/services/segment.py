@@ -535,7 +535,10 @@ def plan_script_segments(synopsis: dict[str, Any] | None) -> list[str]:
 
 
 def cap_script_schema_for_segment(
-    schema: dict[str, Any] | None, seg: str
+    schema: dict[str, Any] | None,
+    seg: str,
+    *,
+    dialogue_max_items: int | None = None,
 ) -> dict[str, Any] | None:
     """script 段级 schema 收窄（`T-116`；受约束解码的**段投影**）。
 
@@ -547,6 +550,10 @@ def cap_script_schema_for_segment(
     - `package_head` 段：required＝head 键集；`acts` 收窄为**骨架形态**
       （`act_no`/`act_name`/`act_summary`/`scene_nos[]` 整数数组）；
     - `scene:<no>` 段：required＝场对象键集（无 `act_no`），数组键钉 `array` 类型；
+      `dialogue_max_items` 为正整数时给 `dialogue` 数组钉 `maxItems`（`T-117` ②：
+      把台词预算从 scope **提示**升级为**解码期硬约束**——复测 r4 scene:2 两连
+      截断实锤 scope 提示拦不住跑飞；上限由调用方按 `est × DIALOGUE_SPEED_MAX ÷
+      每行最短字数` 同源派生，本函数不做推导、只落地数值）；
     - 其他取值（含 `all`）原样返回（不收窄）。
     """
     if not isinstance(schema, dict) or seg == "all":
@@ -589,6 +596,20 @@ def cap_script_schema_for_segment(
                 if key in _SCRIPT_SCENE_ARRAY_KEYS
                 else {}
             )
+        # ---- `T-117` ②：dialogue 行数**解码期**硬上限 ----
+        # 调用方按 est × DIALOGUE_SPEED_MAX ÷ 每行最短字数 同源派生；est 异常时
+        # 传 None ⇒ 不加约束（与 scope 的「缺失 ⇒ 保守提示」口径一致：缺数据
+        # 就不造硬数字，硬数字造错比没有更危险）。
+        if (
+            isinstance(dialogue_max_items, int)
+            and not isinstance(dialogue_max_items, bool)
+            and dialogue_max_items > 0
+        ):
+            props["dialogue"] = {
+                "type": "array",
+                "items": {},
+                "maxItems": dialogue_max_items,
+            }
         return {
             "type": "object",
             "properties": props,

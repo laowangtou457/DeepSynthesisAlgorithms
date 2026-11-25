@@ -358,3 +358,233 @@ def test_merge_total_excludes_unclaimed_scenes():
     merged, warnings = merge_script_parts(parts, synopsis=syn)
     assert merged["total_est_seconds"] == 10
     assert any("无幕认领" in w and "不计入" in w for w in warnings)
+
+
+# ================================================================ T-117 硬约束
+# ① head/scene max_tokens 收口；② dialogue maxItems 解码期派生；
+# ③ script 截断重采预算数字反馈；④ storyboard prev_scene_tail 同款 B1 修复。
+from app.inference.base import GenParams  # noqa: E402
+from app.services.coverage_reconcile import DIALOGUE_SPEED_MAX  # noqa: E402
+from app.services.dialogue_service import (  # noqa: E402
+    SCRIPT_DIALOGUE_MAX_ITEMS_CAP,
+    SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE,
+    SCRIPT_HEAD_MAX_TOKENS,
+    SCRIPT_SCENE_MAX_TOKENS,
+    _script_dialogue_max_items,
+    _script_head_sampling,
+    _script_truncation_feedback,
+)
+
+
+def test_cap_scene_schema_pins_dialogue_max_items():
+    """②：dialogue_max_items 为正整数 ⇒ 段级 schema 给 dialogue 钉 maxItems（解码期硬约束）。"""
+    full = {"type": "object"}
+    seg = cap_script_schema_for_segment(full, "scene:2", dialogue_max_items=135)
+    dlg = seg["properties"]["dialogue"]
+    assert dlg["maxItems"] == 135
+    # 其余数组键不受影响
+    for key in ("present", "props_present", "sfx_hint"):
+        assert "maxItems" not in seg["properties"][key]
+    # head 段不受该参数影响（无 dialogue 键）
+    head_seg = cap_script_schema_for_segment(full, "package_head", dialogue_max_items=135)
+    assert "dialogue" not in head_seg["properties"]
+
+
+def test_cap_scene_schema_dialogue_max_items_absent_when_invalid():
+    """②：None／非正数／布尔（bool 是 int 子类）一律不加约束——缺数据不造硬数字。"""
+    full = {"type": "object"}
+    for bad in (None, 0, -5, True):
+        seg = cap_script_schema_for_segment(full, "scene:2", dialogue_max_items=bad)
+        assert "maxItems" not in seg["properties"]["dialogue"], bad
+
+
+def test_script_dialogue_max_items_derives_from_est():
+    """②：est × DIALOGUE_SPEED_MAX ÷ 每行最短字数（同源派生）；异常 ⇒ None。"""
+    ctx = {"scenes": {3: {"est_seconds": 30}}}
+    expected = 30 * DIALOGUE_SPEED_MAX // SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE
+    assert _script_dialogue_max_items(ctx, "scene:3") == expected == 135
+    # est 缺失／非数值／≤0／段名异常 ⇒ None
+    assert _script_dialogue_max_items({"scenes": {3: {}}}, "scene:3") is None
+    assert _script_dialogue_max_items(
+        {"scenes": {3: {"est_seconds": "30"}}}, "scene:3"
+    ) is None
+    assert _script_dialogue_max_items(
+        {"scenes": {3: {"est_seconds": 0}}}, "scene:3"
+    ) is None
+    assert _script_dialogue_max_items(ctx, "package_head") is None
+    assert _script_dialogue_max_items(None, "scene:3") is None
+    # ④ 绝对封顶：est=120 ⇒ min(540, CAP)=160（上端不失约束意义）
+    assert _script_dialogue_max_items(
+        {"scenes": {3: {"est_seconds": 120}}}, "scene:3"
+    ) == SCRIPT_DIALOGUE_MAX_ITEMS_CAP == 160
+
+
+def test_script_head_sampling_caps_tokens_keeps_temperature():
+    """①：head 段 max_tokens 收口 2048（min 语义不放大），温度不动（L3 授权面）。"""
+    capped = _script_head_sampling(GenParams(temperature=0.8, max_tokens=8192))
+    assert capped.max_tokens == SCRIPT_HEAD_MAX_TOKENS == 2048
+    assert capped.temperature == 0.8
+    # 模板本就保守时不放大
+    assert _script_head_sampling(
+        GenParams(temperature=0.8, max_tokens=1024)
+    ).max_tokens == 1024
+
+
+# ---- ② 接线测试（假后端）：max_tokens 收口／schema maxItems／trace 观测位 ----
+class _RecordingBackend2:
+    name = "fake"
+    version = "fake-1"
+
+    def __init__(self, results):
+        self.calls = []  # (prompt, params, schema)
+        self.results = list(results)
+
+    async def generate(self, prompt, params, json_schema):
+        self.calls.append((prompt, params, json_schema))
+        text, finish = self.results.pop(0) if self.results else ("{}", "stop")
+        return SimpleNamespace(
+            text=text, prompt_tokens=1, completion_tokens=1, finish_reason=finish
+        )
+
+
+class _CapturePrompts:
+    def __init__(self):
+        self.seen_vars = []
+
+    def render(self, template, seg_vars):
+        self.seen_vars.append(dict(seg_vars))
+        return SimpleNamespace(as_text=lambda: "{}")
+
+
+class _ScriptTemplate:
+    name = "tpl"
+    id = "TPL-008"
+    version = "3"
+    variables: list = []
+    sampling = {"temperature": 0.8, "max_tokens": 8192}
+    required_variables: list[str] = []
+
+
+_SCRIPT_FULL_SCHEMA = {
+    "type": "object",
+    "required": ["title", "acts"],
+    "properties": {"title": {}, "acts": {"type": "array"}},
+}
+
+
+def test_run_segments_script_wiring_caps_and_schema() -> None:
+    """②：_run_segments 真接线——head/scene 段 max_tokens 收口、dialogue maxItems 注入、trace 观测位。"""
+    import asyncio
+
+    svc = _svc()
+    svc.prompts = _CapturePrompts()  # type: ignore[assignment]
+    backend = _RecordingBackend2([("{}", "stop")] * 3)
+    script_ctx = {"scenes": synopsis_scene_by_no(_synopsis(1, 2, est=30))}
+    segs = ["package_head", "scene:1", "scene:2"]
+    produced, seg_trace, pt, ct, trunc = asyncio.run(
+        svc._run_segments(
+            _ScriptTemplate(), "script",
+            {"segment": "auto", "synopsis_json": json.dumps(_synopsis(1, 2), ensure_ascii=False)},
+            segs, True, _SCRIPT_FULL_SCHEMA, backend, None, None, script_ctx,
+        )
+    )
+    assert trunc == []
+    # ①：head 2048 / scene 4096（模板 8192 被 min 收口）
+    assert backend.calls[0][1].max_tokens == SCRIPT_HEAD_MAX_TOKENS == 2048
+    assert backend.calls[1][1].max_tokens == SCRIPT_SCENE_MAX_TOKENS == 4096
+    assert backend.calls[2][1].max_tokens == 4096
+    # ①：温度不动（L3 授权面）
+    assert all(c[1].temperature == 0.8 for c in backend.calls)
+    # ②：scene 段 schema 钉 dialogue maxItems＝est×9÷2＝135；head 段无 dialogue
+    d1 = backend.calls[1][2]["properties"]["dialogue"]
+    assert d1["maxItems"] == 135
+    assert "dialogue" not in backend.calls[0][2]["properties"]
+    # 观测位：trace 记录派生值
+    assert seg_trace[0]["dialogue_max_items"] is None
+    assert seg_trace[1]["dialogue_max_items"] == 135
+    assert seg_trace[2]["dialogue_max_items"] == 135
+
+
+def test_scene_seg_vars_receives_prior_texts_in_wiring() -> None:
+    """④：storyboard 段接线——_scene_seg_vars 拿到 prior_texts（B1 修复在链路上生效）。"""
+    import asyncio
+
+    scene1 = {"shots": [{"shot_id": "S01-SH002", "action": {"end": "收枪"},
+                         "transition_out": "cut"}]}
+    svc = _svc()
+    prompts = _CapturePrompts()
+    svc.prompts = prompts  # type: ignore[assignment]
+    backend = _RecordingBackend2(
+        [(json.dumps(scene1, ensure_ascii=False), "stop"), ("{}", "stop")]
+    )
+    scene_ctx = {1: {"no": 1}, 2: {"no": 2}}
+    prior = {"scene:1": "不是 JSON"}  # prior 留坏值：produced（最新成功值）优先于 prior
+    asyncio.run(
+        svc._run_segments(
+            _ScriptTemplate(), "storyboard",
+            {"segment": "auto", "script_json": "{}"},
+            ["scene:1", "scene:2"], True, None, backend,
+            scene_ctx, None, None, prior_texts=prior,
+        )
+    )
+    v2 = prompts.seen_vars[1]
+    assert "S01-SH002" in v2["prev_scene_tail"]  # 重采场段也能拿到上一场锚点
+
+
+def test_script_truncation_feedback_scene_has_budget_numbers():
+    """③：场段截断反馈带同源硬数字（台词字数预算＋行数上限），可核查可执行。"""
+    fb = _script_truncation_feedback(
+        ["scene:3"], {"scenes": {3: {"est_seconds": 30}}}
+    )
+    assert "scene:3" in fb
+    assert "台词总字数 ≤ 270 字" in fb  # 30 × 9
+    assert "dialogue 行数 ≤ 135 行" in fb  # 270 // 4
+    assert "写完即停" in fb
+
+
+def test_script_truncation_feedback_head_has_skeleton_scale():
+    """③：head 段截断反馈给骨架规模（≈800~1500 tok），不含场正文。"""
+    fb = _script_truncation_feedback(
+        ["package_head"], {"scenes": {3: {"est_seconds": 30}}}
+    )
+    assert "package_head" in fb
+    assert "800~1500" in fb
+    assert "不写任何场正文" in fb
+
+
+def test_script_truncation_feedback_est_missing_conservative():
+    """③：est 缺失的场段走保守口径（≤200 字），不造硬数字。"""
+    fb = _script_truncation_feedback(["scene:3"], {"scenes": {3: {}}})
+    assert "总字数 ≤ 200 字" in fb
+
+
+def test_prev_scene_tail_prior_texts_fallback_storyboard_b1():
+    """④（storyboard 同款 B1）：重采场段 produced 无上一场 ⇒ 回退 prior_texts，
+    不再注入「本场为第一场，或上一场尚未产出」的假降级文案。"""
+    scene1 = {
+        "shots": [
+            {
+                "shot_id": "S01-SH002",
+                "action": {"end": "主角收枪离场"},
+                "transition_out": "cut",
+            }
+        ]
+    }
+    ctx = {1: {"no": 1}, 2: {"no": 2}}
+    vars_ = _svc()._scene_seg_vars(
+        "scene:2", ctx, produced={}, prior_texts={"scene:1": json.dumps(scene1, ensure_ascii=False)}
+    )
+    tail = vars_["prev_scene_tail"]
+    assert "上一场（第 1 场）末镜" in tail
+    assert "S01-SH002" in tail
+    assert "本场为第一场，或上一场尚未产出" not in tail
+    # produced 优先（最新成功值）：两处都有时用 produced
+    vars_prod = _svc()._scene_seg_vars(
+        "scene:2", ctx,
+        produced={"scene:1": json.dumps(scene1, ensure_ascii=False)},
+        prior_texts={"scene:1": "不是 JSON"},
+    )
+    assert "S01-SH002" in vars_prod["prev_scene_tail"]
+    # 两处都没有 ⇒ 真降级（如实说）
+    vars_none = _svc()._scene_seg_vars("scene:2", ctx, produced={}, prior_texts={})
+    assert "本场为第一场，或上一场尚未产出" in vars_none["prev_scene_tail"]
