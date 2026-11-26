@@ -499,6 +499,14 @@ _SCRIPT_SCENE_ARRAY_KEYS = ("present", "props_present", "sfx_hint", "dialogue")
 #: 「解码期硬约束」机制家族。
 SCRIPT_ACTION_MAX_CHARS = 2000
 
+#: ``T-121`` ③ 补（QA B1）：**单行台词**的解码期长度护栏（``dialogue[].line`` 的 ``maxLength``）。
+#:
+#: 为什么单有行数上限不够：``maxItems`` 只管「多少行」，管不住「一行多长」——
+#: 54 行 × 任意长行（或超长 ``beat``/``purpose``）仍可在 schema 允许面内撞满段预算，
+#: 使「schema 允许面不得越过段 ``max_tokens``」不成立。历史正常台词行 10~30 字
+#: （stop 样本），200 字 ≈ 6~20× 余量 ⇒ 正常轮零影响、单行跑飞被解码期硬截。
+SCRIPT_DIALOGUE_LINE_MAX_CHARS = 200
+
 
 def synopsis_scene_nos(synopsis: dict[str, Any] | None) -> list[int]:
     """梗概 `` scenes_outline `` 的**场号清单**（升序）。
@@ -563,10 +571,11 @@ def cap_script_schema_for_segment(
       （`act_no`/`act_name`/`act_summary`/`scene_nos[]` 整数数组）；
     - `scene:<no>` 段：required＝场对象键集（无 `act_no`），数组键钉 `array` 类型，
       `action` 钉 `maxLength`（`T-118` ①：自由文本长度护栏，历史证据锚派生）；
+      `dialogue[].line` 亦钉 `maxLength`（`T-121` ③ 补：只限行数不限行长仍可撞预算）；
       `dialogue_max_items` 为正整数时给 `dialogue` 数组钉 `maxItems`（`T-117` ②：
       把台词预算从 scope **提示**升级为**解码期硬约束**——复测 r4 scene:2 两连
       截断实锤 scope 提示拦不住跑飞；上限由调用方按 `est × DIALOGUE_SPEED_MAX ÷
-      每行最短字数` 同源派生，本函数不做推导、只落地数值）；
+      每行最短字数` 同源派生，并在 `T-121` ③ 起与段 `max_tokens` 预算取小）；
     - 其他取值（含 `all`）原样返回（不收窄）。
     """
     if not isinstance(schema, dict) or seg == "all":
@@ -618,16 +627,38 @@ def cap_script_schema_for_segment(
         # 调用方按 est × DIALOGUE_SPEED_MAX ÷ 每行最短字数 同源派生；est 异常时
         # 传 None ⇒ 不加约束（与 scope 的「缺失 ⇒ 保守提示」口径一致：缺数据
         # 就不造硬数字，硬数字造错比没有更危险）。
+        # ---- `T-121` ③ 补（QA B1 第 2 轮定稿）：行数之外再钉**单行长度** ----
+        # ⚠️ 必须**列全真值字段集**：`items.properties` 少列字段 ＋ 无 `required`
+        # 时，xgrammar 会把**未列出的字段一律禁止**（`artifact_contract.py` 的
+        # ISSUE-059 实测：4/4 轮塌缩，回归锁在
+        # `tests/test_contract_engine_constraints.py`）——若只列 `line`，产物将失去
+        # `speaker_id`/`type`/`emotion`（`R20` 每行报错 ⇒ 判据 retryable ⇒ 每轮
+        # 多烧一次采样且永不自愈；`speaker_id` 缺失还断掉下游角色引用一致性）。
+        # ⚠️ `type` 不加 `enum`：本工程既定裁决「有意不走 schema enum」（vLLM
+        #    0.10.x 会静默剥离/忽略该类形态，约束等于没写还多一层假象）。
+        props["dialogue"] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "speaker_id": {"type": "string"},
+                    "speaker_name": {"type": "string"},
+                    "type": {"type": "string"},
+                    "line": {"type": "string", "maxLength": SCRIPT_DIALOGUE_LINE_MAX_CHARS},
+                    "emotion": {"type": "string"},
+                },
+                # 只强制判据真正消费的三个（`R20` 读 `type`、`R15` 读 `line`、
+                # 下游引用读 `speaker_id`）；`speaker_name`/`emotion` 保有但不强制
+                # ——避免把「可选表达」升级成硬失败。
+                "required": ["speaker_id", "type", "line"],
+            },
+        }
         if (
             isinstance(dialogue_max_items, int)
             and not isinstance(dialogue_max_items, bool)
             and dialogue_max_items > 0
         ):
-            props["dialogue"] = {
-                "type": "array",
-                "items": {},
-                "maxItems": dialogue_max_items,
-            }
+            props["dialogue"]["maxItems"] = dialogue_max_items
         return {
             "type": "object",
             "properties": props,
@@ -651,13 +682,24 @@ def merge_script_parts(
     2. **幕骨架 → 场装配**：head 段 `` acts[] `` 是**骨架形态**（含 `` scene_nos[] ``），
        合并侧按 `` scene_nos `` 把场段对象装配进各幕 `` scenes[] ``；骨架键
        `` scene_nos `` **删除**（最终契约不含）；场段越界输出的 `` act_no `` **丢弃**
-       ——幕归属唯一真值是骨架，装配出的 `` act_no `` 由骨架派生（机械一致）。
-    3. **机械承继/派生**：`` forbidden_items ``（原样承继梗概）与
+       ——幕归属由骨架派生（机械一致）。
+    3. **`T-121` ①：骨架分区机械对齐**（场号唯一合法面是**梗概**，plan 场号即源于
+       梗概 `` scenes_outline ``；骨架 `` scene_nos `` 是模型自由书写）：
+       ① 声明梗概没有的场 ⇒ **剔除＋告警**（装配不出内容，留着必成空幕）；
+       ② 梗概有场而骨架无人认领 ⇒ **回填进空幕**（内容归属按段号机械确定，不丢场）；
+       ③ 仍空 ⇒ 从**场数最多**的幕**分流末场**（保 R6「三幕各≥1 场」不变量）；
+       ④ 无空幕可回填 ⇒ 未装配、**不计入** `` total_est_seconds ``（不伪造归属）。
+       ⚠️ 机械调整只保**结构**（R6／形态闸），幕 `` act_summary `` 与场内容的语义
+       错位由人工复核确认——**质量闸并无该判据**（不要读作「已交判据判」）。
+       ⚠️ `` synopsis is None ``（无梗概上下文）时①②仍生效（结构修复不依赖梗概），
+       只是没有「越界」概念可判——与改造前**不同**，属有意行为变化。
+    4. **机械承继/派生**：`` forbidden_items ``（原样承继梗概）与
        `` total_est_seconds ``（各场之和）由合并侧**机械计算**——「把约束从模型
        移到程序」同族纪律（这两个字段连截断风险都消失）。
-    4. **重号/缺场不静默**：同一场号出现于两段以上、骨架 `` scene_nos `` 有场无段、
+    5. **重号/缺场不静默**：同一场号出现于两段以上、骨架 `` scene_nos `` 有场无段、
        场段对象无幕认领——一律**显式告警**（条目按语义保留或如实缺失，
-       交形态闸/判据判，不洗白、不伪造归属）。
+       交形态闸/判据判）。**`T-121` ① 起「无幕认领」不再只是告警**：能回填的
+       回填、不能回填的如实不计入，两种都留痕。
 
     ⚠️ 本函数**不判合规**：合并结果能否过形态闸与判据，是既有闸门职责。
     """
@@ -734,6 +776,15 @@ def merge_script_parts(
     acts_out: list[dict[str, Any]] = []
     assigned: set[int] = set()
     skeleton = head.get("acts") if isinstance(head, dict) else None
+    # ---- `T-121` ①（第一半）：越界声明剔除 ----
+    # plan 场号源于**梗概**（`plan_script_segments` 读 `scenes_outline`），骨架
+    # `scene_nos` 是模型自由书写——声明梗概没有的场 ⇒ 装配不出内容 ⇒ 空幕 ⇒
+    # 形态闸拒（b25 r1 `acts[2]` 缺 `scenes[]`、批次 4 r8/r9 同族；`minItems=1`
+    # 只防显式空幕）。合并侧以梗概场号集为唯一合法面，越界声明剔除＋告警。
+    allowed_nos: set[int] | None = None
+    _syn_nos = synopsis_scene_nos(synopsis)
+    if _syn_nos:
+        allowed_nos = set(_syn_nos)
     if isinstance(skeleton, list) and skeleton:
         for act in skeleton:
             if not isinstance(act, dict):
@@ -752,6 +803,12 @@ def merge_script_parts(
                     if isinstance(no, bool) or not isinstance(no, int):
                         warnings.append(
                             f"幕骨架 scene_nos 含非整数场号（{no!r}），跳过"
+                        )
+                        continue
+                    if allowed_nos is not None and no not in allowed_nos:
+                        warnings.append(
+                            f"幕骨架声明场 {no} 不在梗概场号集 {sorted(allowed_nos)}"
+                            "——越界声明，机械剔除（`T-121` ①：场号唯一合法面是梗概）"
                         )
                         continue
                     sc = scenes_by_no.get(no)
@@ -776,10 +833,95 @@ def merge_script_parts(
             act_out = {k: v for k, v in act.items() if k != "scene_nos"}
             act_out["scenes"] = scenes_for_act
             acts_out.append(act_out)
+        # ---- `T-121` ①（第二半）：未认领场回填空幕；仍空 ⇒ 邻幕分流末场 ----
+        # 空幕的两种来路：骨架声明全越界（剔除后无场）、骨架漏声明（场未认领）。
+        # 修复次序＝先回填未认领场（内容归属按段号机械确定），仍空则从**场数最多**
+        # 的幕分流末场（保 R6「三幕各≥1 场」结构不变量）。逐条告警、不静默；
+        # 幕归属被机械调整者交**人工复核**（`act_summary` 与场内容的语义错位无机器
+        # 判据承接——QA A3 实锤：质量闸只校验 act_no 一致性，不要写成「交判据判」）。
         unclaimed = sorted(set(scenes_by_no) - assigned)
+        # ---- QA A2（2026-11-26）：回填面同样受「梗概为唯一合法面」约束 ----
+        # 越界场（梗概没有的场号）可能来自包装形态产物（`{"scenes":[…]}`，`_merge_parts`
+        # 不做段号回填时原样交给合并器）——若无过滤，它们会被「回填空幕」复活并计入
+        # `total_est_seconds`，与新不变量自相矛盾。
+        if allowed_nos is not None:
+            out_of_scope = [n for n in unclaimed if n not in allowed_nos]
+            if out_of_scope:
+                warnings.append(
+                    "场段产出含梗概外的场号（"
+                    + "、".join(str(n) for n in out_of_scope)
+                    + "）——不装配、不计入 total_est_seconds（`T-121` ① 合法面＝梗概）"
+                )
+            unclaimed = [n for n in unclaimed if n in allowed_nos]
+        empty_idx = [
+            i
+            for i, a in enumerate(acts_out)
+            if isinstance(a, dict)
+            and isinstance(a.get("scenes"), list)
+            and not a["scenes"]
+        ]
+        if unclaimed:
+            if empty_idx:
+                warnings.append(
+                    "场段产出的场无幕认领（场号："
+                    + "、".join(str(n) for n in unclaimed)
+                    + "）——机械回填进空幕（不丢场；`T-121` ①）"
+                )
+            else:
+                warnings.append(
+                    "场段产出的场无幕认领（场号："
+                    + "、".join(str(n) for n in unclaimed)
+                    + "）——当前无空幕，先尝试从场数最多的幕分流（`T-121` ①）"
+                )
+        for i in empty_idx:
+            if not unclaimed:
+                break
+            no = unclaimed.pop(0)
+            sc = scenes_by_no[no]
+            assembled = {k: v for k, v in sc.items() if k != "act_no"}
+            assembled["act_no"] = acts_out[i].get("act_no")
+            acts_out[i]["scenes"].append(assembled)
+            assigned.add(no)
+            warnings.append(
+                f"梗概场 {no} 未被任何幕声明——机械回填进 "
+                f"act_no={acts_out[i].get('act_no')!r}（`T-121` ①：不丢场，归属交人工复核）"
+            )
+        for i in empty_idx:
+            if isinstance(acts_out[i], dict) and acts_out[i].get("scenes"):
+                continue
+            donor = max(
+                (
+                    j
+                    for j, a in enumerate(acts_out)
+                    if isinstance(a, dict)
+                    and isinstance(a.get("scenes"), list)
+                    and len(a["scenes"]) > 1
+                ),
+                # QA A1（2026-11-26）：取**场数最多**的幕（原写法只对索引取 max ⇒
+                # 选到的是「索引最大的候选」，与告警文案「场数最多」不符）。
+                # 同分时取靠前者（max 的稳定性由 key 唯一值保证：场数相同取先出现者
+                # 需显式处理，这里用 `>` 语义的 max 在相等时保留首个——
+                # 与判据无关，仅影响分流落点，故不额外排序）。
+                key=lambda j: (len(acts_out[j]["scenes"]), -j),
+                default=None,
+            )
+            if donor is None:
+                warnings.append(
+                    f"幕 act_no={acts_out[i].get('act_no')!r} 空幕且无可分流幕"
+                    "——交形态闸判"
+                )
+                continue
+            moved = acts_out[donor]["scenes"].pop()
+            moved["act_no"] = acts_out[i].get("act_no")
+            acts_out[i]["scenes"].append(moved)
+            warnings.append(
+                f"幕 act_no={acts_out[i].get('act_no')!r} 空幕——从场数最多的幕"
+                f"（act_no={acts_out[donor].get('act_no')!r}）机械分流场 "
+                f"{moved.get('no')}（`T-121` ①：保 R6 三幕不变量，归属交人工复核）"
+            )
         if unclaimed:
             warnings.append(
-                "场段产出的场无幕认领（场号："
+                "场段产出的场无幕认领且无空幕可回填（场号："
                 + "、".join(str(n) for n in unclaimed)
                 + "）——未装配、**不计入 total_est_seconds**（不伪造归属），"
                 "场号集合缺陷交判据判"

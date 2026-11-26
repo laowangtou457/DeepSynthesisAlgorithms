@@ -25,6 +25,7 @@ from app.core.config import get_settings
 from app.services.dialogue_service import DialogueService, _merge_parts
 from app.services.segment import (
     SCRIPT_ACTION_MAX_CHARS,
+    SCRIPT_DIALOGUE_LINE_MAX_CHARS,
     SCRIPT_HEAD_TOP_KEYS,
     SCRIPT_SCENE_KEYS,
     cap_script_schema_for_segment,
@@ -190,10 +191,25 @@ def test_merge_warns_when_skeleton_declares_scene_without_part():
 
 
 def test_merge_warns_on_unclaimed_scene():
+    """①：无幕认领且无空幕 ⇒ 如实告警＋不装配、不计入 total（QA E5：两段告警都要有）。"""
     syn = _synopsis(1, 2)
     parts = [_head((1, [1])), _scene_seg(1), _scene_seg(2)]  # 场 2 无幕认领
-    _, warnings = merge_script_parts(parts, synopsis=syn)
-    assert any("无幕认领" in w for w in warnings)  # 不伪造归属（负向样本）
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    assert any("无幕认领" in w for w in warnings)  # 不静默
+    assert any("无空幕可回填" in w for w in warnings)  # 结构性失败如实暴露
+    assert any("不计入 total_est_seconds" in w for w in warnings)
+    assert merged["total_est_seconds"] == 12  # 未装配场不伪造归属、不计入
+
+
+def test_merge_does_not_resurrect_out_of_scope_scene():
+    """① QA A2：梗概外的场（包装形态产物可带出）不得经「回填空幕」复活。"""
+    syn = _synopsis(1, 2, est=10)
+    parts = [_head((1, [1]), (2, []), (3, [3])), _scene_seg(1, est=10), _scene_seg(9, est=10)]
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    assert any("梗概外的场号" in w and "9" in w for w in warnings)
+    nos = [s["no"] for a in merged["acts"] for s in a["scenes"]]
+    assert 9 not in nos  # 不装配
+    assert merged["total_est_seconds"] == 10  # 不计入
 
 
 def test_merge_warns_when_head_missing_skeleton():
@@ -373,6 +389,7 @@ from app.services.dialogue_service import (  # noqa: E402
     SCRIPT_SCENE_MAX_TOKENS,
     SHOT_PROMPT_UNIT_MAX_TOKENS,
     STORYBOARD_SCENE_MAX_TOKENS,
+    _script_dialogue_budget_items,
     _script_dialogue_max_items,
     _script_head_sampling,
     _script_truncation_feedback,
@@ -402,10 +419,14 @@ def test_cap_scene_schema_dialogue_max_items_absent_when_invalid():
 
 
 def test_script_dialogue_max_items_derives_from_est():
-    """②：est × DIALOGUE_SPEED_MAX ÷ 每行最短字数（同源派生）；异常 ⇒ None。"""
+    """②：est × DIALOGUE_SPEED_MAX ÷ 每行最短字数，**与段预算取小**（`T-121` ③）；异常 ⇒ None。"""
     ctx = {"scenes": {3: {"est_seconds": 30}}}
-    expected = 30 * DIALOGUE_SPEED_MAX // SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE
-    assert _script_dialogue_max_items(ctx, "scene:3") == expected == 135
+    budget = _script_dialogue_budget_items()
+    # (4096 − 2000 − 512) ÷ 40：action 预留从 maxLength 派生（QA B2），schema 允许面不得越过段 max_tokens
+    assert budget == 39
+    est_derived = 30 * DIALOGUE_SPEED_MAX // SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE
+    assert est_derived == 135
+    assert _script_dialogue_max_items(ctx, "scene:3") == min(est_derived, budget) == 39
     # est 缺失／非数值／≤0／段名异常 ⇒ None
     assert _script_dialogue_max_items({"scenes": {3: {}}}, "scene:3") is None
     assert _script_dialogue_max_items(
@@ -416,16 +437,24 @@ def test_script_dialogue_max_items_derives_from_est():
     ) is None
     assert _script_dialogue_max_items(ctx, "package_head") is None
     assert _script_dialogue_max_items(None, "scene:3") is None
-    # ④ 绝对封顶：est=120 ⇒ min(540, CAP)=160（上端不失约束意义）
+    # est=120：est 派生 540、绝对封顶 160，但**预算派生 39 更紧** ⇒ 39（`T-121` ③）
     assert _script_dialogue_max_items(
         {"scenes": {3: {"est_seconds": 120}}}, "scene:3"
-    ) == SCRIPT_DIALOGUE_MAX_ITEMS_CAP == 160
+    ) == budget == 39
+    # ---- QA E1：est 派生分支必须**活着**（否则「实现退化为 min(160,39)」也全绿）----
+    assert _script_dialogue_max_items(
+        {"scenes": {3: {"est_seconds": 8}}}, "scene:3"
+    ) == 8 * DIALOGUE_SPEED_MAX // SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE == 36
+    # ---- QA B2：预算按**实际生效** max_tokens 折算（模板调低 ⇒ 行数同步缩小）----
+    assert _script_dialogue_budget_items(2048) < 0  # 预留已超上限
+    assert _script_dialogue_max_items(ctx, "scene:3", max_tokens=2048) == 135  # QA B3 降级：退回 est＋封顶
+    assert _script_dialogue_max_items(ctx, "scene:3", max_tokens=3000) == 12  # (3000−2000−512)÷40
 
 
 def test_script_head_sampling_caps_tokens_keeps_temperature():
-    """①：head 段 max_tokens 收口 2048（min 语义不放大），温度不动（L3 授权面）。"""
+    """①：head 段 max_tokens 收口 4096（`T-121` ②：2048 尾部偏紧，min 语义不放大），温度不动。"""
     capped = _script_head_sampling(GenParams(temperature=0.8, max_tokens=8192))
-    assert capped.max_tokens == SCRIPT_HEAD_MAX_TOKENS == 2048
+    assert capped.max_tokens == SCRIPT_HEAD_MAX_TOKENS == 4096
     assert capped.temperature == 0.8
     # 模板本就保守时不放大
     assert _script_head_sampling(
@@ -492,20 +521,23 @@ def test_run_segments_script_wiring_caps_and_schema() -> None:
         )
     )
     assert trunc == []
-    # ①：head 2048 / scene 4096（模板 8192 被 min 收口）
-    assert backend.calls[0][1].max_tokens == SCRIPT_HEAD_MAX_TOKENS == 2048
+    # `T-121` ②：head 4096 / scene 4096（head 收口依据＝b25 r8 截断 2048、成功 head stop ≤1406）
+    assert backend.calls[0][1].max_tokens == SCRIPT_HEAD_MAX_TOKENS == 4096
     assert backend.calls[1][1].max_tokens == SCRIPT_SCENE_MAX_TOKENS == 4096
     assert backend.calls[2][1].max_tokens == 4096
     # ①：温度不动（L3 授权面）
     assert all(c[1].temperature == 0.8 for c in backend.calls)
-    # ②：scene 段 schema 钉 dialogue maxItems＝est×9÷2＝135；head 段无 dialogue
+    # ②：scene 段 schema 钉 dialogue maxItems＝min(est 派生 135, 封顶 160, 预算派生 39)
+    #     （`T-121` ③：schema 允许面不得越过段 max_tokens；预算按 effective 4096 折算）
     d1 = backend.calls[1][2]["properties"]["dialogue"]
-    assert d1["maxItems"] == 135
+    assert d1["maxItems"] == 39
+    # `T-121` ③ 补（QA B1）：单行台词长度护栏在同一 items 上（只限行数不限行长仍可撞预算）
+    assert d1["items"]["properties"]["line"]["maxLength"] == SCRIPT_DIALOGUE_LINE_MAX_CHARS
     assert "dialogue" not in backend.calls[0][2]["properties"]
     # 观测位：trace 记录派生值
     assert seg_trace[0]["dialogue_max_items"] is None
-    assert seg_trace[1]["dialogue_max_items"] == 135
-    assert seg_trace[2]["dialogue_max_items"] == 135
+    assert seg_trace[1]["dialogue_max_items"] == 39
+    assert seg_trace[2]["dialogue_max_items"] == 39
 
 
 def test_scene_seg_vars_receives_prior_texts_in_wiring() -> None:
@@ -541,8 +573,15 @@ def test_script_truncation_feedback_scene_has_budget_numbers():
     )
     assert "scene:3" in fb
     assert "台词总字数 ≤ 270 字" in fb  # 30 × 9
-    assert "dialogue 行数 ≤ 135 行" in fb  # 270 // 4
-    assert "写完即停" in fb
+    # `T-121` ③：行数与 schema 注入同源（min(est 派生 135, 封顶 160, 预算派生 39) ⇒ 39）
+    assert "dialogue 行数 ≤ 39 行" in fb
+    # QA N2：必须要求「先闭合 JSON 再停」——`stop` 在 JSON 中间不进按段重采
+    assert "先闭合 JSON 再停" in fb
+    # QA N4：max_tokens 与 schema 同源（模板调低时反馈数字同步）
+    fb3000 = _script_truncation_feedback(
+        ["scene:3"], {"scenes": {3: {"est_seconds": 30}}}, max_tokens=3000
+    )
+    assert "dialogue 行数 ≤ 12 行" in fb3000  # (3000−2000−512)÷40
 
 
 def test_script_truncation_feedback_head_has_skeleton_scale():
@@ -756,3 +795,211 @@ def test_merge_parts_stamp_covers_bool_no_escape():
         [json.dumps(float_case, ensure_ascii=False)], "script", None, ["scene:1"]
     )
     assert any("机械回填为 1" in w for w in warnings2)
+
+
+# ================================================== `T-121`（批次 6：骨架分区机械对齐＋head 4096＋dialogue 预算同源＋storyboard 反馈）
+
+def test_merge_prunes_out_of_scope_skeleton_declarations_and_splits():
+    """①：骨架越界声明剔除＋剔除致空幕 ⇒ 从场数最多的幕分流末场（保 R6）。
+
+    b25 r1 `acts[2]` 缺 `scenes[]` 实锤形态：骨架自由书写场号（9/4 梗概没有）
+    ⇒ 装配不出内容 ⇒ 空幕 ⇒ 形态闸拒。场号唯一合法面是梗概。
+    """
+    syn = _synopsis(1, 2, 3, est=10)
+    parts = [
+        _head((1, [1, 2, 9]), (2, [3]), (3, [4])),  # 9、4 越界
+        _scene_seg(1, est=10),
+        _scene_seg(2, est=10),
+        _scene_seg(3, est=10),
+    ]
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    assert any("越界声明" in w and "9" in w for w in warnings)
+    assert any("越界声明" in w and "4" in w for w in warnings)
+    acts = merged["acts"]
+    assert [a["act_no"] for a in acts] == [1, 2, 3]  # R6 三幕不变量
+    assert all(a["scenes"] for a in acts)  # 无空幕（分流后）
+    assert [s["no"] for s in acts[0]["scenes"]] == [1]  # 场 2 被分流走
+    assert [s["no"] for s in acts[1]["scenes"]] == [3]
+    assert [s["no"] for s in acts[2]["scenes"]] == [2]  # 分流末场落空幕
+    assert any("机械分流场 2" in w for w in warnings)
+    assert acts[2]["scenes"][0]["act_no"] == 3  # 归属随新幕机械改写
+    assert merged["total_est_seconds"] == 30  # 不丢场
+
+
+def test_merge_backfills_unclaimed_scene_into_empty_act():
+    """①：骨架漏声明（场未认领）⇒ 机械回填进空幕，不丢场、不伪造归属。"""
+    syn = _synopsis(1, 2, 3, est=10)
+    parts = [
+        _head((1, [1]), (2, []), (3, [3])),  # 幕 2 漏声明场 2
+        _scene_seg(1, est=10),
+        _scene_seg(2, est=10),
+        _scene_seg(3, est=10),
+    ]
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    acts = merged["acts"]
+    assert [s["no"] for s in acts[1]["scenes"]] == [2]  # 回填进空幕
+    assert acts[1]["scenes"][0]["act_no"] == 2
+    assert merged["total_est_seconds"] == 30
+    assert any("未被任何幕声明" in w and "act_no=2" in w for w in warnings)
+
+
+def test_merge_overlapping_declaration_keeps_first_and_rebalances():
+    """①：重叠声明装配进先声明的幕；后幕空 ⇒ 分流末场补位（三幕各≥1，R6 保住）。"""
+    syn = _synopsis(1, 2, 3, est=10)
+    parts = [
+        _head((1, [1, 2]), (2, [2]), (3, [3])),  # 场 2 被两幕声明
+        _scene_seg(1, est=10),
+        _scene_seg(2, est=10),
+        _scene_seg(3, est=10),
+    ]
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    acts = merged["acts"]
+    assert any("被多个幕声明" in w for w in warnings)
+    assert [s["no"] for s in acts[0]["scenes"]] == [1]
+    assert [s["no"] for s in acts[1]["scenes"]] == [2]  # 分流补位后非空
+    assert [s["no"] for s in acts[2]["scenes"]] == [3]
+    assert merged["total_est_seconds"] == 30
+
+
+def test_merge_donor_is_act_with_most_scenes_not_last_index():
+    """① QA A1：空幕补位取**场数最多**的幕，不是索引最大的候选幕。
+
+    原写法 `max(索引)` ⇒ 两候选时会选靠后的幕（本例 act2 只有 2 场，act1 有 4 场）。
+    """
+    syn = _synopsis(1, 2, 3, 4, 5, 6, est=10)
+    parts = [
+        _head((1, [1, 2, 3, 4]), (2, [5, 6]), (3, [99])),  # act3 声明越界场 ⇒ 空
+        *[_scene_seg(n, est=10) for n in (1, 2, 3, 4, 5, 6)],
+    ]
+    merged, warnings = merge_script_parts(parts, synopsis=syn)
+    acts = merged["acts"]
+    assert [s["no"] for s in acts[0]["scenes"]] == [1, 2, 3]  # act1 让出末场 4
+    assert [s["no"] for s in acts[1]["scenes"]] == [5, 6]  # 2 场的幕不动
+    assert [s["no"] for s in acts[2]["scenes"]] == [4]  # 空幕由场数最多的幕补位
+    assert any("机械分流场 4" in w for w in warnings)
+
+
+def test_storyboard_truncation_feedback_scene_has_budget_numbers():
+    """④：storyboard 场段截断反馈带 est_seconds 与规模锚（同源硬数字可核查）。
+
+    QA C1/C3/C4 订正：锚随 est 外推（常态 1800／封顶 3300）、镜数按 est÷4（不再
+    声称「镜数随上游」）、并要求「先闭合 JSON 再停」。
+    """
+    from app.services.dialogue_service import _storyboard_truncation_feedback
+
+    fb = _storyboard_truncation_feedback(
+        ["scene:4"], {4: {"est_seconds": 30, "no": 4}}
+    )
+    assert "scene:4" in fb
+    assert "est_seconds=30" in fb
+    assert "1800" in fb  # 常态场锚（est=30 恰为 p90）
+    assert "镜数按 est÷4" in fb  # C3：不得写「镜数以上游为准」
+    assert "上游为准" not in fb
+    assert "先闭合 JSON 再停" in fb  # C4：防把 length 截断转成未闭合 stop
+    # C1：大场按 60 tok/秒外推、封顶历史极值 3300
+    fb_big = _storyboard_truncation_feedback(["scene:4"], {4: {"est_seconds": 60}})
+    assert "3300" in fb_big
+    assert "15 镜以内" in fb_big
+    # est 缺失 ⇒ 无 est 数字（锚退回 p90，不造 est）
+    fb2 = _storyboard_truncation_feedback(["scene:4"], {4: {}})
+    assert "est_seconds=" not in fb2
+    assert "1800" in fb2
+
+
+def test_truncation_budget_feedback_selects_stage_context():
+    """`T-121` ④ wiring 单点：阶段 → 上下文配对（QA C2/E3：调用点分支不得无覆盖）。
+
+    script 用**梗概**场上下文、storyboard 用**剧本**场上下文——两条独立通道，
+    错了会拿到不存在的 est（← b25 逐段 trace 对账时最容易错的一处）。
+    """
+    from app.services.dialogue_service import _truncation_budget_feedback
+
+    fb_script = _truncation_budget_feedback(
+        "script", ["scene:3"], {"scenes": {3: {"est_seconds": 30}}}, {3: {"est_seconds": 99}}
+    )
+    assert "台词总字数 ≤ 270 字" in fb_script  # 用了梗概的 est=30
+    fb_sb = _truncation_budget_feedback(
+        "storyboard", ["scene:3"], {"scenes": {3: {"est_seconds": 99}}}, {3: {"est_seconds": 30}}
+    )
+    assert "est_seconds=30" in fb_sb  # 用了剧本的 est=30
+    assert "台词总字数" not in fb_sb
+    # 其他阶段：不加数字（也绝不借用别阶段上下文造数字）
+    assert _truncation_budget_feedback("shot_prompt", ["unit:U01"], None, {1: {}}) == ""
+    # QA N4：sampling 传入 ⇒ script 行数按实际生效 max_tokens 折算
+    fb_low = _truncation_budget_feedback(
+        "script", ["scene:3"], {"scenes": {3: {"est_seconds": 30}}}, None,
+        {"temperature": 0.8, "max_tokens": 3000},
+    )
+    assert "dialogue 行数 ≤ 12 行" in fb_low
+
+
+def test_cap_scene_schema_dialogue_items_cover_truth_fields():
+    """`T-121` ③ 补（QA B1 第 2 轮）：`dialogue.items` 必须**列全真值字段集**。
+
+    ISSUE-059 实测纪律（`artifact_contract.py`＋`test_contract_engine_constraints.py` 回归锁）：
+    `items.properties` 少列字段且无 `required` ⇒ xgrammar 把未列字段**一律禁止**
+    （4/4 轮塌缩）。若只列 `line`，产物将失去 `speaker_id`/`type`/`emotion`
+    ⇒ `R20` 每行报错（retryable ⇒ 每轮多烧一次采样且不自愈）、`speaker_id` 静默丢失。
+    """
+    full = {"type": "object"}
+    seg = cap_script_schema_for_segment(full, "scene:1", dialogue_max_items=39)
+    items = seg["properties"]["dialogue"]["items"]
+    props = set(items["properties"])
+    # 真值五字段（模板 TPL-008 与真产物 31/31 行）：不等即红（多列/少列都算改口径）
+    assert props == {"speaker_id", "speaker_name", "type", "line", "emotion"}
+    # 判据真正消费的三个必须强制（R20 读 type、R15 读 line、下游读 speaker_id）
+    assert set(items["required"]) >= {"speaker_id", "type", "line"}
+    assert items["properties"]["line"]["maxLength"] == SCRIPT_DIALOGUE_LINE_MAX_CHARS
+    # 不加 enum（本工程既定裁决：vLLM 会静默忽略该形态，约束等于没写还多一层假象）
+    assert "enum" not in items["properties"]["type"]
+
+
+def test_est_guards_reject_nan_and_inf():
+    """QA N3：`json.loads` 接受 NaN/Infinity 字面量 ⇒ 数值守卫必须挡在 `int()` 之前。"""
+    from app.services.dialogue_service import (
+        _script_dialogue_max_items,
+        _storyboard_scene_tok_anchor,
+    )
+
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        assert _script_dialogue_max_items(
+            {"scenes": {3: {"est_seconds": bad}}}, "scene:3"
+        ) is None
+        assert _storyboard_scene_tok_anchor(bad) == 1800  # 退回 p90 锚，不抛
+    fb = _script_truncation_feedback(
+        ["scene:3"], {"scenes": {3: {"est_seconds": float("nan")}}}
+    )
+    assert "总字数 ≤ 200 字" in fb  # 走「est 缺失」保守口径
+    # storyboard 侧同款守卫（QA 第 3 轮：该分支此前无覆盖）
+    from app.services.dialogue_service import _storyboard_truncation_feedback
+
+    fb_sb = _storyboard_truncation_feedback(["scene:3"], {3: {"est_seconds": float("nan")}})
+    assert "est_seconds=" not in fb_sb
+    assert "1800" in fb_sb
+
+
+def test_run_segments_script_budget_tracks_effective_max_tokens():
+    """QA 第 2 轮补：三处（采样／schema／trace）都按 effective max_tokens 折算。
+
+    模板 max_tokens=3000（< 4096）⇒ 采样 3000、maxItems＝12、trace＝12——
+    若任一处回退成常量 4096 口径，本用例即红（此前三处全为 39 时无法区分）。
+    """
+    import asyncio
+
+    class _LowCapTemplate(_ScriptTemplate):
+        sampling = {"temperature": 0.8, "max_tokens": 3000}
+
+    svc = _svc()
+    svc.prompts = _CapturePrompts()  # type: ignore[assignment]
+    backend = _RecordingBackend2([("{}", "stop")])
+    script_ctx = {"scenes": synopsis_scene_by_no(_synopsis(1, est=30))}
+    _, seg_trace, _, _, _ = asyncio.run(
+        svc._run_segments(
+            _LowCapTemplate(), "script",
+            {"segment": "auto", "synopsis_json": json.dumps(_synopsis(1))},
+            ["scene:1"], True, _SCRIPT_FULL_SCHEMA, backend, None, None, script_ctx,
+        )
+    )
+    assert backend.calls[0][1].max_tokens == 3000
+    assert backend.calls[0][2]["properties"]["dialogue"]["maxItems"] == 12
+    assert seg_trace[0]["dialogue_max_items"] == 12
