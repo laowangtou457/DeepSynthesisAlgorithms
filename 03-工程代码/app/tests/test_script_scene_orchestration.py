@@ -24,6 +24,7 @@ from types import SimpleNamespace
 from app.core.config import get_settings
 from app.services.dialogue_service import DialogueService, _merge_parts
 from app.services.segment import (
+    SCRIPT_ACTION_MAX_CHARS,
     SCRIPT_HEAD_TOP_KEYS,
     SCRIPT_SCENE_KEYS,
     cap_script_schema_for_segment,
@@ -370,6 +371,8 @@ from app.services.dialogue_service import (  # noqa: E402
     SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE,
     SCRIPT_HEAD_MAX_TOKENS,
     SCRIPT_SCENE_MAX_TOKENS,
+    SHOT_PROMPT_UNIT_MAX_TOKENS,
+    STORYBOARD_SCENE_MAX_TOKENS,
     _script_dialogue_max_items,
     _script_head_sampling,
     _script_truncation_feedback,
@@ -588,3 +591,168 @@ def test_prev_scene_tail_prior_texts_fallback_storyboard_b1():
     # 两处都没有 ⇒ 真降级（如实说）
     vars_none = _svc()._scene_seg_vars("scene:2", ctx, produced={}, prior_texts={})
     assert "本场为第一场，或上一场尚未产出" in vars_none["prev_scene_tail"]
+
+
+# ================================================== `T-118`（批次 5：action 护栏＋下游按段预算＋场号机械回填）
+
+def test_cap_scene_schema_pins_action_max_length():
+    """①：scene 段 schema 给 action 钉 maxLength（解码期长度护栏）；其余标量键原样。"""
+    full = {"type": "object"}
+    seg = cap_script_schema_for_segment(full, "scene:1")
+    assert seg["properties"]["action"] == {
+        "type": "string",
+        "maxLength": SCRIPT_ACTION_MAX_CHARS,
+    }
+    assert SCRIPT_ACTION_MAX_CHARS == 2000  # 证据锚口径（见常量注释：非 est 派生）
+    # 其余标量键仍是无约束投影（不借机扩权）
+    assert seg["properties"]["slug"] == {}
+    assert seg["properties"]["no"] == {}
+    # head 段是骨架形态，无 action 键
+    head_seg = cap_script_schema_for_segment(full, "package_head")
+    assert "action" not in head_seg["properties"]
+    # all 模式原样返回（收窄不越界）
+    assert cap_script_schema_for_segment(full, "all") is full
+
+
+def test_run_segments_storyboard_shot_prompt_wiring_caps() -> None:
+    """②：下游段接线——storyboard 场段 4096／shot_prompt 单元段 8192；温度逐字不动。"""
+    import asyncio
+
+    svc = _svc()
+    svc.prompts = _CapturePrompts()  # type: ignore[assignment]
+    # storyboard：场段收口 4096（模板 8192 被 min 收口）；温度不动
+    backend_sb = _RecordingBackend2([("{}", "stop")] * 2)
+    asyncio.run(
+        svc._run_segments(
+            _ScriptTemplate(), "storyboard",
+            {"segment": "auto", "script_json": "{}"},
+            ["scene:1", "scene:2"], True, None, backend_sb,
+            {1: {"no": 1}, 2: {"no": 2}}, None, None,
+        )
+    )
+    assert all(
+        c[1].max_tokens == STORYBOARD_SCENE_MAX_TOKENS == 4096
+        for c in backend_sb.calls
+    )
+    assert all(c[1].temperature == 0.8 for c in backend_sb.calls)
+    # shot_prompt：模板 12288 ⇒ head 走 B3（8192）＋unit 收口 8192；unit 温度逐字不动
+    backend_sp = _RecordingBackend2([("{}", "stop")] * 2)
+    asyncio.run(
+        svc._run_segments(
+            _ScriptTemplate(), "shot_prompt",
+            {"segment": "auto", "script_json": "{}"},
+            ["package_head", "unit:U01"], True, None, backend_sp,
+            None, None, None,
+        )
+    )
+    assert backend_sp.calls[0][1].max_tokens == 8192  # B3 head 上限（本批不动）
+    assert backend_sp.calls[0][1].temperature == 0.4  # B3 降温仍生效
+    assert backend_sp.calls[1][1].max_tokens == SHOT_PROMPT_UNIT_MAX_TOKENS == 8192
+    assert backend_sp.calls[1][1].temperature == 0.8  # L3 授权面：unit 温度不动
+
+
+def test_merge_parts_stamps_scene_no_from_segment_name():
+    """③：场段产物 no 与段号不一致 ⇒ 机械回填＋告警；骨架声明的场全部装配进幕。
+
+    b24 r8/r9 实锤形态：模型在段内把 no 写成别的场号 ⇒ 合并按产物 no 装配 ⇒
+    acts[2].scenes=[] ⇒ 形态闸拒（90s 级整轮失败）。段名是场号唯一真值。
+    """
+    head = {
+        "title": "t", "style_bible": {"a": 1}, "characters": [], "props": [],
+        "acts": [
+            {"act_no": 1, "act_name": "一", "act_summary": "s", "scene_nos": [1]},
+            {"act_no": 2, "act_name": "二", "act_summary": "s", "scene_nos": [2]},
+            {"act_no": 3, "act_name": "三", "act_summary": "s", "scene_nos": [3]},
+        ],
+    }
+    s1 = {"no": 1, "slug": "一", "est_seconds": 10}
+    s2 = {"no": 2, "slug": "二", "est_seconds": 10}
+    s3_bad = {"no": 1, "slug": "三", "est_seconds": 10}  # 段 scene:3 被错标 no=1
+    texts = [json.dumps(x, ensure_ascii=False) for x in (head, s1, s2, s3_bad)]
+    merged_text, warnings = _merge_parts(
+        texts, "script", None,
+        ["package_head", "scene:1", "scene:2", "scene:3"],
+    )
+    merged = json.loads(merged_text)
+    acts = merged["acts"]
+    # 回填前：场 3 找不到产物 ⇒ acts[2].scenes=[] ⇒ 形态闸拒（缺陷本体）
+    assert [len(a["scenes"]) for a in acts] == [1, 1, 1]
+    assert acts[2]["scenes"][0]["no"] == 3
+    assert acts[2]["scenes"][0]["slug"] == "三"
+    assert any("机械回填" in w and "scene:3" in w for w in warnings)
+    # 机械派生不受错标影响（三场各 10s）
+    assert merged["total_est_seconds"] == 30
+
+
+def test_merge_parts_stamp_covers_missing_no_and_skips_wrapper():
+    """③ 边界：缺 no ⇒ 补段号；scenes[] 包装形态不裁断（原样交合并器）。"""
+    bare = {"slug": "x", "est_seconds": 5}  # 缺 no
+    merged_text, warnings = _merge_parts(
+        [json.dumps(bare, ensure_ascii=False)], "script", None, ["scene:1"]
+    )
+    assert any("机械回填为 1" in w for w in warnings)
+    # 无 head 骨架 ⇒ 场无幕认领（合并侧如实告警路径），本例只验证回填已发生
+    merged_doc = json.loads(merged_text)
+    assert merged_doc["acts"] == []
+    wrapper = {"scenes": [{"no": 9, "slug": "w", "est_seconds": 5}]}
+    _, warnings2 = _merge_parts(
+        [json.dumps(wrapper, ensure_ascii=False)], "script", None, ["scene:1"]
+    )
+    assert not any("机械回填" in w for w in warnings2)
+
+
+def test_merge_parts_without_segs_keeps_legacy_behavior():
+    """③：segs 缺省（旧调用方/旧测试）⇒ 不回填，行为逐字不变。"""
+    head = {
+        "title": "t", "style_bible": {}, "characters": [], "props": [],
+        "acts": [
+            {"act_no": 1, "act_name": "一", "act_summary": "s", "scene_nos": [1]},
+            {"act_no": 2, "act_name": "二", "act_summary": "s", "scene_nos": [2]},
+            {"act_no": 3, "act_name": "三", "act_summary": "s", "scene_nos": [3]},
+        ],
+    }
+    s1 = {"no": 1, "slug": "一", "est_seconds": 5}
+    s2 = {"no": 2, "slug": "二", "est_seconds": 5}
+    s3_bad = {"no": 1, "slug": "三", "est_seconds": 5}
+    texts = [json.dumps(x, ensure_ascii=False) for x in (head, s1, s2, s3_bad)]
+    merged_text, warnings = _merge_parts(texts, "script", None)
+    merged = json.loads(merged_text)
+    assert merged["acts"][2]["scenes"] == []  # 旧行为：错标场装配不进幕（形态闸拒）
+    assert not any("机械回填" in w for w in warnings)
+
+
+def test_project_segment_trace_keys_are_contract():
+    """④：投影键集断言（抽函数防「观测位失效」回归——b24 十轮 dialogue_max_items 零命中教训）。"""
+    from app.services.dialogue_service import _project_segment_trace
+
+    trace = [
+        {"segment": "scene:1", "finish_reason": "stop", "completion_tokens": 223,
+         "storyboard_scope": "full", "schema_capped": True, "dialogue_max_items": 135,
+         "internal_only": "不该外泄的内部键"},
+    ]
+    out = _project_segment_trace(trace)
+    assert set(out[0].keys()) == {
+        "segment", "finish_reason", "completion_tokens",
+        "storyboard_scope", "schema_capped", "dialogue_max_items",
+    }
+    assert out[0]["dialogue_max_items"] == 135
+    assert "internal_only" not in out[0]
+    # 缺键容忍（生成端旧键缺失时投影给默认值，不抛）
+    out2 = _project_segment_trace([{"segment": "all"}])
+    assert out2[0]["storyboard_scope"] == "full"
+    assert out2[0]["schema_capped"] is False
+    assert out2[0]["dialogue_max_items"] is None
+
+
+def test_merge_parts_stamp_covers_bool_no_escape():
+    """③ QA C-1：bool 错标（no=true 恰逢 scene:1，`True == 1` 值相等逃逸形态）必须回填。"""
+    bare = {"no": True, "slug": "x", "est_seconds": 5}
+    merged_text, warnings = _merge_parts(
+        [json.dumps(bare, ensure_ascii=False)], "script", None, ["scene:1"]
+    )
+    assert any("机械回填为 1" in w for w in warnings)
+    float_case = {"no": 1.0, "slug": "x", "est_seconds": 5}
+    _, warnings2 = _merge_parts(
+        [json.dumps(float_case, ensure_ascii=False)], "script", None, ["scene:1"]
+    )
+    assert any("机械回填为 1" in w for w in warnings2)

@@ -1265,6 +1265,19 @@ class DialogueService:
                     seg_params,
                     max_tokens=min(seg_params.max_tokens, SCRIPT_SCENE_MAX_TOKENS),
                 )
+            # ---- `T-118` ②：下游段 `max_tokens` 按段收口（跑飞快速失败）----
+            # 证据锚与授权面同 `T-117` ①（见常量区注释）：上限高于全部历史正常
+            # stop 产出 ⇒ 正常轮零影响；跑飞轮不再烧满 12288/8192。
+            elif tpl_stage == "storyboard" and seg.startswith("scene:"):
+                seg_params = replace(
+                    seg_params,
+                    max_tokens=min(seg_params.max_tokens, STORYBOARD_SCENE_MAX_TOKENS),
+                )
+            elif tpl_stage == "shot_prompt" and seg.startswith("unit:"):
+                seg_params = replace(
+                    seg_params,
+                    max_tokens=min(seg_params.max_tokens, SHOT_PROMPT_UNIT_MAX_TOKENS),
+                )
             result = await backend.generate(
                 prompt_text,
                 seg_params,
@@ -2918,7 +2931,10 @@ class DialogueService:
                         except AppError:
                             _up = None
                         merge_upstream = _up if isinstance(_up, dict) else None
-                    final_text, warnings = _merge_parts(ordered, tpl_stage, merge_upstream)
+                    merge_segs = [s for s in plan if s in texts_by_seg]
+                    final_text, warnings = _merge_parts(
+                        ordered, tpl_stage, merge_upstream, merge_segs
+                    )
                 else:
                     final_text, warnings = ordered[0], []
 
@@ -3341,19 +3357,7 @@ class DialogueService:
                     #    归因「真跑满上限」vs「其他」，避免下一轮再靠延迟反推。
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
-                    "segment_trace": [
-                        {
-                            "segment": t.get("segment"),
-                            "finish_reason": t.get("finish_reason"),
-                            "completion_tokens": t.get("completion_tokens"),
-                            # `T-101`／`PRO-015`：裁剪与收窄是否生效——
-                            # 否则「以为开了、实际没开」在留痕上无法区分
-                            #（`ISSUE-042` 同源教训：缺布尔就无法举证）。
-                            "storyboard_scope": t.get("storyboard_scope", "full"),
-                            "schema_capped": bool(t.get("schema_capped", False)),
-                        }
-                        for t in trace
-                    ],
+                    "segment_trace": _project_segment_trace(trace),
                     "constrained_decoding": json_schema is not None,
                     # `ISSUE-042`：只留一个布尔看不出「约束从哪来」——
                     # 三段此前恒为 false（无落点），现为 derived，须可核查。
@@ -3602,6 +3606,21 @@ SCRIPT_DIALOGUE_MIN_CHARS_PER_LINE = 2
 # QA 证伪 ④（适用域上端）：est≈120s 时派生 540 行失去约束意义 ⇒ **绝对封顶**
 # 160 行（est≈71s 触顶；仍远高于正常产出 5~15 行，拦得住数百行的跑飞形态）。
 SCRIPT_DIALOGUE_MAX_ITEMS_CAP = 160
+
+
+# ---- `T-118` ②：下游段 `max_tokens` 收口值（跑飞快速失败的成本护栏）----
+# 实测依据（`.wb-e2e/_all_tokmax.py` 对全部历史 app 日志的逐段 stop 终态采集，
+# 合计 ~345 个 stop）：storyboard 场段 stop 极值 **3303** tok（n=41）⇒ 4096 ≈ 1.24×；
+# shot_prompt 单元段 stop 极值 **6672** tok（n=216）⇒ 8192 ≈ 1.23×。两处上限均高于
+# **全部**历史正常 stop 产出 ⇒ 正常轮零影响；跑飞轮（b24 r1 shot_prompt unit:U01、
+# r7 storyboard scene:1/scene:3，历史 length 事件各烧满 12288/8192）在此快速失败
+# 进按段重采，单次跑飞成本 12288→8192／8192→4096。
+# ⚠️ 授权面与 `T-117` ① 同款：只动 `max_tokens` 不动温度。
+# ⚠️ shot_prompt `package_head` **不动**（维持 B3 的 8192）：现行证据（b24 十轮
+#    45 次 stop 极值 1323）与 B3 立项口径（正常 ≈5319 tok，`artifacts_t086`）冲突，
+#    且 b24 十轮 head 零跑飞 ⇒ 证据冲突时不改口径（登记于复测判读）。
+STORYBOARD_SCENE_MAX_TOKENS = 4096
+SHOT_PROMPT_UNIT_MAX_TOKENS = 8192
 
 
 def _script_dialogue_max_items(
@@ -4074,10 +4093,37 @@ def _inject_merge_dup_verdict(verdict: Any, dup_codes: list[str]) -> Any:
     )
 
 
+def _project_segment_trace(trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """``generation_completed`` 日志的段级 trace **投影**（留痕契约）。
+
+    键集即「日志可复核面」：``segment``／``finish_reason``／``completion_tokens``
+    （`ISSUE-058` 观测补强三元组）＋ ``storyboard_scope``／``schema_capped``
+    （`T-101`／`PRO-015`：裁剪与收窄是否生效——否则「以为开了、实际没开」在
+    留痕上无法区分，`ISSUE-042` 同源教训：缺布尔就无法举证）＋
+    ``dialogue_max_items``（`T-118` ④：`T-117` ② 观测位补投影——trace 生成端
+    早已带键、投影一直缺 ⇒ 「上限实际取值」全日志零命中，b24 十轮实测）。
+
+    ⚠️ 抽成函数是为**键集可断言**：内联推导式无测试抓手，投影缺字段这种
+    「观测位失效」（SW-011 同族）只能等事故后从日志反推。
+    """
+    return [
+        {
+            "segment": t.get("segment"),
+            "finish_reason": t.get("finish_reason"),
+            "completion_tokens": t.get("completion_tokens"),
+            "storyboard_scope": t.get("storyboard_scope", "full"),
+            "schema_capped": bool(t.get("schema_capped", False)),
+            "dialogue_max_items": t.get("dialogue_max_items"),
+        }
+        for t in trace
+    ]
+
+
 def _merge_parts(
     texts: list[str],
     tpl_stage: str = "",
     upstream: dict[str, Any] | None = None,
+    segs: list[str] | None = None,
 ) -> tuple[str, list[str]]:
     """多段产物 → 合并后的完整包文本（＋合并告警）。
 
@@ -4091,8 +4137,47 @@ def _merge_parts(
 
     `upstream`（`ISSUE-062` 裁决 5）：storyboard 形态下传上游剧本产物，供合并侧把
     `unspecified` **继承项**的 `fill_stage` 锁回 `script`；其余形态不使用。
+
+    `segs`（`T-118` ③）：与 `` texts `` 等长的段名清单（plan 顺序）。script 形态下
+    场段产物的 `` no `` **机械回填为段号**——场号唯一真值是段名（plan 由骨架
+    `` scene_nos `` 派生 ⇒ 段名即骨架声明的场）；模型在段内自由书写的 `` no ``
+    与段号不一致时（段级 schema 该键无约束），合并按产物 `` no `` 装配 ⇒ 该场
+    装配不进任何幕 ⇒ `` acts[ai].scenes=[] `` ⇒ 形态闸拒（b24 r8/r9 实锤
+    「acts[2] 缺 scenes[]」90 s 级整轮失败）。⚠️ 不走 schema enum 钉值：vLLM
+    0.10.x 对不支持的 JSON Schema 形态**静默忽略**（`ISSUE-086` 同族教训），
+    机械回填是行为可验证的确定性修复。`` segs `` 缺省（None）或长度不符时
+    不回填（旧行为零变化）。
     """
     parsed = [parse_json_object(text) for text in texts]
+    stamp_warnings: list[str] = []
+    if (
+        segs is not None
+        and artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "script"
+        and len(segs) == len(parsed)
+    ):
+        for _i, (_seg, _part) in enumerate(zip(segs, parsed)):
+            if not _seg.startswith("scene:") or not isinstance(_part, dict):
+                continue
+            if "scenes" in _part:  # 包装形态（整段多场）：不在本层裁断，原样交合并器
+                continue
+            _m = re.fullmatch(r"scene:(\d+)", _seg)
+            if not _m:
+                continue
+            _no = int(_m.group(1))
+            # ⚠️ 类型敏感（QA C-1，2026-11-26）：`True == 1`、`1.0 == 1` 在值相等
+            # 语义下会漏掉 bool/float 错标——scene:1 专属逃逸形态（其余场号
+            # `True != N` 本就会回填）。与 merge 侧 bool 排除口径对齐。
+            _old = _part.get("no")
+            if (
+                not isinstance(_old, int)
+                or isinstance(_old, bool)
+                or _old != _no
+            ):
+                parsed[_i] = {**_part, "no": _no}
+                stamp_warnings.append(
+                    f"场段 {_seg} 产物 no={_part.get('no')!r} ≠ 段号——机械回填为 {_no}"
+                    "（场号唯一真值是段名，`T-118` ③）"
+                )
     if artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "storyboard":
         merged, warnings = merge_storyboard_parts(parsed, upstream=upstream)
     elif artifact_contract.STAGE_TO_SHAPE.get(tpl_stage) == "script":
@@ -4100,4 +4185,4 @@ def _merge_parts(
         merged, warnings = merge_script_parts(parsed, synopsis=upstream)
     else:
         merged, warnings = merge_segments(parsed)
-    return json.dumps(merged, ensure_ascii=False, indent=2), warnings
+    return json.dumps(merged, ensure_ascii=False, indent=2), stamp_warnings + warnings

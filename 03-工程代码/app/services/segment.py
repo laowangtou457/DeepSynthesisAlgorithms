@@ -487,6 +487,18 @@ SCRIPT_SCENE_KEYS: tuple[str, ...] = (
 #: 场对象中**必须是数组**的键（段级 schema 钉类型，防模型把数组写成标量）。
 _SCRIPT_SCENE_ARRAY_KEYS = ("present", "props_present", "sfx_hint", "dialogue")
 
+#: ``T-118`` ①：``action`` 自由文本的**解码期长度护栏**（``maxLength``）。
+#:
+#: 派生口径＝**历史证据锚**而非 est：全历史 app 日志场段 stop 极值 415 tok
+#: （整场 JSON ≈ 650 字），``action`` 常规 100~400 字 ⇒ 2000 字 ≈ 3~5× 极值余量。
+#: ⚠️ 不按 est 派生：``action`` 是创作注记而非屏幕时长内容，与 ``est_seconds``
+#: **无数据耦合**——按 est 造硬数字违背「缺数据不造硬数字」纪律（``T-117`` ② 的
+#: dialogue 行数按 est 派生是因为台词语速有 DIALOGUE_SPEED_MAX 同源锚，action 没有）。
+#: 跑飞轮（b24 r6 实锤 ``scene:3`` 两次 attempt 撞 4096）在 maxLength 处被解码期
+#: 硬截，产物结构合法进质量闸，不再烧满段预算——与 dialogue ``maxItems`` 同一
+#: 「解码期硬约束」机制家族。
+SCRIPT_ACTION_MAX_CHARS = 2000
+
 
 def synopsis_scene_nos(synopsis: dict[str, Any] | None) -> list[int]:
     """梗概 `` scenes_outline `` 的**场号清单**（升序）。
@@ -549,7 +561,8 @@ def cap_script_schema_for_segment(
 
     - `package_head` 段：required＝head 键集；`acts` 收窄为**骨架形态**
       （`act_no`/`act_name`/`act_summary`/`scene_nos[]` 整数数组）；
-    - `scene:<no>` 段：required＝场对象键集（无 `act_no`），数组键钉 `array` 类型；
+    - `scene:<no>` 段：required＝场对象键集（无 `act_no`），数组键钉 `array` 类型，
+      `action` 钉 `maxLength`（`T-118` ①：自由文本长度护栏，历史证据锚派生）；
       `dialogue_max_items` 为正整数时给 `dialogue` 数组钉 `maxItems`（`T-117` ②：
       把台词预算从 scope **提示**升级为**解码期硬约束**——复测 r4 scene:2 两连
       截断实锤 scope 提示拦不住跑飞；上限由调用方按 `est × DIALOGUE_SPEED_MAX ÷
@@ -591,11 +604,16 @@ def cap_script_schema_for_segment(
     if seg.startswith("scene:"):
         props: dict[str, Any] = {}
         for key in SCRIPT_SCENE_KEYS:
-            props[key] = (
-                {"type": "array", "items": {}}
-                if key in _SCRIPT_SCENE_ARRAY_KEYS
-                else {}
-            )
+            if key == "action":
+                # ---- `T-118` ①：`action` 自由文本长度护栏（解码期 maxLength）----
+                # b24 r6 实锤：dialogue maxItems 管得住台词行数，管不住 action
+                # 自由文本（scene:3 两次 attempt 均撞段预算截断）。派生口径见
+                # 常量注释（历史证据锚 2000 字，非 est）。
+                props[key] = {"type": "string", "maxLength": SCRIPT_ACTION_MAX_CHARS}
+            elif key in _SCRIPT_SCENE_ARRAY_KEYS:
+                props[key] = {"type": "array", "items": {}}
+            else:
+                props[key] = {}
         # ---- `T-117` ②：dialogue 行数**解码期**硬上限 ----
         # 调用方按 est × DIALOGUE_SPEED_MAX ÷ 每行最短字数 同源派生；est 异常时
         # 传 None ⇒ 不加约束（与 scope 的「缺失 ⇒ 保守提示」口径一致：缺数据

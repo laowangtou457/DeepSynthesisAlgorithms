@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 
 from app.core.config import get_settings
 from app.inference.base import GenParams, GenResult, TextGenerator
@@ -22,6 +23,7 @@ from app.prompts.loader import PromptRepository
 from app.repositories.session_repo import SessionRecord, SessionRepository
 from app.schemas.dialogue import Stage
 from app.services.dialogue_service import (
+    SHOT_PROMPT_UNIT_MAX_TOKENS,
     _GENERATE_ON,
     DialogueService,
     _package_head_sampling,
@@ -218,7 +220,13 @@ def _make(backend: _RecordingBackend, storyboard: dict) -> tuple[DialogueService
 
 
 def test_only_package_head_call_is_tightened_end_to_end() -> None:
-    """3 次调用中：`package_head` 用收紧参数，`unit:*` **逐字**用模板采样。"""
+    """3 次调用中：`package_head` 用 B3 收紧参数；`unit:*` 温度逐字、`max_tokens` 走 `T-118` ② 收口。
+
+    ⚠️ `T-118` ②（2026-11-26）起 unit 段 `max_tokens` 不再逐字用模板 12288：
+    min(模板, `SHOT_PROMPT_UNIT_MAX_TOKENS`=8192)——证据锚＝全历史 unit stop 极值
+    6672 tok（~216 个 stop），12288 只有跑飞才触顶（历史 1 次 length）。温度仍
+    **逐字**模板值（`SW-007` 的 0.7 只约束镜头创意正文，L3 授权面不变）。
+    """
     backend = _RecordingBackend([_HEAD, _UNIT_U01, _UNIT_U02])
     service, record = _make(backend, _storyboard(8, ["U01", "U02"]))
 
@@ -243,5 +251,10 @@ def test_only_package_head_call_is_tightened_end_to_end() -> None:
 
     for index, segment in ((1, "unit:U01"), (2, "unit:U02")):
         unit_params = backend.calls[index]["params"]
-        assert unit_params == base, f"{segment} 必须原样使用模板采样（`SW-007` 的 0.7）"
+        # `T-118` ②：max_tokens 收口（8192＝全部历史 stop 极值 6672 之上），
+        # 其余字段（含温度 0.7）与模板逐字一致。
+        expected = replace(base, max_tokens=SHOT_PROMPT_UNIT_MAX_TOKENS)
+        assert unit_params == expected, (
+            f"{segment} 须为模板采样 ＋ T-118② max_tokens 收口（温度逐字）"
+        )
         assert unit_params.temperature == _TP_TEMPERATURE
