@@ -1,0 +1,118 @@
+# ============================================================
+# FX-P05 · Genre Profile · F1-02 重生复仇 · 机读轨
+# 由人读轨 profiles/FX-P05_F1-02_重生复仇.md 派生；冲突时以 md 为准
+# 字段结构 = schema/fx_framework.yaml 的 profile_template（14 顶层字段，无增删）
+# 状态：draft / unverified　基准单集秒数：90（Σdur_s = 90）
+# 骨架版本：1.1.0　生成日期：2026-11-26
+# ============================================================
+
+genre_id: F1-02
+name: 重生复仇
+status: draft
+verification: unverified
+
+# --- 槽位 1：beat_sheet（8 拍，Σdur_s = 90；9 型共用，逐值不改） ---
+# at_s/dur_s 取自 MD-011 §二 S01~S08；末拍 code 含 CLOSE，首拍 code 含 OPEN
+beat_sheet:
+  - {at_s: 0, dur_s: 3, code: BEAT_OPEN_HOOK, purpose: 建立, is_payoff: false}
+  - {at_s: 3, dur_s: 7, code: BEAT_CONTRAST, purpose: 铺垫, is_payoff: false}
+  - {at_s: 10, dur_s: 15, code: BEAT_ESCALATE_1, purpose: 升级, is_payoff: false}
+  - {at_s: 25, dur_s: 15, code: BEAT_ESCALATE_2, purpose: 升级, is_payoff: false}
+  - {at_s: 40, dur_s: 15, code: BEAT_ESCALATE_3, purpose: 升级, is_payoff: false}
+  - {at_s: 55, dur_s: 15, code: BEAT_PAYOFF, purpose: 兑现, is_payoff: true}
+  - {at_s: 70, dur_s: 15, code: BEAT_AFTERSHOCK, purpose: 余波, is_payoff: false}
+  - {at_s: 85, dur_s: 5, code: BEAT_CLOSE_HOOK, purpose: 断点, is_payoff: false}
+
+# --- 槽位 2/3：hooks（open 3 / close 3 / extra 空列表，副类型注入位） ---
+# sample_line 逐字原文 1 条（E|）、新写 5 条（U|）；全部 len<=15
+hooks:
+  open:
+    - {code: OPEN_CHONGSHENG_AWAKE, name: 睁眼重生, formula: "濒死画面+弹坐惊醒+年轻双手特写", sample_line: "一睁眼，我重生了！"}
+    - {code: OPEN_CHONGSHENG_LEDGER, name: 旧账亮牌, formula: "账本推到桌心+指尖点住某行", sample_line: "这笔账，我留着。"}
+    - {code: OPEN_CHONGSHENG_VOW, name: 冷静立誓, formula: "旧照片扣在桌上+一句低声台词", sample_line: "这一世，换我开局。"}
+  close:
+    - {code: CLOSE_CHONGSHENG_TRAP, name: 设局收网, formula: "反派签字落笔+女主合上账本定格", sample_line: "签了，就别怪我。"}
+    - {code: CLOSE_CHONGSHENG_BACKER, name: 新靠山登场, formula: "刚扳倒一人+更强人物推门", sample_line: "他背后，还有人。"}
+    - {code: CLOSE_CHONGSHENG_RECKON, name: 清算回环, formula: "女主定格+下阶段目标亮出", sample_line: "名单，才翻到一半。"}
+  extra: []
+
+# --- 槽位 4：payoff（min_per_ep 与 beat_sheet 的 is_payoff 标记数 1 处对应） ---
+payoff:
+  min_per_ep: 1
+  escalate_every_s: 20
+
+# --- 槽位 5：cast ---
+cast:
+  max_speaking: 3
+  max_on_screen: 3
+
+# --- 槽位 6：line ---
+line:
+  max_chars: 15
+  char_per_sec: [4, 6]
+  tone_codes: [FOREKNOW, CALCULATING, RESOLVE, ICY, RETORT]
+  banned: [想, 觉得, 心里, 暗自, 不禁, 仿佛, 抱错, 亲子鉴定, 灵根, 规则]
+
+# --- 槽位 7：style_bible_ref（只写 STY-* 引用，不写提示词串） ---
+style_bible_ref: STY-FINE-FEMALE
+
+# --- 槽位 8：asset_bias（本型判别词内的可绘制物件与出图稳定场景） ---
+asset_bias:
+  prop_focus: [账本, 旧信, 前世遗物, 旧照片]
+  scene_pool: [老式大院, 土炕灶台, 婚房, 当铺柜台]
+
+# --- 槽位 9：redlines（4 条，risk_flags 逐条各占 1 条 + 通用红线） ---
+redlines:
+  - {code: RL_CHONGSHENG_NOGORE, rule: "禁止复仇过程的见血/伤口/施暴特写", fallback: "改用账本摊开+反派签字+字幕清算带过"}
+  - {code: RL_CHONGSHENG_LAWFUL, rule: "报复须走举证、诉讼、报警等合法路径，禁止私刑与私下加害", fallback: "改用证据移交+立案回执+庭审宣判镜头"}
+  - {code: RL_CHONGSHENG_MENTAL, rule: "台词与 action 禁用：想/觉得/心里/暗自/不禁/仿佛", fallback: "改用外部动作：合上账本、把旧信压在镇纸下、抬眼"}
+  - {code: RL_CHONGSHENG_CAST, rule: "单集有台词角色 ≤3，同框含群演 ≤3", fallback: "群像拆为近景轮切+背影虚化+画外音"}
+
+# --- 槽位 10：adapt ---
+adapt:
+  chars_per_ep: [2000, 3000]
+  keep: [主线冲突, 关键转折, 名场面, 金手指觉醒, 先知碾压, 步步设局]
+  merge: [连续多次打脸, 多段日常, 次要支线, 同类重复]
+  rewrite: [开场钩子, 集尾钩子, 视觉化瞬间, 心理描写转外部动作]
+
+# --- 逐参数 evidence（E| 行 = 依据；U- 行 = UNVERIFIED 单列） ---
+# 四分类：对标爆款 / 古典母题 / 沿用现有模板条款（本轮真机未跑，仅取三类）；U- 行 = UNVERIFIED 单列
+# 格式：编号|参数路径|取值摘要|分类|出处(文件号+节号)
+evidence: |
+  [F1-02 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]
+  E01|genre_id|F1-02|沿用现有模板条款|FX-010 §二 封闭枚举 / fx_framework.yaml §三 genres[F1-02]
+  E02|name|重生复仇|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[F1-02].name
+  E03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机（未经门检不标 approved）
+  E04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification（U-01~U-06 未回填）
+  E05|beat_sheet.at_s/dur_s/code/purpose/is_payoff|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds=90 自检算式；9 型共用，逐值不改
+  E06|beat_sheet 段映射|8 拍 ↔ 六段|对标爆款|MD-004 §三 90 秒单集节拍表（黄金钩子/觉醒亮出/正面交锋/反击兑现/反扑钩子）
+  E07|beat_sheet.code/purpose|BEAT_* 8 码 + 功能短词|沿用现有模板条款|FX-030 §三 槽位 1 / fx_framework.yaml §四 注释示例「建立」；purpose 取 MD-004 §三 节拍名短化
+  E08|hooks.open|3 条|对标爆款|MD-004 §四 重生觉醒型（逐字原文落本 E 行：OPEN_CHONGSHENG_AWAKE「一睁眼，我重生了！」）/ §二 年代重生种田线 / MD-011 §一 B 段「交代反转：重生、觉醒、身份亮出」；新写 2 条见 U-05
+  E09|hooks.close|3 条|对标爆款|MD-004 §五 结尾钩子模板（阴谋升级型/宣言回环型）/ MD-011 §四 危机降临（适用复仇）；3 条均按形态新写，见 U-05
+  E10|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes（副类型注入位，主类型不预置）
+  E11|payoff.min_per_ep|1|对标爆款|MD-011 §五 红线 2（每集至少兑现 1 个爽点）/ FX-030 §五 R-S1；拍 6 标记 1 处
+  E12|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段（每 20 秒一个小爽点/小反转）；升级拍 15s ≤ 20s
+  E13|cast.max_speaking|3|对标爆款|FX-030 §七 / §五 R-S2（每集 ≤3 个有台词角色）/ MD-004 §一 受众与篇幅口径
+  E14|cast.max_on_screen|3|沿用现有模板条款|与 max_speaking 同值保守沿用；骨架未给同框人数独立数值出处（见 U-01）
+  E15|line.max_chars|15|沿用现有模板条款|FX-030 §二 不变量 1 R15 / §七 默认 15 / fx_framework.yaml §四 profile_template
+  E16|line.char_per_sec|[4,6]|沿用现有模板条款|FX-030 §七 默认 [4,6]，硬顶 9 由 §二 R15 / fx_framework.yaml §四
+  E17|line.tone_codes|FOREKNOW/CALCULATING/RESOLVE/ICY/RETORT|沿用现有模板条款|按 FX-030 §七 要求自拟受控码，词面参考 MD-004 §六「短句、冷、留白」与 §二「先知、步步设局」（枚举未定义，见 U-02）
+  E18|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4；与 RL_CHONGSHENG_MENTAL.rule 逐字一致
+  E19|line.banned 后 4 词|抱错/亲子鉴定/灵根/规则|沿用现有模板条款|fx_framework.yaml §三 genres[F1-02].words.exclude / FX-010 §三 排除词（−4）（复用口径见 U-03）
+  E20|style_bible_ref|STY-FINE-FEMALE|沿用现有模板条款|FX-010 §二 F1-02 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-004 §一 推荐画风
+  E21|asset_bias.prop_focus|账本/旧信/前世遗物/旧照片|沿用现有模板条款|fx_framework.yaml §三 genres[F1-02].words 一般判别词「账本」/ FX-010 §三 / MD-004 §二「重生转场给年轻的双手特写」与旧物线
+  E22|asset_bias.scene_pool|老式大院/土炕灶台/婚房/当铺柜台|对标爆款|MD-004 §八「老式大院、土炕灶台出图稳定」/ §二 年代重生种田线分家护母节点
+  E23|redlines|4 条三件套|沿用现有模板条款|fx_framework.yaml §三 genres[F1-02].risk_flags / FX-010 §二 主要审核风险 / MD-004 §七 审核红线 / FX-030 §五 R-S2、R-S6
+  E24|adapt.chars_per_ep|[2000,3000]|沿用现有模板条款|量级参考 FX-030 §四 4.1（1000~5000 字/章与换算方法）；区间值估定见 U-04
+  E25|adapt.keep/merge/rewrite|3 组短词表|沿用现有模板条款|FX-030 §四 4.3 三分类表 / §四 4.3 硬规则 R-S5 / §四 4.4；keep 末 2 项取 FX-010 §二 F1-02 核心爽点
+  E26|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行（四分类 + UNVERIFIED 单列，不新增字段）
+  E27|母题对照|A 屈打成招式 + F 化身复仇式|古典母题|MD-048 §三「重生复仇 → A 屈打成招式 + F 化身复仇式 → MD-042」；MD-042 §一 A/F 行、§二 A1~A8 节拍（构陷→逼供→昭雪）、§四 2（F 式备现实化替代稿）
+  E28|risk_flags 覆盖核对|不血腥复仇→1 条；报复手段合法化→1 条|沿用现有模板条款|fx_framework.yaml §三 genres[F1-02].risk_flags；其余 2 条补 FX-030 §五 R-S6 与 R-S2
+  E29|L-04 钩子场例外|拍 1/2/8 标例外场|沿用现有模板条款|README §5.1 / R1 §四之三（用户 2026-11-25 裁决）；MD-011 §一 A 段 0–3s
+  E30|基准时长 90|Σdur_s=90|沿用现有模板条款|MD-011 §一、§二（90 秒标准版完整逐镜表）；120 派生本轮不参数化，登记 §十一
+  U-01|cast.max_on_screen|3|骨架未给同框人数上限（含群演），沿用保守同值|分镜层同框复核后回填
+  U-02|line.tone_codes|FOREKNOW/CALCULATING/RESOLVE/ICY/RETORT|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节定枚举后回填
+  U-03|line.banned 后 4 词|抱错/亲子鉴定/灵根/规则|词表出自 fx_framework.yaml §三 exclude，原用途为 F0 路由打分，复用为台词禁词属专业判断|主理人裁决是否保留（P1-3 遗留）
+  U-04|adapt.chars_per_ep|[2000,3000]|FX-030 §四 4.1 只给换算方法与量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编同批样本回归后回填
+  U-05|hooks 新写 sample_line|这笔账，我留着。/这一世，换我开局。/签了，就别怪我。/他背后，还有人。/名单，才翻到一半。|MD-004 §四/§五 钩子形态 + MD-042 §二 A 式节拍下新写，无逐字原文|对标开场与集尾台词样本回填
+  U-06|style_bible_ref 画风串|STY-FINE-FEMALE|FX-010 §二 注：完整提示词串见 FX-050，当前待建，本档案只登记 code|F4 画风锚落地后回填

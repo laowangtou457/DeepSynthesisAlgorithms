@@ -1,0 +1,217 @@
+{
+  "genre_id": "M1-01",
+  "name": "战神归来",
+  "status": "draft",
+  "verification": "unverified",
+  "beat_sheet": [
+    {
+      "at_s": 0,
+      "dur_s": 3,
+      "code": "BEAT_OPEN_HOOK",
+      "purpose": "建立",
+      "is_payoff": false
+    },
+    {
+      "at_s": 3,
+      "dur_s": 7,
+      "code": "BEAT_CONTRAST",
+      "purpose": "铺垫",
+      "is_payoff": false
+    },
+    {
+      "at_s": 10,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_1",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 25,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_2",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 40,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_3",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 55,
+      "dur_s": 15,
+      "code": "BEAT_PAYOFF",
+      "purpose": "兑现",
+      "is_payoff": true
+    },
+    {
+      "at_s": 70,
+      "dur_s": 15,
+      "code": "BEAT_AFTERSHOCK",
+      "purpose": "余波",
+      "is_payoff": false
+    },
+    {
+      "at_s": 85,
+      "dur_s": 5,
+      "code": "BEAT_CLOSE_HOOK",
+      "purpose": "断点",
+      "is_payoff": false
+    }
+  ],
+  "hooks": {
+    "open": [
+      {
+        "code": "OPEN_HUMILIATE",
+        "name": "极端羞辱",
+        "formula": "狠话+支票/耳光+围观",
+        "sample_line": "废物！拿着五十万，滚出林家！"
+      },
+      {
+        "code": "OPEN_DEATH_BETRAYAL",
+        "name": "死亡开局",
+        "formula": "背叛瞬间+坠落/濒死+恨意特写",
+        "sample_line": "我信错两人，落得身死道消！"
+      },
+      {
+        "code": "OPEN_IDENTITY_GAP",
+        "name": "身份反差",
+        "formula": "众人嘲笑+一句冷台词+特写眼神",
+        "sample_line": "肩章摘了，军令还在。"
+      },
+      {
+        "code": "OPEN_TOKEN_REVEAL",
+        "name": "宣言亮牌",
+        "formula": "证据+平静语气",
+        "sample_line": "虎符在此，请过目。"
+      }
+    ],
+    "close": [
+      {
+        "code": "CLOSE_CRISIS",
+        "name": "危机降临",
+        "formula": "刚解决小麻烦→更大麻烦电话/人物登场",
+        "sample_line": "什么?!公司资金链断裂?!"
+      },
+      {
+        "code": "CLOSE_SHOWDOWN_EVE",
+        "name": "摊牌前夜",
+        "formula": "反派扬手/扇耳光定格+主角眼神一凛",
+        "sample_line": "敢欺我者，今日，全部清算！"
+      },
+      {
+        "code": "CLOSE_NEW_ARRIVAL",
+        "name": "新人物出场",
+        "formula": "对峙中→更强人物推门而入",
+        "sample_line": "我看谁敢动我的人。"
+      }
+    ],
+    "extra": []
+  },
+  "payoff": {
+    "min_per_ep": 1,
+    "escalate_every_s": 20
+  },
+  "cast": {
+    "max_speaking": 3,
+    "max_on_screen": 3
+  },
+  "line": {
+    "max_chars": 15,
+    "char_per_sec": [
+      4,
+      6
+    ],
+    "tone_codes": [
+      "COLD",
+      "RESTRAINED",
+      "PROVOKE",
+      "DECLARE",
+      "COMMAND"
+    ],
+    "banned": [
+      "想",
+      "觉得",
+      "心里",
+      "暗自",
+      "不禁",
+      "仿佛",
+      "灵根",
+      "宗门",
+      "修为",
+      "入赘",
+      "赘婿"
+    ]
+  },
+  "style_bible_ref": "STY-KR-WEBTOON",
+  "asset_bias": {
+    "prop_focus": [
+      "虎符",
+      "军牌",
+      "军令",
+      "肩章"
+    ],
+    "scene_pool": [
+      "酒会",
+      "写字楼",
+      "豪车",
+      "雨夜街头"
+    ]
+  },
+  "redlines": [
+    {
+      "code": "RL_01",
+      "rule": "禁止见血/伤口/肢体断损特写；禁止拳脚命中身体的打脸动作",
+      "fallback": "改用气场压迫+身份台词+反派后退半步+瞳孔特写轮切；兵器只亮相不交锋"
+    },
+    {
+      "code": "RL_02",
+      "rule": "禁止真实军队番号/真实军区名/现役军衔全称/真实编制名",
+      "fallback": "改用虚构称谓：北境、护国、虎符、旧部；肩章去掉可识别标识"
+    },
+    {
+      "code": "RL_03",
+      "rule": "禁止以财富数额作为打脸正当性依据；禁止炫富特写作为爽点兑现物",
+      "fallback": "打脸对象改为势利行为台词；支票/豪车仅作羞辱道具，不作兑现物"
+    },
+    {
+      "code": "RL_04",
+      "rule": "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛",
+      "fallback": "改写为外部动作：手部停在半空、把照片翻过来扣在桌上、转身、眼神特写"
+    },
+    {
+      "code": "RL_05",
+      "rule": "禁止出现：灵根/宗门/修为/入赘/赘婿",
+      "fallback": "改用 M1-01 判别词：军令/北境/元帅/虎符/退役"
+    }
+  ],
+  "adapt": {
+    "chars_per_ep": [
+      2000,
+      3000
+    ],
+    "keep": [
+      "主线冲突",
+      "关键转折",
+      "名场面",
+      "金手指觉醒",
+      "身份揭晓",
+      "实力碾压"
+    ],
+    "merge": [
+      "连续多次打脸",
+      "多段日常",
+      "次要支线",
+      "同类重复"
+    ],
+    "rewrite": [
+      "开场钩子",
+      "集尾钩子",
+      "视觉化瞬间",
+      "心理描写转外部动作"
+    ]
+  },
+  "evidence": "[M1-01 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]\nE01|genre_id|M1-01|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[M1-01]|取自封闭枚举，不自造\nE02|name|战神归来|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 name|与机读枚举写法一致\nE03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机|未经 gate 不标 approved\nE04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification|因 U-01~U-05 存在不升级；升级条件见 L-03\nE05|beat_sheet.at_s / dur_s|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式；MD-002 §三 90 秒 × 8 镜|逐拍秒数照抄，非自拟\nE06|beat_sheet 段映射|8 拍 ↔ 6 段|对标爆款-市面共识|MD-002 §三 六段节拍表（黄金钩子/反差铺垫/冲突升级/第一次打脸/余波/结尾钩子）|见人读轨 §三 表末列\nE07|beat_sheet.code|BEAT_* 8 码|沿用现有模板条款|check_profile_gate.py P08（首拍含 OPEN、末拍含 CLOSE）/ P11 CODE_RE；fx_framework.yaml §四 注释示例|前缀分区保证全档案唯一\nE08|beat_sheet.purpose|建立/铺垫/升级/兑现/余波/断点|沿用现有模板条款|fx_framework.yaml §四 注释示例「建立」；MD-002 §三 节拍名短化；FX-030 §五 R-S1（兑现）；MD-011 §五 1（断点）|只保留功能短词\nE09|beat_sheet.is_payoff / payoff.min_per_ep|1 / 1|对标爆款-市面共识|MD-002 §二 三件套铁律 / MD-011 §五 红线 2 / FX-030 §五 R-S1|本表 payoff 标记 1 处（拍 6），P09 复算相等\nE10|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」|按冲突升级间隔取 20；升级拍 15s ≤ 20s\nE11|hooks.open 前 2 条|现成原文|对标爆款-市面共识|MD-002 §四 / MD-011 §三|公式与台词均为原文\nE12|hooks.open 后 2 条 formula|受控公式串|沿用现有模板条款|MD-002 §四 身份反差型 / MD-011 §三 宣言亮牌|台词新写见 U-05\nE13|hooks.close 3 条|现成原文|对标爆款-市面共识|MD-002 §五 / MD-011 §四|公式与台词均为原文\nE14|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes|副类型注入位，主类型不预置；空值口径见 L-02\nE15|cast.max_speaking|3|对标爆款-市面共识|MD-002 §一「每集 ≤ 3 个有台词角色（人多必崩脸，见 MD-022）」/ FX-030 §七 / R-S2|与骨架默认值一致\nE16|cast.max_on_screen|3|UNVERIFIED|无数值出处；MD-002 §九「2–3 镜近景轮切」为间接参考|U-01，待 MD-022 崩脸实测回填\nE17|line.max_chars|15|实测|FX-030 §二 R15 及 TPL-008 v2.1.1 实测教训（15 秒 224 字、语速 14.9 字/秒、超限 65%）；MD-002 §七|生理语速上限，与题材无关\nE18|line.char_per_sec|[4, 6]|沿用现有模板条款|MD-002 §七「设计口径 4–6 字/秒」/ FX-030 §七 / fx_framework.yaml §四|硬顶 9 由 R15，同 E17 实测\nE19|line.tone_codes|COLD/RESTRAINED/PROVOKE/DECLARE/COMMAND|UNVERIFIED|FX-030 §七 要求填语气码但未定义可选枚举|U-02，自拟 5 码受控词表，待配音字幕实测\nE20|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4|与 RL_04.rule 逐字一致\nE21|line.banned 后 5 词|灵根/宗门/修为/入赘/赘婿|UNVERIFIED|词表 FX-010 §三 M1-01 排除词（−4），但原用途为 F0 路由打分|U-03，复用为台词禁用属专业判断\nE22|style_bible_ref|STY-KR-WEBTOON|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-002 §一|MD-022 §四（TPL-008 v2.1.4 实测：风格词改写致 6 处集中漂移）支撑逐字承继\nE23|asset_bias.prop_focus|虎符/军牌/军令/肩章|沿用现有模板条款|FX-030 §七 示例「战神：虎符、军牌」/ FX-010 §三 判别词|古典母题佐证见 E28\nE24|asset_bias.scene_pool|酒会/写字楼/豪车/雨夜街头|对标爆款-市面共识|MD-002 §九「高频场景出图稳定」|特有场景 北境/军区/沙场 未实测未纳入，见 L-10\nE25|redlines.RL_01|三件套|沿用现有模板条款|FX-010 §二「忌过度暴力」/ fx_framework.yaml §三 risk_flags 暴力表现收敛 / MD-002 §八 1、§九|fallback 兵器只亮相不交锋另见 E28\nE26|redlines.RL_02|三件套|沿用现有模板条款|FX-010 §二「军旅表述需去真实番号」/ fx_framework.yaml §三 risk_flags 军旅表述去真实番号|fallback 架空化另见 E28\nE27|redlines.RL_03 / RL_04 / RL_05|三件套|沿用现有模板条款|MD-002 §八 2 / FX-030 §五 R-S6 + §四 4.4 / FX-010 §三 排除词表|覆盖 MD-002 §八 适用条目；§八 3/4 判定不适用见 L-11\nE28|beat_sheet 骨架 / hooks / RL_01 / RL_02 / prop_focus|母题对照|古典母题编号|MD-048 §一「战神归来 → A 三国武威式 + G 将门蒙冤式 → MD-043」；MD-043 §一 A/G 行、§二 单刀赴会四折、§三 ⑤ 战神徽章亮出、§五 2 亮兵器 > 交兵过程、§五 3 架空化|52 部语料台账见 MD-043 引言 / MD-040\nE29|adapt.chars_per_ep|[2000, 3000]|UNVERIFIED|FX-030 §四 4.1 仅给换算方法 N₀ = ceil(字数 ÷ chars_per_ep) 与 1000~5000 字/章量级，未给区间值|U-04，待改编实测回归\nE30|adapt.keep / merge / rewrite|3 组短词表|沿用现有模板条款|FX-030 §四 4.3 三分类表 / §四 4.3 硬规则 / R-S5 / §四 4.4；keep 后 2 项 FX-010 §二 核心爽点|判定要点，非具体情节\nE31|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行|四分类 + UNVERIFIED 单列，不新增字段\nE32|基准时长与伸缩|90 / SCALE-90-120|沿用现有模板条款|MD-002 §三、MD-011 §一、§二（90 秒完整逐镜表）；MD-011 §一（120 秒 C=100s）|结论写在人读轨 §二正文，不以 evidence 代替\n[UNVERIFIED 单列 5 项 | 编号|参数|取值|无出处原因|建议回填来源]\nU-01|cast.max_on_screen|3|骨架只给 2–3 镜近景轮切（MD-002 §九），含群演的同框上限无实测|MD-022 §二 崩脸实测 / F3 分镜层同框实测\nU-02|line.tone_codes|COLD/RESTRAINED/PROVOKE/DECLARE/COMMAND|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节实测后定枚举\nU-03|line.banned|后 5 词 灵根/宗门/修为/入赘/赘婿|词表出自 FX-010 §三，原用途为路由打分，复用为台词禁用属专业判断|主理人裁决是否保留（见 L-11）\nU-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给方法与 1000~5000 字/章量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编实测（同批样本回归）\nU-05|hooks.open|2 条 sample_line 肩章摘了，军令还在。 / 虎符在此，请过目。|formula 有出处，两句为按公式新写的示例台词，无现成原文或对标语料|对标爆款开场台词样本回填\n"
+}

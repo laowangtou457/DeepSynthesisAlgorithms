@@ -1,0 +1,120 @@
+# ============================================================
+# FX-P08 · Genre Profile · F2-02 私定终身后爱 · 机读轨
+# 由人读轨 profiles/FX-P08_F2-02_私定终身后爱.md 派生；冲突时以 md 为准
+# 字段结构 = schema/fx_framework.yaml 的 profile_template（14 顶层字段，无增删）
+# 状态：draft / unverified　基准单集秒数：90（Σdur_s = 90）　骨架版本 1.1.0
+# 画风锚：一律 STY-SHINKAI（_批量生成契约 §十二 4，以机读轨单一值为准；双选属下游覆盖能力，本轮不启用）
+# 生成日期：2026-11-26
+# ============================================================
+
+genre_id: F2-02
+name: 私定终身后爱
+status: draft
+verification: unverified
+
+# --- 槽位 1：beat_sheet（8 拍，Σdur_s = 90；9 型逐值共用，_批量生成契约 §四） ---
+# at_s/dur_s 取自 MD-011 §二 S01~S08；首拍 code 含 OPEN，末拍 code 含 CLOSE
+beat_sheet:
+  - {at_s: 0, dur_s: 3, code: BEAT_OPEN_HOOK, purpose: 建立, is_payoff: false}
+  - {at_s: 3, dur_s: 7, code: BEAT_CONTRAST, purpose: 铺垫, is_payoff: false}
+  - {at_s: 10, dur_s: 15, code: BEAT_ESCALATE_1, purpose: 升级, is_payoff: false}
+  - {at_s: 25, dur_s: 15, code: BEAT_ESCALATE_2, purpose: 升级, is_payoff: false}
+  - {at_s: 40, dur_s: 15, code: BEAT_ESCALATE_3, purpose: 升级, is_payoff: false}
+  - {at_s: 55, dur_s: 15, code: BEAT_PAYOFF, purpose: 兑现, is_payoff: true}
+  - {at_s: 70, dur_s: 15, code: BEAT_AFTERSHOCK, purpose: 余波, is_payoff: false}
+  - {at_s: 85, dur_s: 5, code: BEAT_CLOSE_HOOK, purpose: 断点, is_payoff: false}
+
+# --- 槽位 2/3：hooks（open 4 / close 3 / extra 空列表，副类型注入位） ---
+hooks:
+  open:
+    - {code: OPEN_QIYUE, name: 契约亮牌, formula: "契约书推到桌对面+签字笔特写", sample_line: "签了它，我们各取所需。"}
+    - {code: OPEN_LINGZHENG, name: 领证直给, formula: "红本结婚证拍在桌面+双人侧脸定格", sample_line: "今天领证，别多问。"}
+    - {code: OPEN_YINHUN, name: 隐婚撞破, formula: "工位合影+结婚证滑落+同事围拢", sample_line: "他是我名义丈夫。"}
+    - {code: OPEN_TONGJU, name: 同居错认, formula: "玄关两把钥匙+门牌特写+错身而过", sample_line: "钥匙放这，别越界。"}
+  close:
+    - {code: CLOSE_LIHUN, name: 协议摊牌, formula: "追妻途中→离婚协议落款特写", sample_line: "协议，我还没签字。"}
+    - {code: CLOSE_QIANYUE, name: 旧约翻出, formula: "和解定格→抽屉里旧契约书露出一角", sample_line: "那页，谁撕的？"}
+    - {code: CLOSE_FUHUN, name: 回温断点, formula: "并肩停步→对方递回钥匙定格", sample_line: "钥匙，还留着么？"}
+  extra: []
+
+# --- 槽位 4：payoff（min_per_ep 与 beat_sheet 的 is_payoff 标记数 1 处对应） ---
+payoff:
+  min_per_ep: 1
+  escalate_every_s: 20
+
+# --- 槽位 5：cast ---
+cast:
+  max_speaking: 3
+  max_on_screen: 3
+
+# --- 槽位 6：line ---
+line:
+  max_chars: 15
+  char_per_sec: [4, 6]
+  tone_codes: [ALOOF, TSUNDERE, WARMING, APOLOGETIC, TENDER]
+  banned: [想, 觉得, 心里, 暗自, 不禁, 仿佛, 门第, 联姻, 灵根, 命案]
+
+# --- 槽位 7：style_bible_ref（_批量生成契约 §十二 4：取机读轨单一值） ---
+style_bible_ref: STY-SHINKAI
+
+# --- 槽位 8：asset_bias ---
+asset_bias:
+  prop_focus: [结婚证, 契约书, 同居钥匙, 离婚协议]
+  scene_pool: [教室窗边, 教室走廊, 黄昏车站月台, 放学路口]
+
+# --- 槽位 9：redlines（每条 code/rule/fallback 三件套；前 3 条逐条覆盖 risk_flags 三子项） ---
+redlines:
+  - {code: RL_HOUAI_RUANJIN, rule: "禁止把限制人身自由/扣留证件/断绝社交写成深情守护", fallback: "把软禁桥段改写为双方合意同住：当面约定期限、各自保留钥匙与去留权；以协商台词替代看守动作"}
+  - {code: RL_HOUAI_PUA, rule: "禁止把贬低、孤立、精神控制包装成追妻手段或爱意表达", fallback: "把操控桥段改写为双方合意的平等对话与明确道歉；追妻以补偿行动与公开承诺呈现，不用话术施压"}
+  - {code: RL_HOUAI_QIANGZHI, rule: "禁止把强迫亲近、越界肢体接触、违背意愿的占有写成甜点兑现", fallback: "把强制桥段改写为双方合意的牵手与点头应允；亲密进度以对视、递物、并肩停步逐级呈现"}
+  - {code: RL_HOUAI_XINLI, rule: "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛", fallback: "改写为外部动作：手停在半空、把契约书翻过来扣在桌面、转身、垂眸特写"}
+  - {code: RL_HOUAI_PAICI, rule: "禁止出现：门第/联姻/灵根/命案", fallback: "改用 F2-02 判别词：契约/领证/隐婚/追妻/先婚后爱"}
+
+# --- 槽位 10：adapt ---
+adapt:
+  chars_per_ep: [2000, 3000]
+  keep: [主线冲突, 关键转折, 名场面, 金手指觉醒, 先冷后热, 追妻回温]
+  merge: [连续多次打脸, 多段日常, 次要支线, 同类重复]
+  rewrite: [开场钩子, 集尾钩子, 视觉化瞬间, 心理描写转外部动作]
+
+# --- 逐参数 evidence（E| 行 = 依据；U-xx| 行 = UNVERIFIED 单列） ---
+# 四分类：对标爆款 / 古典母题 / 沿用现有模板条款（本轮不列实测）；UNVERIFIED 单列
+# 格式：编号|参数路径|取值|来源类别|出处(文件号+节号)|备注
+evidence: |
+  [F2-02 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]
+  E01|genre_id|F2-02|沿用现有模板条款|FX-010 §二封闭枚举 / fx_framework.yaml §三 genres[F2-02]|取自封闭枚举，不自造
+  E02|name|私定终身后爱|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 name|与机读枚举写法一致
+  E03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机|未经 gate 不标 approved
+  E04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification|因 U-01~U-06 未回填不升级；升级条件见 §十一
+  E05|beat_sheet.at_s / dur_s|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式；_批量生成契约 §四 共用表|9 型逐值相同，逐拍秒数照抄
+  E06|beat_sheet.code / purpose / is_payoff|BEAT_* 8 码 + 6 短词 + 1 处兑现|沿用现有模板条款|fx_framework.yaml §四 注释示例「建立」；MD-011 §五 1（断点）/ 2（兑现）；_批量生成契约 §四|前缀分区；is_payoff 仅拍 6
+  E07|hooks.open|4 条（新写 U|）|对标爆款|MD-005 §四 开头钩子模板（打脸开场型 / 误会开场型）/ MD-011 §三 黄金 3 秒形态 / FX-010 §三 F2-02 强判别词（契约婚姻/先婚后爱）|台词按公式新写，标 U-05
+  E08|hooks.close|3 条（新写 U|）|对标爆款|MD-005 §五 结尾钩子模板（身世悬念型 / 误会未解型）/ MD-011 §四 情敌登场（甜宠）/ FX-010 §三 判别词（追妻/离婚后/复合）|台词按公式新写，标 U-05
+  E09|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes|副类型注入位，主类型不预置
+  E10|payoff.min_per_ep|1|对标爆款|MD-011 §五 红线 2「每集至少兑现 1 个爽点/甜点」/ FX-030 §五 R-S1|与拍 6 is_payoff 1 处对应
+  E11|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」|升级拍 15s ≤ 20s
+  E12|cast.max_speaking|3|沿用现有模板条款|FX-030 §七 / §五 R-S2；MD-005 §八「优先单人特写轮切」|与骨架默认值一致
+  E13|cast.max_on_screen|3|UNVERIFIED|无数值出处；MD-005 §八 双人同框崩脸、单人轮切为间接参考|U-01，待分镜层同框复核回填
+  E14|line.max_chars|15|沿用现有模板条款|FX-030 §二 R15 / §七 默认 15 / fx_framework.yaml §四 profile_template；含 TPL-008 v2.1.1 语速教训记录|生理语速上限，与题材无关
+  E15|line.char_per_sec|[4, 6]|沿用现有模板条款|FX-030 §七 默认 [4,6] / fx_framework.yaml §四 profile_template|硬顶 9 由 R15
+  E16|line.tone_codes|ALOOF/TSUNDERE/WARMING/APOLOGETIC/TENDER|UNVERIFIED|FX-030 §七 要求填语气码但未定义可选枚举，本档案自拟 5 码|U-02，待配音字幕环节复核
+  E17|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4|与 RL_HOUAI_XINLI.rule 逐字一致
+  E18|line.banned 后 4 词|门第/联姻/灵根/命案|UNVERIFIED|fx_framework.yaml §三 genres[F2-02].words.exclude；原用途为 F0 路由打分（−4）|U-03，复用为台词禁用属专业判断；仅作负面清单，正向参数不引入该组词
+  E19|style_bible_ref|STY-SHINKAI|沿用现有模板条款|fx_framework.yaml §三 genres[F2-02].default_style_ref（单一值）+ §六 style_refs(registered) / FX-010 §二 / _批量生成契约 §十二 4 裁决|取机读轨单一值；双选属下游覆盖能力，本轮不启用不登记
+  E20|asset_bias.prop_focus|结婚证/契约书/同居钥匙/离婚协议|沿用现有模板条款|FX-010 §三 F2-02 判别词（领证/契约/同居/协议）/ fx_framework.yaml §三 words / _批量生成契约 §二表举例|均为可绘制物件
+  E21|asset_bias.scene_pool|教室窗边/教室走廊/黄昏车站月台/放学路口|对标爆款|MD-005 §八「教室窗边出图稳定」/ MD-005 §一 校园款 / STY-SHINKAI 新海诚校园画风锚（R2 人判 2026-11-27 换校园/清新向）|教室窗边为原文，其余为新海诚风校园/通勤场景延展，见 U-06
+  E22|redlines|5 条三件套|沿用现有模板条款|FX-010 §二 F2-02 主要审核风险 / fx_framework.yaml §三 risk_flags（不美化软禁 / PUA / 强制爱）/ MD-005 §七 2 双方自愿 / MD-044 §六 1 私密同居改写 / FX-030 §五 R-S6|前 3 条逐条覆盖 risk_flags 三子项，fallback 均给双方合意正向替代；后 2 条补通用
+  E23|adapt.chars_per_ep|[2000, 3000]|UNVERIFIED|FX-030 §四 4.1 仅给换算方法与 1000~5000 字/章量级，未给区间值|U-04，待改编环节同批样本回归
+  E24|adapt.keep|主线冲突/关键转折/名场面/金手指觉醒/先冷后热/追妻回温|沿用现有模板条款|FX-030 §四 4.3 keep 行原文（前 4 项）/ FX-010 §二 / fx_framework.yaml §三 core_payoff（后 2 项）|判定要点，非具体情节
+  E25|adapt.merge|连续多次打脸/多段日常/次要支线/同类重复|沿用现有模板条款|FX-030 §四 4.3 merge 行原文|判定要点
+  E26|adapt.rewrite|开场钩子/集尾钩子/视觉化瞬间/心理描写转外部动作|沿用现有模板条款|FX-030 §四 4.3 rewrite 行原文 / §四 4.4 / R-S6|判定要点，每集 ≥1 处
+  E27|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行|四分类 + UNVERIFIED 单列，不新增字段
+  E28|beat_sheet 骨架 / hooks / redlines / prop_focus|母题对照|古典母题|MD-048 §四「私定终身复婚 → B 墙头马上式 → MD-044」；MD-044 §一 B 式、§三 墙头马上双 POV 同句式、§六 1「七年书案后藏妻改定情后异地」|40 部元杂剧 + 18 部明清传奇台账见 MD-044 引言 / MD-040
+  E29|基准时长|90|沿用现有模板条款|MD-011 §一 90 秒标准版 / MD-005 §三 90 秒单集节拍表 / _批量生成契约 §二|120 为派生上限，本轮不参数化，见 §十一
+  [UNVERIFIED 单列 6 项 | 编号|参数|取值|无依据原因|建议回填来源]
+  U-01|cast.max_on_screen|3|骨架未给含群演的同框人数上限；MD-005 §八仅给单人轮切参考|分镜层同框复核后回填
+  U-02|line.tone_codes|ALOOF/TSUNDERE/WARMING/APOLOGETIC/TENDER|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节复核后定枚举
+  U-03|line.banned|后 4 词 门第/联姻/灵根/命案|词表出自 fx_framework.yaml §三 words.exclude，原用途为路由打分，复用为台词禁用属专业判断|主理人裁决是否保留（P1-3 遗留）
+  U-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给方法与 1000~5000 字/章量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编同批样本回归
+  U-05|hooks.open / hooks.close|sample_line 新写 7 条|MD-005 §四/§五 无契约/领证类现成原文，按公式与判别词新写并压到 P12 的 15 字符内，依 _批量生成契约 §十二 1|对标爆款开场与集尾台词样本回填
+  U-06|asset_bias.scene_pool|教室走廊/黄昏车站月台/放学路口 3 项延展|MD-005 §八仅明列教室窗边等出图稳定；其余为新海诚风校园/通勤场景延展（电车/黄昏/校园意象，R2 人判 2026-11-27 换校园/清新向）|AI 出图稳定性待实测复核后确认

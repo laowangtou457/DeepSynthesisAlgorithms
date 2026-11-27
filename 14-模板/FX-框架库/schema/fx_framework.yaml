@@ -1,0 +1,302 @@
+# ============================================================
+# FX 框架库 · 机读轨（F0 题材路由 + F2 剧本参数档案）
+# 本文件由 FX-010 / FX-030 派生，冲突时以 md 为准
+# 消费者：天枢后端（Go）/ 路由脚本 / 校验脚本
+# 生成日期：2026-11-25
+# ============================================================
+schema_version: "1.1.0"
+layer: [F0, F2]
+source_docs:
+  - FX-000_框架体系总纲.md
+  - FX-010_题材受控词典与路由规则.md
+  - FX-030_剧本框架-骨架与注入点.md
+
+# ------------------------------------------------------------
+# 一、大盘与大类（封闭枚举）
+# ------------------------------------------------------------
+taxonomy:
+  - code: M1
+    bucket: male
+    name: 男频逆袭打脸
+    status: active
+  - code: M2
+    bucket: male
+    name: 男频玄幻修仙与末世
+    status: planned
+  - code: F1
+    bucket: female
+    name: 女频大女主复仇
+    status: active
+  - code: F2
+    bucket: female
+    name: 女频甜宠古言
+    status: active
+  - code: F3
+    bucket: female
+    name: 女频年代种田
+    status: planned
+  - code: S1
+    bucket: neutral
+    name: 悬疑怪谈
+    status: active
+  - code: S2
+    bucket: neutral
+    name: 治愈日常与沙雕反套路
+    status: planned
+
+# ------------------------------------------------------------
+# 二、路由参数（算法可执行）
+# ------------------------------------------------------------
+routing:
+  algorithm_version: "1.0.0"
+  weights:
+    strong: 3
+    normal: 2
+    weak: 1
+    excluded: -4
+  position_boost:
+    head_ratio: 0.1
+    multiplier: 1.5
+  structural_signals:
+    - code: rebirth_opening
+      watch_ratio: 0.1
+      patterns: ["再次睁眼", "回到了", "死前"]
+      target: F1-02
+      boost: 5
+    - code: rule_list
+      min_items: 3
+      patterns: ["第一条", "规则", "第几条"]
+      target: S1-02
+      boost: 5
+    - code: dual_identity
+      watch_ratio: 0.1
+      patterns: ["废物", "瞧不起", "真实身份", "实为"]
+      target: M1-01
+      boost: 3
+    - code: case_opening
+      watch_ratio: 0.1
+      patterns: ["尸体", "报案", "勘查", "现场"]
+      target: S1-01
+      boost: 3
+    - code: betrothal_opening
+      watch_ratio: 0.1
+      patterns: ["婚约", "退婚", "嫁", "娶"]
+      target: F2-01
+      boost: 3
+  thresholds:
+    min_primary_score: 6
+    min_lead: 3
+    high_confidence_lead: 6
+    max_candidates: 3
+    secondary_ratio: 0.6
+  secondary_allowed_overrides: [style_ref, hooks.extra]
+  on_low_confidence: need_user_choice
+
+# ------------------------------------------------------------
+# 三、10 型枚举 + 判别词
+# 权重档：strong / normal / weak / exclude
+# episode_seconds: [90, 120] 口径（P1-4）：90 为唯一复算基准（beat_sheet Σdur_s=90）；
+# 120 为派生上限，由 SCALE-90-120 从基准表插值得到，不单独写入 beat_sheet。
+# ------------------------------------------------------------
+genres:
+  - genre_id: M1-01
+    name: 战神归来
+    bucket: male
+    core_payoff: 身份揭晓与实力碾压
+    default_style_ref: STY-KR-WEBTOON
+    episode_seconds: [90, 120]
+    risk_flags: [暴力表现收敛, 军旅表述去真实番号]
+    words:
+      strong: [战神, 军令, 北境, 元帅, 护国, 虎符]
+      normal: [退役, 隐姓埋名, 战友, 军区, 肩章, 铁血]
+      weak: [军装, 沙场, 部署]
+      exclude: [灵根, 宗门, 修为, 入赘, 赘婿]
+
+  - genre_id: M1-02
+    name: 寒门赘婿
+    bucket: male
+    core_payoff: 打脸势利亲戚
+    default_style_ref: STY-KR-WEBTOON
+    episode_seconds: [90, 120]
+    risk_flags: [不宣扬拜金, 打脸对象为势利行为非财富]
+    words:
+      strong: [赘婿, 入赘, 上门女婿]
+      normal: [岳父, 岳母, 小舅子, 彩礼, 离婚协议, 吃软饭, 倒插门]
+      weak: [岳家, 婚书, 摆酒]
+      exclude: [军令, 北境, 针灸, 灵根]
+
+  - genre_id: M1-03
+    name: 神医狂婿
+    bucket: male
+    core_payoff: 医术碾压
+    default_style_ref: STY-KR-WEBTOON
+    episode_seconds: [90, 120]
+    risk_flags: [涉医不承诺真实诊疗效果]
+    words:
+      strong: [神医, 针灸, 把脉, 祖传秘方]
+      normal: [药方, 绝症, 国医, 医馆, 望闻问切, 银针, 中毒]
+      weak: [药材, 脉象, 偏方]
+      exclude: [灵根, 修为, 军令]
+
+  - genre_id: F1-01
+    name: 真假千金
+    bucket: female
+    core_payoff: 身份反转与当众揭穿
+    default_style_ref: STY-FINE-FEMALE
+    episode_seconds: [90, 120]
+    risk_flags: [不渲染校园霸凌细节]
+    words:
+      strong: [真假千金, 抱错, 狸猫换太子]
+      normal: [亲生, 认亲, 养女, 替嫁, 亲子鉴定, 假千金, 豪门千金]
+      weak: [血型, 家谱, 认祖归宗]
+      exclude: [重生, 上一世, 命案, 规则]
+
+  - genre_id: F1-02
+    name: 重生复仇
+    bucket: female
+    core_payoff: 先知碾压与步步设局
+    default_style_ref: STY-FINE-FEMALE
+    episode_seconds: [90, 120]
+    risk_flags: [不血腥复仇, 报复手段合法化]
+    words:
+      strong: [重生, 上一世, 前世, 回到了]
+      normal: [这一世, 先知, 再次睁眼, 死前, 悔恨, 复仇, 账本]
+      weak: [记忆, 梦回, 重来]
+      exclude: [抱错, 亲子鉴定, 灵根, 规则]
+
+  - genre_id: F1-03
+    name: 弱女反杀
+    bucket: female
+    core_payoff: 以智取胜与证据反打
+    default_style_ref: STY-FINE-FEMALE
+    episode_seconds: [90, 120]
+    risk_flags: [不将私刑正当化, 须走公权力路径]
+    words:
+      strong: [反杀, 设局]
+      normal: [陷害, 证据, 录音, 法庭, 报警, 伪证, 验伤, 净身出户]
+      weak: [律师, 起诉, 证人]
+      exclude: [重生, 上一世, 军令, 灵根]
+
+  - genre_id: F2-01
+    name: 门第阻隔双向奔赴
+    bucket: female
+    core_payoff: 破门第与双向奔赴
+    default_style_ref: STY-FINE-FEMALE
+    episode_seconds: [90, 120]
+    risk_flags: [不物化婚恋, 门第对立不做阶层羞辱]
+    words:
+      strong: [门当户对, 门第]
+      normal: [联姻, 退婚, 家族联姻, 灰姑娘, 豪门, 身份差距, 双向奔赴, 长辈反对]
+      weak: [家世, 婚约, 阶层]
+      exclude: [重生, 前世, 命案, 规则]
+
+  - genre_id: F2-02
+    name: 私定终身后爱
+    bucket: female
+    core_payoff: 先冷后热与追妻回温
+    default_style_ref: STY-SHINKAI
+    episode_seconds: [90, 120]
+    risk_flags: [不美化软禁 / PUA / 强制爱]
+    words:
+      strong: [先婚后爱, 契约婚姻, 假结婚]
+      normal: [隐婚, 闪婚, 离婚后, 追妻, 复合, 契约, 名义夫妻, 一夜情]
+      weak: [领证, 同居, 协议]
+      exclude: [门第, 联姻, 灵根, 命案]
+
+  - genre_id: S1-01
+    name: 神探断案
+    bucket: neutral
+    core_payoff: 巧验真相与层层反转
+    default_style_ref: STY-DARK-REAL
+    episode_seconds: [90, 120]
+    risk_flags: [不血腥尸体特写, 不作作案手法教学]
+    words:
+      strong: [命案, 验尸, 凶案]
+      normal: [证据链, 嫌疑人, 口供, 卷宗, 推理, 不在场证明, 仵作, 捕快]
+      weak: [线索, 勘验, 案发]
+      exclude: [规则, 轮回, 重生, 赘婿]
+
+  - genre_id: S1-02
+    name: 鬼节轮回
+    bucket: neutral
+    core_payoff: 规则解谜与循环逃生
+    default_style_ref: STY-DARK-REAL
+    episode_seconds: [90, 120]
+    risk_flags: [禁灵异恐怖与封建迷信, 必须给科学或心理归因]
+    words:
+      strong: [规则怪谈, 无限流, 轮回]
+      normal: [诡异, 禁忌, 触发条件, 第几次, 循环, 副本, 不能回头, 午夜]
+      weak: [阴气, 符纸, 香灰]
+      exclude: [验尸, 卷宗, 军令, 赘婿]
+
+# ------------------------------------------------------------
+# 四、参数档案模板（字段定义，档案必须填满，空值标 null + unverified）
+# 字段定义以 FX-030 §七 为准：14 个顶层字段 / 25 个叶子路径，五方差集为空（骨架 1.1.0）。
+# ------------------------------------------------------------
+profile_template:
+  genre_id: null
+  name: null
+  status: skeleton
+  verification: unverified
+  beat_sheet: []
+  # 元素结构，at_s 递增、dur_s 之和 == 单集秒数、不得重叠或留空隙
+  # - {at_s: 0, dur_s: 3, code: HOOK_OPEN, purpose: 建立, is_payoff: false}
+  hooks:
+    open: []
+    # - {code: OPEN_HUMILIATE, name: 极端羞辱, formula: 狠话+支票/耳光+围观, sample_line: ""}
+    close: []
+    # - {code: CLOSE_CRISIS, name: 危机降临, formula: 刚解决小麻烦→更大麻烦登场, sample_line: ""}
+    extra: []
+  payoff:
+    min_per_ep: null
+    escalate_every_s: null
+  cast:
+    max_speaking: null
+    max_on_screen: null
+  line:
+    max_chars: 15
+    char_per_sec: [4, 6]
+    tone_codes: []
+    banned: []
+  style_bible_ref: null
+  asset_bias:
+    prop_focus: []
+    scene_pool: []
+  redlines: []
+  # - {code: RL_01, rule: "", fallback: ""}
+  adapt:
+    chars_per_ep: [null, null]
+    keep: []
+    merge: []
+    rewrite: []
+  evidence: ""
+
+# ------------------------------------------------------------
+# 五、首批档案（10 型已全部建成 draft；approved 须过 F2 门）
+# 状态机：skeleton -> draft -> approved（approved 须过 F2 门）
+# 2026-11-26 铺 9 型：FX-P02~FX-P10 三轨档案建成，9 行状态由 skeleton 同步为 draft；
+#   verification 一律 unverified，不执行 draft -> approved。依据：_批量生成契约_FX-P02-P10.md §十，
+#   留痕见 R1_评审标准与检查表.md §四之六。骨架 schema_version 保持 1.1.0，本轮不升版。
+# ------------------------------------------------------------
+profiles:
+  - {genre_id: M1-01, name: 战神归来, status: draft, verification: unverified}
+  - {genre_id: M1-02, name: 寒门赘婿, status: draft, verification: unverified}
+  - {genre_id: M1-03, name: 神医狂婿, status: draft, verification: unverified}
+  - {genre_id: F1-01, name: 真假千金, status: draft, verification: unverified}
+  - {genre_id: F1-02, name: 重生复仇, status: draft, verification: unverified}
+  - {genre_id: F1-03, name: 弱女反杀, status: draft, verification: unverified}
+  - {genre_id: F2-01, name: 门第阻隔双向奔赴, status: draft, verification: unverified}
+  - {genre_id: F2-02, name: 私定终身后爱, status: draft, verification: unverified}
+  - {genre_id: S1-01, name: 神探断案, status: draft, verification: unverified}
+  - {genre_id: S1-02, name: 鬼节轮回, status: draft, verification: unverified}
+
+# ------------------------------------------------------------
+# 六、画风锚注册表（F4 展开，此处仅登记 code）
+# ------------------------------------------------------------
+style_refs:
+  - {code: STY-KR-WEBTOON, name: 韩系 Webtoon, status: registered}
+  - {code: STY-FINE-FEMALE, name: 精致女频漫剧, status: registered}
+  - {code: STY-SHINKAI, name: 新海诚, status: registered}
+  - {code: STY-DARK-REAL, name: 暗黑写实, status: registered}
+  - {code: STY-GUOCHAO, name: 国潮新古风, status: registered}
+  - {code: STY-RETRO, name: 复古国漫（年代）, status: registered}

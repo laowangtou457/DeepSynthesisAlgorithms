@@ -1,0 +1,121 @@
+# ============================================================
+# FX-P02 · Genre Profile · M1-02 寒门赘婿 · 机读轨
+# 由人读轨 profiles/FX-P02_M1-02_寒门赘婿.md 派生；冲突时以 md 为准
+# 字段结构 = schema/fx_framework.yaml 的 profile_template（14 顶层字段，无增删）
+# 状态：draft / unverified　基准单集秒数：90（Σdur_s = 90）　骨架版本 1.1.0
+# 生成日期：2026-11-26
+# ============================================================
+
+genre_id: M1-02
+name: 寒门赘婿
+status: draft
+verification: unverified
+
+# --- 槽位 1：beat_sheet（8 拍，Σdur_s = 90；at_s 首尾相接无空隙；9 型共用，逐值照契约 §四） ---
+beat_sheet:
+  - {at_s: 0, dur_s: 3, code: BEAT_OPEN_HOOK, purpose: 建立, is_payoff: false}
+  - {at_s: 3, dur_s: 7, code: BEAT_CONTRAST, purpose: 铺垫, is_payoff: false}
+  - {at_s: 10, dur_s: 15, code: BEAT_ESCALATE_1, purpose: 升级, is_payoff: false}
+  - {at_s: 25, dur_s: 15, code: BEAT_ESCALATE_2, purpose: 升级, is_payoff: false}
+  - {at_s: 40, dur_s: 15, code: BEAT_ESCALATE_3, purpose: 升级, is_payoff: false}
+  - {at_s: 55, dur_s: 15, code: BEAT_PAYOFF, purpose: 兑现, is_payoff: true}
+  - {at_s: 70, dur_s: 15, code: BEAT_AFTERSHOCK, purpose: 余波, is_payoff: false}
+  - {at_s: 85, dur_s: 5, code: BEAT_CLOSE_HOOK, purpose: 断点, is_payoff: false}
+
+# --- 槽位 2/3：hooks（open 4 / close 3 / extra 空列表，副类型注入位） ---
+# sample_line 全部为范文长句压缩稿（标 U|，见 evidence U-05），Python len ≤15
+hooks:
+  open:
+    - {code: OPEN_BRIDE_SHAME, name: "彩礼羞辱", formula: "岳家宴席+彩礼加码+众人围观", sample_line: "这彩礼，你也配？"}
+    - {code: OPEN_DIVORCE_THROW, name: "甩离婚书", formula: "协议拍桌+净身出户+冷眼侧目", sample_line: "签了，滚出岳家。"}
+    - {code: OPEN_INLAW_MOCK, name: "满堂讥讽", formula: "摆酒席+小舅子发难+特写眼神", sample_line: "倒插门的，也配上桌？"}
+    - {code: OPEN_QUIET_DEED, name: "亮出旧契", formula: "旧婚书+一句短台词+定格", sample_line: "婚书在此，谁退？"}
+  close:
+    - {code: CLOSE_BANQUET_GUEST, name: "宴席贵客", formula: "刚压住讥讽→岳父引贵客入场", sample_line: "岳父，来的是谁？"}
+    - {code: CLOSE_LEDGER_TURN, name: "账册翻转", formula: "摊牌定格+主角一句短台词", sample_line: "这账，明日再算。"}
+    - {code: CLOSE_INLAW_BACKER, name: "靠山现身", formula: "对峙中→岳家更强靠山登场", sample_line: "退婚？先问他。"}
+  extra: []
+
+# --- 槽位 4：payoff ---
+payoff:
+  min_per_ep: 1
+  escalate_every_s: 20
+
+# --- 槽位 5：cast ---
+cast:
+  max_speaking: 3
+  max_on_screen: 3
+
+# --- 槽位 6：line（tone_codes 自拟大写码，标 U|；banned = R-S6 六词 + M1-02 exclude） ---
+line:
+  max_chars: 15
+  char_per_sec: [4, 6]
+  tone_codes: [ENDURE, IRONIC, FLAT, REVEAL, DISMISS]
+  banned: [想, 觉得, 心里, 暗自, 不禁, 仿佛, 军令, 北境, 针灸, 灵根]
+
+# --- 槽位 7：style_bible_ref（只写 STY-* 引用，不写提示词串） ---
+style_bible_ref: STY-KR-WEBTOON
+
+# --- 槽位 8：asset_bias（可绘制物件/场景，取自 M1-02 words 与 FX-010 §三 判别词） ---
+asset_bias:
+  prop_focus: [彩礼单, 离婚协议, 婚书, 聘礼箱]
+  scene_pool: [岳家宴席, 堂屋, 婚宴厅, 门厅]
+
+# --- 槽位 9：redlines（每条 code/rule/fallback 三件套；risk_flags 逐条各占 1 条） ---
+redlines:
+  - {code: RL_ZHUIXU_NO_MAMMON, rule: "禁止把财富数额当作正当性来源；禁止以多金为荣的台词与特写", fallback: "改用家世担当、手艺本事立身；礼金数额虚化为「未指定」"}
+  - {code: RL_ZHUIXU_SNOB_TARGET, rule: "打脸只针对嫌贫爱富、逼签离婚协议等势利行为，不针对财产多寡", fallback: "反派恶行台词改为讥讽出身/逐客；删去比价与炫产镜头"}
+  - {code: RL_ZHUIXU_NO_VIOLENCE, rule: "禁止见血/伤口/肢体断损特写；禁止拳脚命中身体的打脸动作", fallback: "改用推桌/拂袖+身份台词+反派后退半步+瞳孔特写轮切"}
+  - {code: RL_ZHUIXU_NO_MENTAL, rule: "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛", fallback: "改写为外部动作：把协议推回桌面、转身、指节叩桌、眼神特写"}
+  - {code: RL_ZHUIXU_NO_CROSSWORD, rule: "禁止出现：军令/北境/针灸/灵根（M1-01 与玄幻判别词）", fallback: "改用 M1-02 判别词：彩礼/婚书/岳父/上门女婿/摆酒"}
+
+# --- 槽位 10：adapt（keep 末 2 项 = M1-02 核心爽点，不复制 M1-01） ---
+adapt:
+  chars_per_ep: [2000, 3000]
+  keep: [主线冲突, 关键转折, 名场面, 金手指觉醒, 寒门立业, 当众打脸势利亲戚]
+  merge: [连续多次打脸, 多段日常, 次要支线, 同类重复]
+  rewrite: [开场钩子, 集尾钩子, 视觉化瞬间, 心理描写转外部动作]
+
+# --- 逐参数 evidence（E| 行覆盖 25 叶子路径；U-| 行 = UNVERIFIED 单列；四分类，本轮无「实测」） ---
+# 四分类：实测 / 对标爆款 / 古典母题 / 沿用现有模板条款（本轮一律不写「实测」）
+# 格式：编号|参数路径|取值|来源类别|出处(文件号+节号)
+evidence: |
+  [M1-02 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列；本轮一律不写「实测」]
+  E01|genre_id|M1-02|沿用现有模板条款|FX-010 §二 封闭枚举 / fx_framework.yaml §三 genres[M1-02]
+  E02|name|寒门赘婿|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[M1-02].name / MD-048 §一 男频逆袭类细分
+  E03|status|draft|沿用现有模板条款|FX-030 §七 status 行 / fx_framework.yaml §五 状态机；未经 gate 不标 approved
+  E04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification；因 U-01~U-05 未回填不升级
+  E05|beat_sheet|8 拍 Σdur_s=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式；FX-030 §三 槽位 1；9 型共用见契约 §四
+  E06|beat_sheet 段映射与 code|BEAT_* 8 码 / 6 段|对标爆款|MD-002 §三 90 秒 × 8 镜六段节拍表；FX-030 §五 R-S1 兑现 / R-S3 断点 / R-S4 建立
+  E07|hooks.open|4 条|对标爆款|MD-002 §四 开头钩子模板（极端羞辱型/身份反差型）/ MD-011 §三 黄金 3 秒钩子库；台词压缩见 U-05
+  E08|hooks.close|3 条|对标爆款|MD-002 §五 结尾钩子模板（危机降临型/摊牌前夜型）/ MD-011 §四 结尾钩子库；台词压缩见 U-05
+  E09|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes
+  E10|payoff.min_per_ep|1|对标爆款|MD-002 §二 三件套铁律「每集至少兑现一次」/ MD-011 §五 红线 2 / FX-030 §五 R-S1
+  E11|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」
+  E12|cast.max_speaking|3|对标爆款|MD-002 §一「每集 ≤ 3 个有台词角色（人多必崩脸，见 MD-022）」/ FX-030 §七 / R-S2
+  E13|cast.max_on_screen|3|沿用现有模板条款|无量化出处，取与 max_speaking 同值保守上限；MD-002 §九「2–3 镜近景轮切」为间接参考，见 U-01
+  E14|line.max_chars|15|沿用现有模板条款|FX-030 §二 R15 语速不变量 / §七 默认 15 / MD-002 §七
+  E15|line.char_per_sec|[4, 6]|沿用现有模板条款|MD-002 §七「设计口径 4–6 字/秒」/ FX-030 §七 / fx_framework.yaml §四 profile_template
+  E16|line.tone_codes|ENDURE/IRONIC/FLAT/REVEAL/DISMISS|沿用现有模板条款|FX-030 §七 要求填语气码但未定义枚举，依 MD-002 §七「打脸台词短、冷、留白」自拟，见 U-02
+  E17|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4 心理描写转外部动作
+  E18|line.banned 后 4 词|军令/北境/针灸/灵根|沿用现有模板条款|FX-010 §三 M1-02 排除词表 / fx_framework.yaml §三 genres[M1-02].words.exclude，复用口径见 U-03
+  E19|style_bible_ref|STY-KR-WEBTOON|沿用现有模板条款|FX-010 §二 M1-02 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-002 §一 推荐画风韩系 Webtoon
+  E20|asset_bias.prop_focus|彩礼单/离婚协议/婚书/聘礼箱|沿用现有模板条款|FX-010 §三 M1-02 判别词（彩礼/离婚协议/婚书）/ fx_framework.yaml §三 genres[M1-02].words / MD-002 §九 道具出图稳定
+  E21|asset_bias.scene_pool|岳家宴席/堂屋/婚宴厅/门厅|对标爆款|MD-002 §九「高频场景出图稳定，优先把冲突安排在这类场景」；MD-043 §三 寒士发迹式 ① 落魄受辱 ⑤ 衣锦还乡
+  E22|redlines.RL_ZHUIXU_NO_MAMMON|三件套|沿用现有模板条款|fx_framework.yaml §三 genres[M1-02].risk_flags「不宣扬拜金」/ FX-010 §二「忌宣扬拜金」/ MD-002 §八 2
+  E23|redlines.RL_ZHUIXU_SNOB_TARGET|三件套|沿用现有模板条款|fx_framework.yaml §三 genres[M1-02].risk_flags「打脸对象为势利行为非财富」/ MD-002 §八 2「打脸对象是势利行为而非财富本身」
+  E24|redlines.RL_ZHUIXU_NO_VIOLENCE|三件套|沿用现有模板条款|MD-002 §八 1「不过度低俗、暴力」/ §九 特写轮切 / MD-043 §五 2「亮兵器 > 交兵过程」借用
+  E25|redlines.RL_ZHUIXU_NO_MENTAL / RL_ZHUIXU_NO_CROSSWORD|三件套|沿用现有模板条款|FX-030 §五 R-S6 + §四 4.4 / FX-010 §三 M1-02 排除词表；注入槽位 9 forbidden_items[]
+  E26|beat_sheet 骨架 / hooks / redlines / prop_focus|母题对照|古典母题|MD-048 §一「寒门赘婿 → C 寒士发迹式（凍蘇秦/白兔記）→ MD-043」；MD-043 §一 C 行、§三 ① 落魄受辱 ③ 亲人背叛加剧 ⑤ 衣锦还乡 ⑥ 打脸逐个
+  E27|adapt.chars_per_ep|[2000, 3000]|沿用现有模板条款|FX-030 §四 4.1「网文章节长度差异极大（1000~5000 字/章）」量级参考，区间值无量化出处，见 U-04
+  E28|adapt.keep|前 4 项 + 寒门立业/当众打脸势利亲戚|沿用现有模板条款|FX-030 §四 4.3 keep 行前 4 项原文；末 2 项 FX-010 §二 M1-02 核心爽点「打脸势利亲戚」+ MD-043 §三 ⑤ 衣锦还乡
+  E29|adapt.merge|连续多次打脸/多段日常/次要支线/同类重复|沿用现有模板条款|FX-030 §四 4.3 merge 行原文
+  E30|adapt.rewrite|开场钩子/集尾钩子/视觉化瞬间/心理描写转外部动作|沿用现有模板条款|FX-030 §四 4.3 rewrite 行前 3 项原文 + §四 4.4 / R-S5
+  E31|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03「不得凭感觉填数」/ FX-030 §七 evidence 行；四分类 + UNVERIFIED 单列
+  E32|hooks.*.sample_line 压缩|4 条 open + 3 条 close 全部压缩|对标爆款|MD-002 §四/§五、MD-011 §三/§四 范文长句；按契约 §十二 1 压缩到 Python len ≤15，见 U-05
+  [UNVERIFIED 单列 5 项 | 编号|参数|取值|无依据原因|建议回填来源]
+  U-01|cast.max_on_screen|3|骨架只给「2–3 镜近景轮切」（MD-002 §九），含群演的同框上限无量化依据|MD-022 §二 崩脸复算 / F3 分镜层同框验证
+  U-02|line.tone_codes|ENDURE/IRONIC/FLAT/REVEAL/DISMISS|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音 / 字幕环节定枚举后回填
+  U-03|line.banned 后 4 词|军令/北境/针灸/灵根|词表出自 FX-010 §三，原用途为 F0 路由打分（−4），复用为台词禁用词属专业判断|主理人裁决是否保留（P1-3 遗留）
+  U-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给换算方法与 1000~5000 字/章量级，未给区间值|小说→剧集改编同批样本回归后回填
+  U-05|hooks.open/close|7 条 sample_line 压缩稿|范文原句普遍超过 15 字，按公式压缩/改写，属新写示例台词，非逐字原文|对标爆款开场与集尾台词样本回填

@@ -1,0 +1,120 @@
+# ============================================================
+# FX-P10 · Genre Profile · S1-02 鬼节轮回 · 机读轨
+# 由人读轨 profiles/FX-P10_S1-02_鬼节轮回.md 派生；冲突时以 md 为准
+# 字段结构 = schema/fx_framework.yaml 的 profile_template（14 顶层字段，无增删）
+# 状态：draft / unverified　基准单集秒数：90（Σdur_s = 90）　骨架版本：1.1.0
+# 生成日期：2026-11-26
+# ============================================================
+
+genre_id: S1-02
+name: 鬼节轮回
+status: draft
+verification: unverified
+
+# --- 槽位 1：beat_sheet（8 拍，Σdur_s = 90；9 型共用 MD-011 §二 S01~S08 基准表） ---
+beat_sheet:
+  - {at_s: 0, dur_s: 3, code: BEAT_OPEN_HOOK, purpose: 建立, is_payoff: false}
+  - {at_s: 3, dur_s: 7, code: BEAT_CONTRAST, purpose: 铺垫, is_payoff: false}
+  - {at_s: 10, dur_s: 15, code: BEAT_ESCALATE_1, purpose: 升级, is_payoff: false}
+  - {at_s: 25, dur_s: 15, code: BEAT_ESCALATE_2, purpose: 升级, is_payoff: false}
+  - {at_s: 40, dur_s: 15, code: BEAT_ESCALATE_3, purpose: 升级, is_payoff: false}
+  - {at_s: 55, dur_s: 15, code: BEAT_PAYOFF, purpose: 兑现, is_payoff: true}
+  - {at_s: 70, dur_s: 15, code: BEAT_AFTERSHOCK, purpose: 余波, is_payoff: false}
+  - {at_s: 85, dur_s: 5, code: BEAT_CLOSE_HOOK, purpose: 断点, is_payoff: false}
+
+# --- 槽位 2/3：hooks（open 4 / close 3 / extra 空列表，副类型注入位） ---
+# 全部 sample_line 只含可归因的物理物件与现象（纸条/钟表/计数器/门牌/录音/走廊），
+# 不留任何不可归因的超自然实体；异象一律在 RL_LUNHUI_* 的 fallback 落到科学/心理解释。
+hooks:
+  open:
+    - {code: OPEN_RULE_NOTE, name: 门缝纸条, formula: "门缝纸条+第一条禁令特写", sample_line: "门缝塞进一张纸：别回头"}
+    - {code: OPEN_CLOCK_HALT, name: 午夜停摆, formula: "午夜钟表+指针归零定格", sample_line: "钟又停在十二点"}
+    - {code: OPEN_LOOP_COUNT, name: 计数回环, formula: "循环计数器+数字跳回特写", sample_line: "计数器跳回第七次"}
+    - {code: OPEN_PLATE_SHIFT, name: 门牌错位, formula: "副本门牌+编号更替特写", sample_line: "门牌换号，还是这层"}
+  close:
+    - {code: CLOSE_RULE_BROKEN, name: 规则被破, formula: "末镜+第三条被划掉定格", sample_line: "第三条，被人划掉了"}
+    - {code: CLOSE_TAPE_VOICE, name: 录音多声, formula: "旧磁带回放+多出一句人声", sample_line: "录音里多出一句人声"}
+    - {code: CLOSE_EXIT_RESET, name: 出口重置, formula: "推门定格+同一条走廊", sample_line: "推开同一扇门，又是走廊"}
+  extra: []
+
+# --- 槽位 4：payoff（min_per_ep 与 beat_sheet 的 is_payoff 标记数 1 处严格相等） ---
+payoff:
+  min_per_ep: 1
+  escalate_every_s: 20
+
+# --- 槽位 5：cast ---
+cast:
+  max_speaking: 3
+  max_on_screen: 3
+
+# --- 槽位 6：line（banned = R-S6 六词 + genres[S1-02].words.exclude 四词） ---
+line:
+  max_chars: 15
+  char_per_sec: [4, 6]
+  tone_codes: [FLAT, MEASURED, REPEAT, HALTED, VERBATIM]
+  banned: [想, 觉得, 心里, 暗自, 不禁, 仿佛, 验尸, 卷宗, 军令, 赘婿]
+
+# --- 槽位 7：style_bible_ref（只写 STY-* 引用，不写提示词串） ---
+style_bible_ref: STY-DARK-REAL
+
+# --- 槽位 8：asset_bias（可绘制、可归因的物理物件与场景，避开本型排除词） ---
+asset_bias:
+  prop_focus: [规则纸条, 午夜钟表, 循环计数器, 副本门牌, 监控屏]
+  scene_pool: [单元楼道, 值班室, 旧式钟楼, 电梯间, 空走廊]
+
+# --- 槽位 9：redlines（RL_LUNHUI_* 语义前缀，逐条覆盖 risk_flags + 通用红线） ---
+# fallback 全部在 P15 扫描范围内：把异象正向改写为误判/药物致幻/记忆错位/机关装置等
+# 科学或心理解释，措辞逐字避开禁用词，不出现任何不可归因的超自然实体。
+redlines:
+  - {code: RL_LUNHUI_SUPERNATURAL, rule: "禁止鬼神/亡魂/托梦/还魂/符咒等灵异实指与封建迷信仪轨；禁止跳吓式惊吓画面", fallback: "异象改写为误判、药物致幻、记忆错位或机关装置；用影子、声音、缺席、留白替代实体镜头"}
+  - {code: RL_LUNHUI_ATTRIBUTION, rule: "每处异象须在本集内给出可复验的科学或心理解释，不得悬置或归于超自然", fallback: "用监控回放、钟表机关、音效错位、旧照片比对给出成因；尾场落到可核查物证"}
+  - {code: RL_LUNHUI_MENTAL, rule: "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛", fallback: "改写为外部动作：把纸条翻过来扣在桌面、指尖停在计数器上、转身看向门牌"}
+  - {code: RL_LUNHUI_EXCLUDE, rule: "禁止出现：验尸/卷宗/军令/赘婿（本型排除词，防串型）", fallback: "改用 S1-02 判别词：规则纸条/午夜钟表/循环计数器/副本门牌/监控屏"}
+
+# --- 槽位 10：adapt ---
+adapt:
+  chars_per_ep: [2000, 3000]
+  keep: [主线冲突, 关键转折, 名场面, 金手指觉醒, 规则解谜, 循环逃生]
+  merge: [连续多次打脸, 多段日常, 次要支线, 同类重复]
+  rewrite: [开场钩子, 集尾钩子, 视觉化瞬间, 心理描写转外部动作]
+
+# --- 逐参数 evidence（E| 行 = 依据；U-0X| 行 = UNVERIFIED 单列；本轮仅用三类有出处分类） ---
+# 四分类：对标爆款 / 古典母题 / 沿用现有模板条款；无出处者标 UNVERIFIED 并单列
+# 格式：编号|参数路径|取值|来源类别|出处(文件号+节号)|备注
+evidence: |
+  [S1-02 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]
+  E01|genre_id|S1-02|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[S1-02]|取自封闭枚举，不自造
+  E02|name|鬼节轮回|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 name|与机读枚举写法一致
+  E03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机|未经 gate 不标 approved
+  E04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification|因 U-01~U-05 存在不升级；升级条件见 §十一 C-2
+  E05|beat_sheet.at_s / dur_s|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式 / _批量生成契约 §四|逐拍秒数照抄，9 型共用骨架
+  E06|beat_sheet.code|BEAT_* 8 码|沿用现有模板条款|fx_framework.yaml §四 profile_template 注释示例 / FX-030 §七|前缀分区保证全档案唯一，与钩子码零相交
+  E07|beat_sheet.purpose|建立/铺垫/升级/兑现/余波/断点|沿用现有模板条款|fx_framework.yaml §四 注释示例「建立」；MD-006 §三 节拍名短化；FX-030 §五 R-S1（兑现）；MD-011 §五 1（断点）|只保留功能短词
+  E08|beat_sheet.is_payoff / payoff.min_per_ep|1 / 1|对标爆款|MD-011 §五 红线 2「每集至少兑现 1 个爽点」/ FX-030 §五 R-S1|本表 payoff 标记 1 处（拍 6），P09 复算相等
+  E09|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」|按冲突升级间隔取 20；升级拍 15s ≤ 20s
+  E10|hooks.open|4 条规则纸条/循环计数|对标爆款|MD-006 §四 开头钩子模板（限时压迫/日常异化）/ MD-011 §三 诡异提问；fx_framework.yaml routing.structural_signals.rule_list（规则/第几条 → S1-02）|范文长句压缩到 Python len ≤15 且只留可归因物件，压缩见 U-05
+  E11|hooks.close|3 条规则被破/录音多声/出口重置|对标爆款|MD-006 §五 结尾钩子模板（反转推翻/规则违反）/ MD-011 §四 规则违反|公式与台词按模板改写并落到可核查物证，见 U-05
+  E12|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes|副类型注入位，主类型不预置
+  E13|cast.max_speaking|3|沿用现有模板条款|FX-030 §七「参考 MD-002 每集 ≤3 个有台词角色」/ MD-002 §一 / R-S2|骨架默认值，跨型通用
+  E14|cast.max_on_screen|3|UNVERIFIED|无数值出处；MD-006 §八「主角回头类镜头拆两镜」为间接参考|U-01，待 MD-022 / F3 分镜同框回填
+  E15|line.max_chars|15|沿用现有模板条款|FX-030 §二 R15 / §七 默认 15 / TPL-008 v2.1.1 语速超限记录（承继历史记录）|生理语速上限，与题材无关
+  E16|line.char_per_sec|[4, 6]|沿用现有模板条款|FX-030 §七 默认 [4,6] 硬顶 9 / fx_framework.yaml §四 profile_template|硬顶 9 由 R15
+  E17|line.tone_codes|FLAT/MEASURED/REPEAT/HALTED/VERBATIM|UNVERIFIED|FX-030 §七 要求填语气码但未定义可选枚举|U-02，自拟 5 码受控词表，待配音字幕定枚举
+  E18|line.banned|想/觉得/心里/暗自/不禁/仿佛 + 验尸/卷宗/军令/赘婿|沿用现有模板条款|前 6 词 FX-030 §五 R-S6 词表 / §四 4.4；后 4 词 fx_framework.yaml §三 genres[S1-02].words.exclude / FX-010 §三 排除词表|排除词复用为台词禁用见 U-03
+  E19|style_bible_ref|STY-DARK-REAL|沿用现有模板条款|FX-010 §二 S1-02 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-006 §一「暗黑写实」|只登记 code，不写提示词串
+  E20|asset_bias.prop_focus|规则纸条/午夜钟表/循环计数器/副本门牌/监控屏|沿用现有模板条款|fx_framework.yaml §三 genres[S1-02].words（第几次/循环/副本/午夜）/ FX-010 §三 判别词；MD-045 §一 D2 规则怪谈化改法|全为可绘制可归因物件，不留超自然实体
+  E21|asset_bias.scene_pool|单元楼道/值班室/旧式钟楼/电梯间/空走廊|对标爆款|MD-006 §一「场景简单（一屋、一巷、一车）」/ §八「熟悉场景+一个错误细节」|出图稳定场景优先，均为可归因物理空间
+  E22|redlines.RL_LUNHUI_SUPERNATURAL / RL_LUNHUI_ATTRIBUTION|三件套|沿用现有模板条款|FX-010 §二 S1-02「禁灵异恐怖、封建迷信；必须给科学/心理归因」/ fx_framework.yaml §三 risk_flags / MD-006 §七 1（异象给人为/心理/科幻解释）/ MD-045 §四 1、3（现实外壳、前世今生改家族秘密老照片）|逐条覆盖两条 risk_flags；fallback 全为科学或心理解释
+  E23|redlines.RL_LUNHUI_MENTAL / RL_LUNHUI_EXCLUDE|三件套|沿用现有模板条款|FX-030 §五 R-S6 + §四 4.4 / MD-006 §七 2 禁血腥恐怖画面 / fx_framework.yaml §三 exclude 词表|通用红线补位
+  E24|adapt.chars_per_ep|[2000, 3000]|UNVERIFIED|FX-030 §四 4.1 仅给换算方法 N₀ = ceil(字数 ÷ chars_per_ep) 与 1000~5000 字/章量级|U-04，待改编回归回填
+  E25|adapt.keep / merge / rewrite|3 组短词表|沿用现有模板条款|FX-030 §四 4.3 三分类表 / 硬规则 R-S5 / §四 4.4；keep 后 2 项 FX-010 §二 核心爽点「规则解谜、循环逃生」|判定要点，非具体情节
+  E26|hooks / redlines / prop_focus 母题对照|度脱试炼骨架|古典母题|MD-048 §五「鬼节轮回 → 规则循环 → D1/D2 度脱式 → MD-045」；MD-045 §一 D1 黄粱一梦式、D2 三次试炼式（规则怪谈化改法）、§三 点化三拍、§四 1 现实外壳、§四 3 前世今生改家族秘密/老照片|21 部度脱 + 19 部孝义语料台账见 MD-045 引言 / MD-040
+  E27|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行 / _批量生成契约 §七|四分类 + UNVERIFIED 单列；本轮仅用三类有出处来源
+  E28|基准时长与共用骨架|90 / 8 拍|沿用现有模板条款|MD-011 §一、§二（90 秒完整逐镜表）/ _批量生成契约 §四（9 型共用决策）|120 派生不参数化，见 §十一
+  E29|genre_id 路由对照|S1-02|沿用现有模板条款|fx_framework.yaml routing.structural_signals.rule_list（规则/第几条 → S1-02）；case_opening（尸体/报案/勘查 → S1-01）为对照|与 S1-01 由结构信号分流
+  [UNVERIFIED 单列 5 项 | 编号|参数|取值|无出处原因|建议回填来源]
+  U-01|cast.max_on_screen|3|骨架未给含群演的同框人数上限；MD-006 §八 仅给「回头镜头拆两镜」间接参考|MD-022 崩脸记录 / F3 分镜层同框回填
+  U-02|line.tone_codes|FLAT/MEASURED/REPEAT/HALTED/VERBATIM|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节定枚举后回填
+  U-03|line.banned|后 4 词 验尸/卷宗/军令/赘婿|词表出自 fx_framework.yaml §三 exclude / FX-010 §三，原用途为 F0 路由打分，复用为台词禁用属专业判断|主理人裁决是否保留（P1-3 遗留）
+  U-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给方法与 1000~5000 字/章量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编回归回填
+  U-05|hooks.open / hooks.close|7 条 sample_line 均压缩或新写|MD-006 §四/§五 范文台词普遍 >15 字且含灵异字面，按 P12 压缩到 Python len ≤15 并改写为可归因物件，逐字原文不可直接入档|对标爆款开场/断点台词样本回填

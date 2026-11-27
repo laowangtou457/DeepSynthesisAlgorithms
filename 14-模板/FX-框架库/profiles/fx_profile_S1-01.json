@@ -1,0 +1,212 @@
+{
+  "genre_id": "S1-01",
+  "name": "神探断案",
+  "status": "draft",
+  "verification": "unverified",
+  "beat_sheet": [
+    {
+      "at_s": 0,
+      "dur_s": 3,
+      "code": "BEAT_OPEN_HOOK",
+      "purpose": "建立",
+      "is_payoff": false
+    },
+    {
+      "at_s": 3,
+      "dur_s": 7,
+      "code": "BEAT_CONTRAST",
+      "purpose": "铺垫",
+      "is_payoff": false
+    },
+    {
+      "at_s": 10,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_1",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 25,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_2",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 40,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_3",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 55,
+      "dur_s": 15,
+      "code": "BEAT_PAYOFF",
+      "purpose": "兑现",
+      "is_payoff": true
+    },
+    {
+      "at_s": 70,
+      "dur_s": 15,
+      "code": "BEAT_AFTERSHOCK",
+      "purpose": "余波",
+      "is_payoff": false
+    },
+    {
+      "at_s": 85,
+      "dur_s": 5,
+      "code": "BEAT_CLOSE_HOOK",
+      "purpose": "断点",
+      "is_payoff": false
+    }
+  ],
+  "hooks": {
+    "open": [
+      {
+        "code": "OPEN_CASE_REPORT",
+        "name": "报案开场",
+        "formula": "现场+报案人一句陈述",
+        "sample_line": "报案人说，门锁没坏。"
+      },
+      {
+        "code": "OPEN_DOSSIER_GAP",
+        "name": "缺页卷宗",
+        "formula": "卷宗+缺页特写",
+        "sample_line": "卷宗少了第三页。"
+      },
+      {
+        "code": "OPEN_INQUEST_CLUE",
+        "name": "验状反常",
+        "formula": "勘验+身份存疑陈述",
+        "sample_line": "仵作验过，死者不是本地人。"
+      },
+      {
+        "code": "OPEN_TESTIMONY_CLASH",
+        "name": "口供对撞",
+        "formula": "公堂+两份口供并列",
+        "sample_line": "两份口供，一字不差。"
+      }
+    ],
+    "close": [
+      {
+        "code": "CLOSE_VERDICT_FLIP",
+        "name": "反转推翻",
+        "formula": "结案一句+推翻定格",
+        "sample_line": "最信任的人，才是凶手。"
+      },
+      {
+        "code": "CLOSE_ALIBI_BREAK",
+        "name": "伪证戳破",
+        "formula": "不在场证明+一处破绽",
+        "sample_line": "不在场证明，是伪造的。"
+      },
+      {
+        "code": "CLOSE_DOSSIER_SELF",
+        "name": "卷宗自指",
+        "formula": "末页特写+姓名落定",
+        "sample_line": "末页写着我的名字。"
+      }
+    ],
+    "extra": []
+  },
+  "payoff": {
+    "min_per_ep": 1,
+    "escalate_every_s": 20
+  },
+  "cast": {
+    "max_speaking": 3,
+    "max_on_screen": 3
+  },
+  "line": {
+    "max_chars": 15,
+    "char_per_sec": [
+      4,
+      6
+    ],
+    "tone_codes": [
+      "PROBE",
+      "CLIPPED",
+      "DEDUCE",
+      "INTERROGATE",
+      "VERDICT"
+    ],
+    "banned": [
+      "想",
+      "觉得",
+      "心里",
+      "暗自",
+      "不禁",
+      "仿佛",
+      "规则",
+      "轮回",
+      "重生",
+      "赘婿"
+    ]
+  },
+  "style_bible_ref": "STY-DARK-REAL",
+  "asset_bias": {
+    "prop_focus": [
+      "卷宗",
+      "勘验箱",
+      "物证袋",
+      "口供簿",
+      "不在场证明"
+    ],
+    "scene_pool": [
+      "公堂",
+      "案发旧宅",
+      "雨夜巷口",
+      "卷宗房"
+    ]
+  },
+  "redlines": [
+    {
+      "code": "RL_DUANAN_CORPSE",
+      "rule": "禁止尸体/伤口/血迹正面特写；禁止伤情细节画面",
+      "fallback": "改用卷宗照、白布轮廓、旁人反应特写轮切；以口供与物证推进"
+    },
+    {
+      "code": "RL_DUANAN_METHOD",
+      "rule": "禁止给出可模仿的作案步骤、工具配比、时间规避细节",
+      "fallback": "只呈现推理结论与证据链；手法以结果镜头带过，不列步骤"
+    },
+    {
+      "code": "RL_DUANAN_MENTAL",
+      "rule": "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛",
+      "fallback": "改写为外部动作：把证物袋搁上桌、翻卷宗停在某行、抬眼扫过嫌疑人"
+    },
+    {
+      "code": "RL_DUANAN_PROC",
+      "rule": "禁止虚构真实办案程序细节与真实机构名称；结尾须正邪有界",
+      "fallback": "程序以架空称谓与结果镜头带过；改用 S1-01 判别词：卷宗/口供/不在场证明/勘验箱/公堂"
+    }
+  ],
+  "adapt": {
+    "chars_per_ep": [
+      2000,
+      3000
+    ],
+    "keep": [
+      "主线冲突",
+      "关键转折",
+      "名场面",
+      "金手指觉醒",
+      "巧验真相",
+      "层层反转"
+    ],
+    "merge": [
+      "连续多次打脸",
+      "多段日常",
+      "次要支线",
+      "同类重复"
+    ],
+    "rewrite": [
+      "开场钩子",
+      "集尾钩子",
+      "视觉化瞬间",
+      "心理描写转外部动作"
+    ]
+  },
+  "evidence": "[S1-01 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]\nE01|genre_id|S1-01|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[S1-01]|取自封闭枚举，不自造\nE02|name|神探断案|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 name|与机读枚举写法一致\nE03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机|未经 gate 不标 approved\nE04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification|因 U-01~U-05 存在不升级；升级条件见 §十一 C-2\nE05|beat_sheet.at_s / dur_s|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式 / _批量生成契约 §四|逐拍秒数照抄，9 型共用骨架\nE06|beat_sheet.code|BEAT_* 8 码|沿用现有模板条款|fx_framework.yaml §四 profile_template 注释示例 / FX-030 §七|前缀分区保证全档案唯一，与钩子码零相交\nE07|beat_sheet.purpose|建立/铺垫/升级/兑现/余波/断点|沿用现有模板条款|fx_framework.yaml §四 注释示例「建立」；MD-006 §三 节拍名短化；FX-030 §五 R-S1（兑现）；MD-011 §五 1（断点）|只保留功能短词\nE08|beat_sheet.is_payoff / payoff.min_per_ep|1 / 1|对标爆款|MD-011 §五 红线 2「每集至少兑现 1 个爽点」/ FX-030 §五 R-S1|本表 payoff 标记 1 处（拍 6），P09 复算相等\nE09|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」|按冲突升级间隔取 20；升级拍 15s ≤ 20s\nE10|hooks.open|4 条案件开场/悬念提问|对标爆款|MD-006 §四 开头钩子模板（超现实提问/限时压迫/日常异化）/ MD-011 §三 诡异提问|范文长句压缩到 Python len ≤15，压缩见 U-05\nE11|hooks.close|3 条反转推翻/伪证戳破|对标爆款|MD-006 §五 结尾钩子模板（反转推翻/视角惊悚）/ MD-011 §四|公式与台词按模板改写，见 U-05\nE12|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes|副类型注入位，主类型不预置\nE13|cast.max_speaking|3|沿用现有模板条款|FX-030 §七「参考 MD-002 每集 ≤3 个有台词角色」/ MD-002 §一 / R-S2|骨架默认值，跨型通用\nE14|cast.max_on_screen|3|UNVERIFIED|无数值出处；MD-006 §八「回头镜头拆两镜」为间接参考|U-01，待 MD-022 / F3 分镜同框回填\nE15|line.max_chars|15|沿用现有模板条款|FX-030 §二 R15 / §七 默认 15 / TPL-008 v2.1.1 语速超限记录（承继历史记录）|生理语速上限，与题材无关\nE16|line.char_per_sec|[4, 6]|沿用现有模板条款|FX-030 §七 默认 [4,6] 硬顶 9 / fx_framework.yaml §四 profile_template|硬顶 9 由 R15\nE17|line.tone_codes|PROBE/CLIPPED/DEDUCE/INTERROGATE/VERDICT|UNVERIFIED|FX-030 §七 要求填语气码但未定义可选枚举|U-02，自拟 5 码受控词表，待配音字幕定枚举\nE18|line.banned|想/觉得/心里/暗自/不禁/仿佛 + 规则/轮回/重生/赘婿|沿用现有模板条款|前 6 词 FX-030 §五 R-S6 词表 / §四 4.4；后 4 词 fx_framework.yaml §三 genres[S1-01].words.exclude / FX-010 §三 排除词表|排除词复用为台词禁用见 U-03\nE19|style_bible_ref|STY-DARK-REAL|沿用现有模板条款|FX-010 §二 S1-01 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-006 §一「暗黑写实」|只登记 code，不写提示词串\nE20|asset_bias.prop_focus|卷宗/勘验箱/物证袋/口供簿/不在场证明|沿用现有模板条款|fx_framework.yaml §三 genres[S1-01].words（卷宗/口供/不在场证明/勘验）/ FX-010 §三 判别词；MD-042 §三 物证链构件|可绘制物件，避开排除词\nE21|asset_bias.scene_pool|公堂/案发旧宅/雨夜巷口/卷宗房|对标爆款|MD-006 §一「场景简单（一屋、一巷、一车）」/ MD-006 §八「熟悉场景+错误细节」|出图稳定场景优先\nE22|redlines.RL_DUANAN_CORPSE / RL_DUANAN_METHOD|三件套|沿用现有模板条款|FX-010 §二 S1-01「忌血腥尸体特写；忌具体作案手法教学」/ fx_framework.yaml §三 risk_flags / MD-006 §七 2、3|逐条覆盖两条 risk_flags\nE23|redlines.RL_DUANAN_MENTAL / RL_DUANAN_PROC|三件套|沿用现有模板条款|FX-030 §五 R-S6 + §四 4.4 / MD-006 §七 4 涉警涉法 / MD-042 §四 3 避免映射现实机构名称|通用红线补位\nE24|adapt.chars_per_ep|[2000, 3000]|UNVERIFIED|FX-030 §四 4.1 仅给换算方法 N₀ = ceil(字数 ÷ chars_per_ep) 与 1000~5000 字/章量级|U-04，待改编回归回填\nE25|adapt.keep / merge / rewrite|3 组短词表|沿用现有模板条款|FX-030 §四 4.3 三分类表 / 硬规则 R-S5 / §四 4.4；keep 后 2 项 FX-010 §二 核心爽点「巧验真相、层层反转」|判定要点，非具体情节\nE26|hooks / redlines / prop_focus 母题对照|智勘辨真骨架|古典母题|MD-048 §五「神探断案 → C 智勘辨真式 → MD-042」；MD-042 §一 C 行（灰欄記 10 / 蝴蝶夢 7 / 合同文字 13）、§三 物证链与三问递进、§四 1 血腥翻案降格|30 部公案语料台账见 MD-042 引言 / MD-040\nE27|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行 / _批量生成契约 §七|四分类 + UNVERIFIED 单列；本轮仅用三类有出处来源\nE28|基准时长与共用骨架|90 / 8 拍|沿用现有模板条款|MD-011 §一、§二（90 秒完整逐镜表）/ _批量生成契约 §四（9 型共用决策）|120 派生不参数化，见 §十一\nE29|genre_id 路由对照|S1-01|沿用现有模板条款|fx_framework.yaml routing.structural_signals case_opening（尸体/报案/勘查 → S1-01）；rule_list（规则/第几条 → S1-02）为对照|与 S1-02 由结构信号分流\n[UNVERIFIED 单列 5 项 | 编号|参数|取值|无出处原因|建议回填来源]\nU-01|cast.max_on_screen|3|骨架未给含群演的同框人数上限；MD-006 §八 仅给「回头镜头拆两镜」间接参考|MD-022 崩脸记录 / F3 分镜层同框回填\nU-02|line.tone_codes|PROBE/CLIPPED/DEDUCE/INTERROGATE/VERDICT|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节定枚举后回填\nU-03|line.banned|后 4 词 规则/轮回/重生/赘婿|词表出自 fx_framework.yaml §三 exclude / FX-010 §三，原用途为 F0 路由打分，复用为台词禁用属专业判断|主理人裁决是否保留（P1-3 遗留）\nU-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给方法与 1000~5000 字/章量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编回归回填\nU-05|hooks.open / hooks.close|7 条 sample_line 均压缩或新写|MD-006 §四/§五 范文台词普遍 >15 字，按 P12 压缩到 Python len ≤15，逐字原文不可直接入档|对标爆款开场/断点台词样本回填\n"
+}

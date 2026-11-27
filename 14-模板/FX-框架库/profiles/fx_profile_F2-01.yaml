@@ -1,0 +1,119 @@
+# ============================================================
+# FX-P07 · Genre Profile · F2-01 门第阻隔双向奔赴 · 机读轨
+# 由人读轨 profiles/FX-P07_F2-01_门第阻隔双向奔赴.md 派生；冲突时以 md 为准
+# 字段结构 = schema/fx_framework.yaml 的 profile_template（14 顶层字段，无增删）
+# 状态：draft / unverified　基准单集秒数：90（Σdur_s = 90）　骨架版本 1.1.0
+# 生成日期：2026-11-26
+# ============================================================
+
+genre_id: F2-01
+name: 门第阻隔双向奔赴
+status: draft
+verification: unverified
+
+# --- 槽位 1：beat_sheet（8 拍，Σdur_s = 90；9 型逐值共用，_批量生成契约 §四） ---
+# at_s/dur_s 取自 MD-011 §二 S01~S08；首拍 code 含 OPEN，末拍 code 含 CLOSE
+beat_sheet:
+  - {at_s: 0, dur_s: 3, code: BEAT_OPEN_HOOK, purpose: 建立, is_payoff: false}
+  - {at_s: 3, dur_s: 7, code: BEAT_CONTRAST, purpose: 铺垫, is_payoff: false}
+  - {at_s: 10, dur_s: 15, code: BEAT_ESCALATE_1, purpose: 升级, is_payoff: false}
+  - {at_s: 25, dur_s: 15, code: BEAT_ESCALATE_2, purpose: 升级, is_payoff: false}
+  - {at_s: 40, dur_s: 15, code: BEAT_ESCALATE_3, purpose: 升级, is_payoff: false}
+  - {at_s: 55, dur_s: 15, code: BEAT_PAYOFF, purpose: 兑现, is_payoff: true}
+  - {at_s: 70, dur_s: 15, code: BEAT_AFTERSHOCK, purpose: 余波, is_payoff: false}
+  - {at_s: 85, dur_s: 5, code: BEAT_CLOSE_HOOK, purpose: 断点, is_payoff: false}
+
+# --- 槽位 2/3：hooks（open 4 / close 3 / extra 空列表，副类型注入位） ---
+hooks:
+  open:
+    - {code: OPEN_TUIHUN, name: 退婚名场面, formula: "古言错位+当众退婚+婚书拍案", sample_line: "这门亲事，我退定了。"}
+    - {code: OPEN_MENDI, name: 门匾拦婚, formula: "祠堂对峙+长辈列阶+门匾特写", sample_line: "高门不纳，你走吧。"}
+    - {code: OPEN_XINWU, name: 信物现世, formula: "家族信物+旧玉佩特写+双人照面", sample_line: "这玉佩，怎在你手里？"}
+    - {code: OPEN_BINGJIAN, name: 双向立约, formula: "双人对峙转并肩+合执婚书", sample_line: "门第我来平，你别退。"}
+  close:
+    - {code: CLOSE_ZHANGBEI, name: 长辈拦门, formula: "定格→族老持门匾入场", sample_line: "这门亲，族老不认。"}
+    - {code: CLOSE_SHENSHI, name: 信物落款, formula: "定格→旧信物落款特写", sample_line: "落款，怎是崔家？"}
+    - {code: CLOSE_WUHUI, name: 误会未解, formula: "撞见半截场景+定格", sample_line: "你与他，什么关系？"}
+  extra: []
+
+# --- 槽位 4：payoff（min_per_ep 与 beat_sheet 的 is_payoff 标记数 1 处对应） ---
+payoff:
+  min_per_ep: 1
+  escalate_every_s: 20
+
+# --- 槽位 5：cast ---
+cast:
+  max_speaking: 3
+  max_on_screen: 3
+
+# --- 槽位 6：line ---
+line:
+  max_chars: 15
+  char_per_sec: [4, 6]
+  tone_codes: [SOFT, SHY, VOW, SINCERE, GENTLE]
+  banned: [想, 觉得, 心里, 暗自, 不禁, 仿佛, 重生, 前世, 命案, 规则]
+
+# --- 槽位 7：style_bible_ref（只写 STY-* 引用，不写提示词串） ---
+style_bible_ref: STY-FINE-FEMALE
+
+# --- 槽位 8：asset_bias ---
+asset_bias:
+  prop_focus: [婚书, 退婚书, 家族信物, 玉佩]
+  scene_pool: [祠堂, 古言大殿, 江南水乡, 寺庙回廊]
+
+# --- 槽位 9：redlines（每条 code/rule/fallback 三件套；前 2 条逐条覆盖 risk_flags） ---
+redlines:
+  - {code: RL_MENDI_BUWUHUA, rule: "禁止以聘礼/身价/门第筹码衡量婚恋；禁止把人物写成可交易对象", fallback: "改写为双向立约与并肩担当；以信物寄情取代价码"}
+  - {code: RL_MENDI_JIECENG, rule: "禁止以出身高低羞辱角色；禁止贬损性称谓与跪罚桥段", fallback: "门第分歧改写为长辈立场陈述与条款协商；双方对等对话"}
+  - {code: RL_MENDI_QINMI, rule: "亲密戏以拉手/对视/拥抱封顶；壁咚不贴身", fallback: "改用逆光光斑+手部特写+慢推定格承载心动"}
+  - {code: RL_MENDI_XINLI, rule: "台词与 action 禁止出现：想/觉得/心里/暗自/不禁/仿佛", fallback: "改写为外部动作：手停半空、把婚书扣在案上、转身、垂眸特写"}
+  - {code: RL_MENDI_PAICI, rule: "禁止出现：重生/前世/命案/规则", fallback: "改用 F2-01 判别词：门第/婚约/退婚/家世/双向奔赴"}
+
+# --- 槽位 10：adapt ---
+adapt:
+  chars_per_ep: [2000, 3000]
+  keep: [主线冲突, 关键转折, 名场面, 金手指觉醒, 破门第, 双向奔赴]
+  merge: [连续多次打脸, 多段日常, 次要支线, 同类重复]
+  rewrite: [开场钩子, 集尾钩子, 视觉化瞬间, 心理描写转外部动作]
+
+# --- 逐参数 evidence（E| 行 = 依据；U-xx| 行 = UNVERIFIED 单列） ---
+# 四分类：对标爆款 / 古典母题 / 沿用现有模板条款（本轮不列实测）；UNVERIFIED 单列
+# 格式：编号|参数路径|取值|来源类别|出处(文件号+节号)|备注
+evidence: |
+  [F2-01 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]
+  E01|genre_id|F2-01|沿用现有模板条款|FX-010 §二封闭枚举 / fx_framework.yaml §三 genres[F2-01]|取自封闭枚举，不自造
+  E02|name|门第阻隔双向奔赴|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 name|与机读枚举写法一致
+  E03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机|未经 gate 不标 approved
+  E04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification|因 U-01~U-06 未回填不升级；升级条件见 §十一
+  E05|beat_sheet.at_s / dur_s|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds = 90 自检算式；_批量生成契约 §四 共用表|9 型逐值相同，逐拍秒数照抄
+  E06|beat_sheet.code / purpose / is_payoff|BEAT_* 8 码 + 6 短词 + 1 处兑现|沿用现有模板条款|fx_framework.yaml §四 注释示例「建立」；MD-011 §五 1（断点）/ 2（兑现）；_批量生成契约 §四|前缀分区；is_payoff 仅拍 6
+  E07|hooks.open|4 条（逐字原文 1 条 E| + 压缩/新写 3 条 U|）|对标爆款|MD-005 §四 开头钩子模板（古言错位型「这门亲事，我退定了。」）/ MD-011 §三 黄金 3 秒形态|压缩与新写台词标 U-05
+  E08|hooks.close|3 条（压缩/新写 U|）|对标爆款|MD-005 §五 结尾钩子模板（身世悬念型 / 误会未解型）/ MD-011 §四 情敌登场（甜宠）|压缩台词标 U-05
+  E09|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes|副类型注入位，主类型不预置
+  E10|payoff.min_per_ep|1|对标爆款|MD-011 §五 红线 2「每集至少兑现 1 个爽点/甜点」/ FX-030 §五 R-S1|与拍 6 is_payoff 1 处对应
+  E11|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段「每 20 秒一个小爽点/小反转」|升级拍 15s ≤ 20s
+  E12|cast.max_speaking|3|沿用现有模板条款|FX-030 §七 / §五 R-S2；MD-005 §八「优先单人特写轮切」|与骨架默认值一致
+  E13|cast.max_on_screen|3|UNVERIFIED|无数值出处；MD-005 §八 双人同框崩脸、单人轮切为间接参考|U-01，待分镜层同框复核回填
+  E14|line.max_chars|15|沿用现有模板条款|FX-030 §二 R15 / §七 默认 15 / fx_framework.yaml §四 profile_template；含 TPL-008 v2.1.1 语速教训记录|生理语速上限，与题材无关
+  E15|line.char_per_sec|[4, 6]|沿用现有模板条款|FX-030 §七 默认 [4,6] / fx_framework.yaml §四 profile_template|硬顶 9 由 R15
+  E16|line.tone_codes|SOFT/SHY/VOW/SINCERE/GENTLE|UNVERIFIED|FX-030 §七 要求填语气码但未定义可选枚举，本档案自拟 5 码|U-02，待配音字幕环节复核
+  E17|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4|与 RL_MENDI_XINLI.rule 逐字一致
+  E18|line.banned 后 4 词|重生/前世/命案/规则|UNVERIFIED|fx_framework.yaml §三 genres[F2-01].words.exclude；原用途为 F0 路由打分（−4）|U-03，复用为台词禁用属专业判断
+  E19|style_bible_ref|STY-FINE-FEMALE|沿用现有模板条款|FX-010 §二 F2-01 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-005 §一|只登记 code，不写提示词串
+  E20|asset_bias.prop_focus|婚书/退婚书/家族信物/玉佩|沿用现有模板条款|FX-010 §三 F2-01 判别词（门第/退婚/婚约）/ MD-005 §四 退婚名场面、§五 玉佩信物 / _批量生成契约 §五 可绘制物件举例|均为可绘制物件
+  E21|asset_bias.scene_pool|祠堂/古言大殿/江南水乡/寺庙回廊|对标爆款|MD-005 §八「古言大殿、江南水乡出图稳定」/ MD-044 §一 A 式寺庙邂逅 / _批量生成契约 §五 场景举例|按道具与母题延展的场景见 U-06
+  E22|redlines|5 条三件套|沿用现有模板条款|FX-010 §二 F2-01 两条主要审核风险 / fx_framework.yaml §三 risk_flags / MD-005 §七 3 亲密尺度 / FX-030 §五 R-S6 / FX-010 §三 排除词|逐条覆盖 risk_flags，另补 3 条通用
+  E23|adapt.chars_per_ep|[2000, 3000]|UNVERIFIED|FX-030 §四 4.1 仅给换算方法与 1000~5000 字/章量级，未给区间值|U-04，待改编环节同批样本回归
+  E24|adapt.keep|主线冲突/关键转折/名场面/金手指觉醒/破门第/双向奔赴|沿用现有模板条款|FX-030 §四 4.3 keep 行原文（前 4 项）/ FX-010 §二 F2-01 核心爽点（后 2 项）|判定要点，非具体情节
+  E25|adapt.merge|连续多次打脸/多段日常/次要支线/同类重复|沿用现有模板条款|FX-030 §四 4.3 merge 行原文|判定要点
+  E26|adapt.rewrite|开场钩子/集尾钩子/视觉化瞬间/心理描写转外部动作|沿用现有模板条款|FX-030 §四 4.3 rewrite 行原文 / §四 4.4 / R-S6|判定要点，每集 ≥1 处
+  E27|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行|四分类 + UNVERIFIED 单列，不新增字段
+  E28|beat_sheet 骨架 / hooks / redlines / prop_focus|母题对照|古典母题|MD-048 §四「门第阻隔双向奔赴 → A 寺庙邂逅式（西廂記）→ MD-044」；MD-044 §一 A 式、§二 西廂记五步（联诗传情/门第逼别）、§五 甜宠 12 拍|40 部元杂剧 + 18 部明清传奇台账见 MD-044 引言 / MD-040
+  E29|基准时长|90|沿用现有模板条款|MD-011 §一 90 秒标准版 / MD-005 §三 90 秒单集节拍表 / _批量生成契约 §二|120 为派生上限，本轮不参数化，见 §十一
+  [UNVERIFIED 单列 6 项 | 编号|参数|取值|无依据原因|建议回填来源]
+  U-01|cast.max_on_screen|3|骨架未给含群演的同框人数上限；MD-005 §八仅给单人轮切参考|分镜层同框复核后回填
+  U-02|line.tone_codes|SOFT/SHY/VOW/SINCERE/GENTLE|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节复核后定枚举
+  U-03|line.banned|后 4 词 重生/前世/命案/规则|词表出自 fx_framework.yaml §三 words.exclude，原用途为路由打分，复用为台词禁用属专业判断|主理人裁决是否保留（P1-3 遗留）
+  U-04|adapt.chars_per_ep|[2000, 3000]|FX-030 §四 4.1 只给方法与 1000~5000 字/章量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编同批样本回归
+  U-05|hooks.open / hooks.close|sample_line 压缩或新写 6 条|MD-005 §四/§五 范文长句超过 P12 的 15 字符，按 _批量生成契约 §十二 1 压缩或新写|对标爆款开场与集尾台词样本回填
+  U-06|asset_bias.scene_pool|祠堂/寺庙回廊 2 项延展|MD-005 §八仅明列古言大殿、江南水乡、教室窗边出图稳定；祠堂与寺庙回廊按家族信物与 MD-044 A 式延展|AI 出图稳定性复核后确认

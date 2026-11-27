@@ -1,0 +1,205 @@
+{
+  "genre_id": "F1-01",
+  "name": "真假千金",
+  "status": "draft",
+  "verification": "unverified",
+  "beat_sheet": [
+    {
+      "at_s": 0,
+      "dur_s": 3,
+      "code": "BEAT_OPEN_HOOK",
+      "purpose": "建立",
+      "is_payoff": false
+    },
+    {
+      "at_s": 3,
+      "dur_s": 7,
+      "code": "BEAT_CONTRAST",
+      "purpose": "铺垫",
+      "is_payoff": false
+    },
+    {
+      "at_s": 10,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_1",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 25,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_2",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 40,
+      "dur_s": 15,
+      "code": "BEAT_ESCALATE_3",
+      "purpose": "升级",
+      "is_payoff": false
+    },
+    {
+      "at_s": 55,
+      "dur_s": 15,
+      "code": "BEAT_PAYOFF",
+      "purpose": "兑现",
+      "is_payoff": true
+    },
+    {
+      "at_s": 70,
+      "dur_s": 15,
+      "code": "BEAT_AFTERSHOCK",
+      "purpose": "余波",
+      "is_payoff": false
+    },
+    {
+      "at_s": 85,
+      "dur_s": 5,
+      "code": "BEAT_CLOSE_HOOK",
+      "purpose": "断点",
+      "is_payoff": false
+    }
+  ],
+  "hooks": {
+    "open": [
+      {
+        "code": "OPEN_QIANJIN_DUAL",
+        "name": "冷暖双画面",
+        "formula": "门内寿宴暖光+门外雨夜+旁白",
+        "sample_line": "疼十八年的宝贝，才是假货！"
+      },
+      {
+        "code": "OPEN_QIANJIN_DECLARE",
+        "name": "身份宣言",
+        "formula": "平静亮出证据+一句身份台词",
+        "sample_line": "我，才是沈家真千金！"
+      },
+      {
+        "code": "OPEN_QIANJIN_BLOODTYPE",
+        "name": "信物存疑",
+        "formula": "家谱翻页+血型单特写+全场静",
+        "sample_line": "血型对不上，谁来解释？"
+      }
+    ],
+    "close": [
+      {
+        "code": "CLOSE_QIANJIN_FAKEPITY",
+        "name": "卖惨反差",
+        "formula": "反派哭诉+女主冷笑定格",
+        "sample_line": "装可怜？好戏才开场！"
+      },
+      {
+        "code": "CLOSE_QIANJIN_PATRIARCH",
+        "name": "靠山登场",
+        "formula": "反派靠山现身+定格",
+        "sample_line": "他们请来了沈家家主。"
+      },
+      {
+        "code": "CLOSE_QIANJIN_RECLAIM",
+        "name": "宣言回环",
+        "formula": "女主定格+下阶段目标亮出",
+        "sample_line": "拿回属于我的一切，才刚刚开始。"
+      }
+    ],
+    "extra": []
+  },
+  "payoff": {
+    "min_per_ep": 1,
+    "escalate_every_s": 20
+  },
+  "cast": {
+    "max_speaking": 3,
+    "max_on_screen": 3
+  },
+  "line": {
+    "max_chars": 15,
+    "char_per_sec": [
+      4,
+      6
+    ],
+    "tone_codes": [
+      "COOL",
+      "POISED",
+      "VERIFY",
+      "REVEAL",
+      "DISMISS"
+    ],
+    "banned": [
+      "想",
+      "觉得",
+      "心里",
+      "暗自",
+      "不禁",
+      "仿佛",
+      "重生",
+      "上一世",
+      "命案",
+      "规则"
+    ]
+  },
+  "style_bible_ref": "STY-FINE-FEMALE",
+  "asset_bias": {
+    "prop_focus": [
+      "亲子鉴定书",
+      "家谱",
+      "血型单",
+      "认亲金锁"
+    ],
+    "scene_pool": [
+      "认亲宴",
+      "豪门宴会厅",
+      "老宅客厅",
+      "雨夜门廊"
+    ]
+  },
+  "redlines": [
+    {
+      "code": "RL_QIANJIN_CAMPUS",
+      "rule": "不渲染校园霸凌细节，禁止推搡/辱骂/羞辱过程的正面特写",
+      "fallback": "改用旁人侧目+课桌被推开的空镜+主角转身离场"
+    },
+    {
+      "code": "RL_QIANJIN_FAMILY",
+      "rule": "重男轻女与家暴只作冲突引子，不渲染过程细节",
+      "fallback": "改用偏心台词+门内外冷暖双画面+摔门声替代"
+    },
+    {
+      "code": "RL_QIANJIN_LEGAL",
+      "rule": "身世清算与财产归还须收口于证据移交、依法处理",
+      "fallback": "改用鉴定报告递交+律师宣读文件+落槌字幕带过"
+    },
+    {
+      "code": "RL_QIANJIN_MENTAL",
+      "rule": "台词与 action 禁用：想/觉得/心里/暗自/不禁/仿佛",
+      "fallback": "改用外部动作：把鉴定书推到桌心、指节叩桌、垂眼不语"
+    }
+  ],
+  "adapt": {
+    "chars_per_ep": [
+      2000,
+      3000
+    ],
+    "keep": [
+      "主线冲突",
+      "关键转折",
+      "名场面",
+      "金手指觉醒",
+      "身份反转",
+      "当众揭穿"
+    ],
+    "merge": [
+      "连续多次打脸",
+      "多段日常",
+      "次要支线",
+      "同类重复"
+    ],
+    "rewrite": [
+      "开场钩子",
+      "集尾钩子",
+      "视觉化瞬间",
+      "心理描写转外部动作"
+    ]
+  },
+  "evidence": "[F1-01 | evidence v1 | 基准单集秒数 90 | 四分类 + UNVERIFIED 单列]\nE01|genre_id|F1-01|沿用现有模板条款|FX-010 §二 封闭枚举 / fx_framework.yaml §三 genres[F1-01]\nE02|name|真假千金|沿用现有模板条款|FX-010 §二 / fx_framework.yaml §三 genres[F1-01].name\nE03|status|draft|沿用现有模板条款|FX-030 §七 / fx_framework.yaml §五 状态机（未经门检不标 approved）\nE04|verification|unverified|沿用现有模板条款|fx_framework.yaml §四 profile_template.verification（U-01~U-06 未回填）\nE05|beat_sheet.at_s/dur_s/code/purpose/is_payoff|8 拍 Σ=90|沿用现有模板条款|MD-011 §一、§二 S01~S08 逐镜表 + §二 Σ est_seconds=90 自检算式；9 型共用，逐值不改\nE06|beat_sheet 段映射|8 拍 ↔ 六段|对标爆款|MD-004 §三 90 秒单集节拍表（黄金钩子/觉醒亮出/正面交锋/反击兑现/反扑钩子）\nE07|beat_sheet.code/purpose|BEAT_* 8 码 + 功能短词|沿用现有模板条款|FX-030 §三 槽位 1 / fx_framework.yaml §四 注释示例「建立」；purpose 取 MD-004 §三 节拍名短化\nE08|hooks.open|3 条|对标爆款|MD-004 §四 开头钩子模板（双画面对比型/宣言型）/ MD-011 §三 黄金 3 秒钩子库；逐字原文落本 E 行：OPEN_QIANJIN_DECLARE「我，才是沈家真千金！」；压缩与新写 2 条见 U-05\nE09|hooks.close|3 条|对标爆款|MD-004 §五 结尾钩子模板（卖惨反差型/阴谋升级型/宣言回环型）/ MD-011 §四 结尾钩子库；逐字原文落本 E 行：CLOSE_QIANJIN_PATRIARCH「他们请来了沈家家主。」、CLOSE_QIANJIN_RECLAIM「拿回属于我的一切，才刚刚开始。」；压缩 1 条见 U-05\nE10|hooks.extra|[]|沿用现有模板条款|fx_framework.yaml §四 profile_template.hooks.extra / FX-010 §五 S5 extra_hook_codes（副类型注入位，主类型不预置）\nE11|payoff.min_per_ep|1|对标爆款|MD-011 §五 红线 2（每集至少兑现 1 个爽点）/ FX-030 §五 R-S1；拍 6 标记 1 处\nE12|payoff.escalate_every_s|20|沿用现有模板条款|MD-011 §一 C 段（每 20 秒一个小爽点/小反转）；升级拍 15s ≤ 20s\nE13|cast.max_speaking|3|对标爆款|FX-030 §七 / §五 R-S2（每集 ≤3 个有台词角色）/ MD-004 §一 受众与篇幅口径\nE14|cast.max_on_screen|3|沿用现有模板条款|与 max_speaking 同值保守沿用；骨架未给同框人数独立数值出处（见 U-01）\nE15|line.max_chars|15|沿用现有模板条款|FX-030 §二 不变量 1 R15 / §七 默认 15 / fx_framework.yaml §四 profile_template\nE16|line.char_per_sec|[4,6]|沿用现有模板条款|FX-030 §七 默认 [4,6]，硬顶 9 由 §二 R15 / fx_framework.yaml §四\nE17|line.tone_codes|COOL/POISED/VERIFY/REVEAL/DISMISS|沿用现有模板条款|按 FX-030 §七 要求自拟受控码，词面参考 MD-004 §六「短句、冷、留白」（枚举未定义，见 U-02）\nE18|line.banned 前 6 词|想/觉得/心里/暗自/不禁/仿佛|沿用现有模板条款|FX-030 §五 R-S6 词表 / §四 4.4；与 RL_QIANJIN_MENTAL.rule 逐字一致\nE19|line.banned 后 4 词|重生/上一世/命案/规则|沿用现有模板条款|fx_framework.yaml §三 genres[F1-01].words.exclude / FX-010 §三 排除词（−4）（复用口径见 U-03）\nE20|style_bible_ref|STY-FINE-FEMALE|沿用现有模板条款|FX-010 §二 F1-01 默认画风锚 / fx_framework.yaml §三 default_style_ref + §六 style_refs(registered) / MD-004 §一 推荐画风\nE21|asset_bias.prop_focus|亲子鉴定书/家谱/血型单/认亲金锁|沿用现有模板条款|fx_framework.yaml §三 genres[F1-01].words 一般/弱判别词 / FX-010 §三 / MD-004 §二「亲子鉴定/身世亮出」\nE22|asset_bias.scene_pool|认亲宴/豪门宴会厅/老宅客厅/雨夜门廊|对标爆款|MD-004 §八「豪门宴会厅、老式大院出图稳定」/ §二「门内生日宴 vs 门外淋雨」冷暖对比\nE23|redlines|4 条三件套|沿用现有模板条款|fx_framework.yaml §三 genres[F1-01].risk_flags / FX-010 §二 主要审核风险 / MD-004 §七 审核红线 / FX-030 §五 R-S6\nE24|adapt.chars_per_ep|[2000,3000]|沿用现有模板条款|量级参考 FX-030 §四 4.1（1000~5000 字/章与换算方法）；区间值估定见 U-04\nE25|adapt.keep/merge/rewrite|3 组短词表|沿用现有模板条款|FX-030 §四 4.3 三分类表 / §四 4.3 硬规则 R-S5 / §四 4.4；keep 末 2 项取 FX-010 §二 F1-01 核心爽点\nE26|evidence|逐参数依据|沿用现有模板条款|FX-000 §六 K-03 / FX-030 §七 evidence 行（四分类 + UNVERIFIED 单列，不新增字段）\nE27|母题对照|C 智勘辨真式（灰欄記）|古典母题|MD-048 §三「真假千金 → C 智勘辨真式（灰欄記）→ MD-042」；MD-042 §一 C 行（两造争一物→清官设局巧验→真相大白）、§三 物证链构件\nE28|risk_flags 覆盖核对|不渲染校园霸凌细节→1 条|沿用现有模板条款|fx_framework.yaml §三 genres[F1-01].risk_flags；其余 3 条补 MD-004 §七 1/§七 3 与 FX-030 §五 R-S6\nE29|L-04 钩子场例外|拍 1/2/8 标例外场|沿用现有模板条款|README §5.1 / R1 §四之三（用户 2026-11-25 裁决）；MD-011 §一 A 段 0–3s\nE30|基准时长 90|Σdur_s=90|沿用现有模板条款|MD-011 §一、§二（90 秒标准版完整逐镜表）；120 派生本轮不参数化，登记 §十一\nU-01|cast.max_on_screen|3|骨架未给同框人数上限（含群演），沿用保守同值|分镜层同框复核后回填\nU-02|line.tone_codes|COOL/POISED/VERIFY/REVEAL/DISMISS|FX-030 §七 未定义可选枚举，本档案自拟 5 码受控词表|配音与字幕环节定枚举后回填\nU-03|line.banned 后 4 词|重生/上一世/命案/规则|词表出自 fx_framework.yaml §三 exclude，原用途为 F0 路由打分，复用为台词禁词属专业判断|主理人裁决是否保留（P1-3 遗留）\nU-04|adapt.chars_per_ep|[2000,3000]|FX-030 §四 4.1 只给换算方法与量级，区间值按 90 秒 × 8 拍容量估定|小说→剧集改编同批样本回归后回填\nU-05|hooks 压缩与新写 sample_line|疼十八年的宝贝，才是假货！（压缩）/装可怜？好戏才开场！（压缩）/血型对不上，谁来解释？（新写）|MD-004 范文长句按 P12 压到 len<=15 或按公式新写，无逐字原文|对标开场与集尾台词样本回填\nU-06|style_bible_ref 画风串|STY-FINE-FEMALE|FX-010 §二 注：完整提示词串见 FX-050，当前待建，本档案只登记 code|F4 画风锚落地后回填\n"
+}
